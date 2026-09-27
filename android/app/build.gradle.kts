@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "co.talentmatch.talentmatch"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {

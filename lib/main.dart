@@ -1,122 +1,109 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
-void main() {
-  runApp(const MyApp());
-}
+import 'core/constants/app_colors.dart';
+import 'core/network/api_client.dart';
+import 'core/storage/secure_storage.dart';
+import 'core/theme/app_theme.dart';
+import 'data/repositories/auth_repository_impl.dart';
+import 'presentation/auth/login_screen.dart';
+import 'presentation/shared/providers/auth_provider.dart';
+import 'presentation/shell/candidate_shell.dart';
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+void main() => runApp(const TalentMatchApp());
 
-  // This widget is the root of your application.
+class TalentMatchApp extends StatelessWidget {
+  const TalentMatchApp({super.key});
+
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: .fromSeed(seedColor: Colors.deepPurple),
+    // ── Composición de dependencias ──────────────────────────────────────
+    final storage = SecureStorage();
+    final apiClient = ApiClient(storage);
+    final authRepo = AuthRepositoryImpl(apiClient, storage);
+
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AuthProvider(authRepo)),
+        // Sprints F-2 a F-6: agregar VacantesProvider, RecomendacionesProvider, etc.
+      ],
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        title: 'TalentMatch',
+        theme: AppTheme.theme,
+        home: const _AppRouter(),
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
-
-  @override
-  State<MyHomePage> createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
-
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
-  }
+/// Router raíz que reacciona al estado de autenticación.
+/// - AuthStatus.unknown      → pantalla de carga (splash)
+/// - AuthStatus.authenticated → CandidateShell
+/// - AuthStatus.unauthenticated → LoginScreen
+class _AppRouter extends StatelessWidget {
+  const _AppRouter();
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
-    return Scaffold(
-      appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
-      ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: .center,
-          children: [
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-          ],
+    final status = context.select<AuthProvider, AuthStatus>((p) => p.status);
+
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 400),
+      child: switch (status) {
+        AuthStatus.unknown         => const _SplashScreen(),
+        AuthStatus.authenticated   => const CandidateShell(),
+        AuthStatus.unauthenticated => const LoginScreen(),
+      },
+    );
+  }
+}
+
+/// Pantalla de carga mientras se verifica la sesión en SharedPreferences.
+class _SplashScreen extends StatelessWidget {
+  const _SplashScreen();
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        backgroundColor: kBg,
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Logo animado
+              TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0.7, end: 1.0),
+                duration: const Duration(milliseconds: 600),
+                curve: Curves.elasticOut,
+                builder: (_, scale, child) => Transform.scale(scale: scale, child: child),
+                child: Container(
+                  width: 80, height: 80,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    gradient: kLogoGradient,
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [BoxShadow(color: kBlue.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 6))],
+                  ),
+                  child: const Text('T', style: TextStyle(color: Colors.white, fontSize: 42, fontWeight: FontWeight.w900)),
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'TalentMatch',
+                style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: kNavy),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Empleo inteligente para tu futuro',
+                style: TextStyle(fontSize: 13, color: kMuted),
+              ),
+              const SizedBox(height: 40),
+              const SizedBox(
+                width: 24, height: 24,
+                child: CircularProgressIndicator(strokeWidth: 2.5, color: kBlue),
+              ),
+            ],
+          ),
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ),
-    );
-  }
+      );
 }
