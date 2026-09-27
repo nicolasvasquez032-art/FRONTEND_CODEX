@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../shared/providers/auth_provider.dart';
 import '../shared/widgets/brand_logo.dart';
+import '../shared/widgets/colombia_location_picker.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -15,6 +16,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey          = GlobalKey<FormState>();
   final _emailCtrl        = TextEditingController();
   final _passwordCtrl     = TextEditingController();
+  final _confirmPasswordCtrl = TextEditingController();
   final _fullNameCtrl     = TextEditingController();
   final _locationCtrl     = TextEditingController();
   final _skillsCtrl       = TextEditingController();
@@ -27,6 +29,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   void dispose() {
     _emailCtrl.dispose();
     _passwordCtrl.dispose();
+    _confirmPasswordCtrl.dispose();
     _fullNameCtrl.dispose();
     _locationCtrl.dispose();
     _skillsCtrl.dispose();
@@ -54,10 +57,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
       education: _educationCtrl.text.trim().isEmpty ? null : _educationCtrl.text.trim(),
     );
 
-    if (mounted && auth.error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(auth.error!)),
-      );
+    if (mounted) {
+      if (auth.error != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(auth.error!)),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Cuenta creada exitosamente. Por favor inicia sesión.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.pop(context);
+      }
     }
   }
 
@@ -167,6 +180,46 @@ class _RegisterScreenState extends State<RegisterScreen> {
               return null;
             },
           ),
+          ValueListenableBuilder<TextEditingValue>(
+            valueListenable: _emailCtrl,
+            builder: (context, value, child) {
+              final text = value.text;
+              if (text.contains('@')) {
+                final parts = text.split('@');
+                final localPart = parts[0];
+                final typedDomain = parts.length > 1 ? parts[1].toLowerCase() : '';
+                
+                final allDomains = ['gmail.com', 'hotmail.com', 'yahoo.com', 'outlook.com'];
+                final suggestions = allDomains.where((d) => d.startsWith(typedDomain) && d != typedDomain).toList();
+
+                if (suggestions.isEmpty) return const SizedBox.shrink();
+
+                return Padding(
+                  padding: const EdgeInsets.only(top: 8.0),
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: suggestions.map((domain) {
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8.0),
+                          child: ActionChip(
+                            label: Text(domain, style: const TextStyle(fontSize: 12, color: kNavy)),
+                            backgroundColor: kLine,
+                            side: BorderSide.none,
+                            onPressed: () {
+                              _emailCtrl.text = '$localPart@$domain';
+                              _emailCtrl.selection = TextSelection.fromPosition(TextPosition(offset: _emailCtrl.text.length));
+                            },
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                );
+              }
+              return const SizedBox.shrink();
+            },
+          ),
           const SizedBox(height: 14),
           _LabeledField(
             controller: _passwordCtrl,
@@ -187,6 +240,39 @@ class _RegisterScreenState extends State<RegisterScreen> {
               return null;
             },
           ),
+          Padding(
+            padding: const EdgeInsets.only(top: 8.0, left: 4.0),
+            child: ValueListenableBuilder<TextEditingValue>(
+              valueListenable: _passwordCtrl,
+              builder: (context, value, child) {
+                final pwd = value.text;
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('La contraseña debe tener:', style: TextStyle(fontSize: 11, color: kNavy, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 4),
+                    _Requirement(text: 'Mínimo 8 caracteres', met: pwd.length >= 8),
+                    _Requirement(text: 'Una mayúscula y una minúscula', met: RegExp(r'[A-Z]').hasMatch(pwd) && RegExp(r'[a-z]').hasMatch(pwd)),
+                    _Requirement(text: 'Al menos un número', met: RegExp(r'[0-9]').hasMatch(pwd)),
+                    _Requirement(text: 'Un carácter especial', met: RegExp(r'[!@#\$%\^&\*(),.?":{}|<>\-_\+=;\[\]~`\\]').hasMatch(pwd)),
+                  ],
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 14),
+          _LabeledField(
+            controller: _confirmPasswordCtrl,
+            label: 'Confirmar contraseña',
+            hint: '••••••••',
+            icon: Icons.lock_outline,
+            obscure: _obscure,
+            validator: (v) {
+              if (v == null || v.isEmpty) return 'Campo obligatorio';
+              if (v != _passwordCtrl.text) return 'Las contraseñas no coinciden';
+              return null;
+            },
+          ),
         ],
       );
 
@@ -196,8 +282,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
           _LabeledField(
             controller: _locationCtrl,
             label: 'Ubicación',
-            hint: 'Ej. Fusagasugá',
+            hint: 'Selecciona tu ciudad',
             icon: Icons.location_on_outlined,
+            readOnly: true,
+            onTap: () async {
+              final result = await showColombiaLocationPicker(context);
+              if (result != null) {
+                _locationCtrl.text = result;
+              }
+            },
           ),
           const SizedBox(height: 14),
           _LabeledField(
@@ -244,12 +337,39 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
       return;
     }
-    if (_passwordCtrl.text.length < 8) {
+    
+    final pwd = _passwordCtrl.text;
+    if (pwd.length < 8) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('La contraseña debe tener al menos 8 caracteres.')),
       );
       return;
     }
+    if (!RegExp(r'[A-Z]').hasMatch(pwd) || !RegExp(r'[a-z]').hasMatch(pwd)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('La contraseña debe incluir al menos una mayúscula y una minúscula.')),
+      );
+      return;
+    }
+    if (!RegExp(r'[0-9]').hasMatch(pwd)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('La contraseña debe incluir al menos un número.')),
+      );
+      return;
+    }
+    if (!RegExp(r'[!@#\$%\^&\*(),.?":{}|<>\-_\+=;\[\]~`\\]').hasMatch(pwd)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('La contraseña debe incluir al menos un carácter especial.')),
+      );
+      return;
+    }
+    if (pwd != _confirmPasswordCtrl.text) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Las contraseñas no coinciden.')),
+      );
+      return;
+    }
+
     setState(() => _step = 1);
   }
 }
@@ -290,6 +410,8 @@ class _LabeledField extends StatelessWidget {
   final TextInputType keyboardType;
   final String? Function(String?)? validator;
   final int maxLines;
+  final bool readOnly;
+  final VoidCallback? onTap;
 
   const _LabeledField({
     required this.controller,
@@ -301,6 +423,8 @@ class _LabeledField extends StatelessWidget {
     this.keyboardType = TextInputType.text,
     this.validator,
     this.maxLines = 1,
+    this.readOnly = false,
+    this.onTap,
   });
 
   @override
@@ -315,6 +439,8 @@ class _LabeledField extends StatelessWidget {
             keyboardType: keyboardType,
             validator: validator,
             maxLines: obscure ? 1 : maxLines,
+            readOnly: readOnly,
+            onTap: onTap,
             decoration: InputDecoration(
               hintText: hint,
               prefixIcon: Icon(icon, color: kMuted, size: 20),
@@ -355,4 +481,35 @@ class _GradientButton extends StatelessWidget {
           ),
         ),
       );
+}
+
+class _Requirement extends StatelessWidget {
+  final String text;
+  final bool met;
+  const _Requirement({required this.text, required this.met});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 2.0),
+      child: Row(
+        children: [
+          Icon(
+            met ? Icons.check_circle : Icons.radio_button_unchecked,
+            size: 14,
+            color: met ? Colors.green : kMuted,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            text,
+            style: TextStyle(
+              fontSize: 11,
+              color: met ? Colors.green : kMuted,
+              fontWeight: met ? FontWeight.w600 : FontWeight.normal,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

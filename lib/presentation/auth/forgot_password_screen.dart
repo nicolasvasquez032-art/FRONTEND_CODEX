@@ -55,9 +55,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     );
   }
 
-  Widget _buildForm(AuthProvider auth) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+  Widget _buildForm(AuthProvider auth) => SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
           const SizedBox(height: 16),
           Container(
             width: 56,
@@ -123,7 +124,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             ),
           ),
         ],
-      );
+      ),
+    );
 
   Widget _buildSuccess() => Center(
         child: Column(

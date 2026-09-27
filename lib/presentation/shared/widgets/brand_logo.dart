@@ -10,18 +10,21 @@ class BrandLogo extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         width: size,
         height: size,
-        alignment: Alignment.center,
         decoration: BoxDecoration(
+          color: Colors.white,
           borderRadius: BorderRadius.circular(size * 0.29),
-          gradient: kLogoGradient,
+          boxShadow: [
+            BoxShadow(
+              color: kNavy.withOpacity(0.08),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
-        child: Text(
-          'T',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w900,
-            fontSize: size * 0.52,
-          ),
+        padding: EdgeInsets.all(size * 0.15),
+        child: Image.asset(
+          'assets/images/logo.png',
+          fit: BoxFit.contain,
         ),
       );
 }
