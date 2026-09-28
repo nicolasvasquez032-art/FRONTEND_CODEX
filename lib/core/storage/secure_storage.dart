@@ -32,6 +32,9 @@ class SecureStorage {
   Future<String?> getProfileId() async => (await _prefs).getString(_keyProfileId);
   Future<String?> getRole()      async => (await _prefs).getString(_keyRole);
 
+  Future<void> saveProfileId(String profileId) async =>
+      (await _prefs).setString(_keyProfileId, profileId);
+
   /// Devuelve true si existe un token guardado (sesión activa).
   Future<bool> hasSession() async => (await getToken()) != null;
 

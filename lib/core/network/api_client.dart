@@ -98,7 +98,7 @@ class ApiClient {
   Future<Map<String, dynamic>> post(
     String path,
     Map<String, dynamic> body, {
-    bool auth = false,
+    bool auth = true,
   }) async {
     final uri = Uri.parse('$kBaseUrl$path');
     final res = await http

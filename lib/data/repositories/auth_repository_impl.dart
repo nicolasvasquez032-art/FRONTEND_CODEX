@@ -23,6 +23,7 @@ class AuthRepositoryImpl implements AuthRepository {
     final tokenData = await _api.post(
       '/auth/login',
       {'email': email, 'password': password},
+      auth: false,
     );
     final token = tokenData['access_token'] as String;
 
@@ -48,6 +49,13 @@ class AuthRepositoryImpl implements AuthRepository {
       profileId: session.profileId,
       role: session.role,
     );
+
+    // Obtener el profile_id real desde el backend (el JWT no lo incluye)
+    final profileId = await _fetchProfileId();
+    if (profileId.isNotEmpty) {
+      await _storage.saveProfileId(profileId);
+      return UserSession(userId: session.userId, profileId: profileId, role: session.role);
+    }
 
     return session;
   }
@@ -78,6 +86,7 @@ class AuthRepositoryImpl implements AuthRepository {
         if (location != null && location.isNotEmpty) 'location': location,
         if (education != null && education.isNotEmpty) 'education': education,
       },
+      auth: false,
     );
     final profile = ProfileModel.fromJson(profileData);
 
@@ -85,6 +94,7 @@ class AuthRepositoryImpl implements AuthRepository {
     final tokenData = await _api.post(
       '/auth/login',
       {'email': email, 'password': password},
+      auth: false,
     );
     final token = tokenData['access_token'] as String;
 
@@ -113,6 +123,7 @@ class AuthRepositoryImpl implements AuthRepository {
     await _api.post(
       '/auth/recuperar-password',
       {'email': email},
+      auth: false,
     );
   }
 
@@ -139,6 +150,17 @@ class AuthRepositoryImpl implements AuthRepository {
   // ──────────────────────────────────────────────
   // Helpers
   // ──────────────────────────────────────────────
+
+  /// Llama a GET /perfiles/me para obtener el profile_id real del candidato.
+  /// Retorna cadena vacía si falla o el usuario no es candidato.
+  Future<String> _fetchProfileId() async {
+    try {
+      final data = await _api.get('/perfiles/me', auth: true);
+      return (data['id'] as String?) ?? '';
+    } catch (_) {
+      return '';
+    }
+  }
 
   /// Decodifica el payload del JWT (base64url) para extraer `sub` y `role`.
   /// No verifica la firma — solo lee los claims para uso interno en el cliente.
