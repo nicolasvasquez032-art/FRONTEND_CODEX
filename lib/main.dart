@@ -6,8 +6,12 @@ import 'core/network/api_client.dart';
 import 'core/storage/secure_storage.dart';
 import 'core/theme/app_theme.dart';
 import 'data/repositories/auth_repository_impl.dart';
+import 'data/repositories/postulacion_repository_impl.dart';
+import 'data/repositories/vacante_repository_impl.dart';
 import 'presentation/auth/login_screen.dart';
 import 'presentation/shared/providers/auth_provider.dart';
+import 'presentation/shared/providers/postulaciones_provider.dart';
+import 'presentation/shared/providers/vacantes_provider.dart';
 import 'presentation/shell/candidate_shell.dart';
 
 void main() => runApp(const TalentMatchApp());
@@ -21,11 +25,16 @@ class TalentMatchApp extends StatelessWidget {
     final storage = SecureStorage();
     final apiClient = ApiClient(storage);
     final authRepo = AuthRepositoryImpl(apiClient, storage);
+    final vacanteRepo = VacanteRepositoryImpl(apiClient);
+    final postulacionRepo = PostulacionRepositoryImpl(apiClient);
 
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider(authRepo)),
-        // Sprints F-2 a F-6: agregar VacantesProvider, RecomendacionesProvider, etc.
+        // Sprint F-2: Vacantes y Postulaciones
+        ChangeNotifierProvider(create: (_) => VacantesProvider(vacanteRepo)),
+        ChangeNotifierProvider(create: (_) => PostulacionesProvider(postulacionRepo)),
+        // Sprints F-3 a F-6: agregar RecomendacionesProvider, etc.
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
