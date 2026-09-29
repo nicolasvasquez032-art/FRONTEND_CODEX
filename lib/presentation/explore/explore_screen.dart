@@ -5,6 +5,7 @@ import '../../core/constants/app_strings.dart';
 import '../../domain/entities/vacante.dart';
 import '../job_detail/job_detail_screen.dart';
 import '../shared/providers/vacantes_provider.dart';
+import 'map_screen.dart';
 
 class ExploreScreen extends StatefulWidget {
   const ExploreScreen({super.key});
@@ -36,11 +37,13 @@ class _ExploreScreenState extends State<ExploreScreen> {
   Widget build(BuildContext context) {
     final vp = context.watch<VacantesProvider>();
 
-    return RefreshIndicator(
-      onRefresh: () => vp.cargar(),
-      color: kBlue,
-      child: ListView(
-        padding: const EdgeInsets.all(17),
+    return Scaffold(
+      backgroundColor: Colors.transparent, // Mantiene el color del shell
+      body: RefreshIndicator(
+        onRefresh: () => vp.cargar(),
+        color: kBlue,
+        child: ListView(
+          padding: const EdgeInsets.all(17),
         children: [
           const Text(AppStrings.exploreSubtitle, style: TextStyle(color: kMuted, fontSize: 12)),
           const SizedBox(height: 4),
@@ -92,6 +95,18 @@ class _ExploreScreenState extends State<ExploreScreen> {
             ),
           ],
         ],
+      ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const MapScreen()),
+          );
+        },
+        backgroundColor: kBlue,
+        icon: const Icon(Icons.map_outlined, color: Colors.white),
+        label: const Text('Ver Mapa', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
       ),
     );
   }
