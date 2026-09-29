@@ -6,11 +6,15 @@ import 'core/network/api_client.dart';
 import 'core/storage/secure_storage.dart';
 import 'core/theme/app_theme.dart';
 import 'data/repositories/auth_repository_impl.dart';
+import 'data/repositories/perfil_repository_impl.dart';
 import 'data/repositories/postulacion_repository_impl.dart';
+import 'data/repositories/recomendacion_repository_impl.dart';
 import 'data/repositories/vacante_repository_impl.dart';
 import 'presentation/auth/login_screen.dart';
 import 'presentation/shared/providers/auth_provider.dart';
+import 'presentation/shared/providers/perfil_provider.dart';
 import 'presentation/shared/providers/postulaciones_provider.dart';
+import 'presentation/shared/providers/recomendaciones_provider.dart';
 import 'presentation/shared/providers/vacantes_provider.dart';
 import 'presentation/shell/candidate_shell.dart';
 
@@ -22,11 +26,13 @@ class TalentMatchApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // ── Composición de dependencias ──────────────────────────────────────
-    final storage = SecureStorage();
-    final apiClient = ApiClient(storage);
-    final authRepo = AuthRepositoryImpl(apiClient, storage);
-    final vacanteRepo = VacanteRepositoryImpl(apiClient);
-    final postulacionRepo = PostulacionRepositoryImpl(apiClient);
+    final storage          = SecureStorage();
+    final apiClient        = ApiClient(storage);
+    final authRepo         = AuthRepositoryImpl(apiClient, storage);
+    final vacanteRepo      = VacanteRepositoryImpl(apiClient);
+    final postulacionRepo  = PostulacionRepositoryImpl(apiClient);
+    final perfilRepo       = PerfilRepositoryImpl(apiClient);
+    final recomendacionRepo = RecomendacionRepositoryImpl(apiClient);
 
     return MultiProvider(
       providers: [
@@ -34,7 +40,10 @@ class TalentMatchApp extends StatelessWidget {
         // Sprint F-2: Vacantes y Postulaciones
         ChangeNotifierProvider(create: (_) => VacantesProvider(vacanteRepo)),
         ChangeNotifierProvider(create: (_) => PostulacionesProvider(postulacionRepo)),
-        // Sprints F-3 a F-6: agregar RecomendacionesProvider, etc.
+        // Sprint F-5: Perfil completo
+        ChangeNotifierProvider(create: (_) => PerfilProvider(perfilRepo)),
+        // Sprint F-3: Recomendaciones IA (con fallback al listado general)
+        ChangeNotifierProvider(create: (_) => RecomendacionesProvider(recomendacionRepo)),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,

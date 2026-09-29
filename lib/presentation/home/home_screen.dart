@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_strings.dart';
+import '../../domain/entities/recomendacion.dart';
 import '../../domain/entities/vacante.dart';
 import '../job_detail/job_detail_screen.dart';
 import '../shared/providers/auth_provider.dart';
 import '../shared/providers/postulaciones_provider.dart';
+import '../shared/providers/recomendaciones_provider.dart';
 import '../shared/providers/vacantes_provider.dart';
+import '../shared/widgets/ai_explanation_tile.dart';
 
 class HomeScreen extends StatefulWidget {
   final VoidCallback onExplore;
@@ -20,28 +23,39 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    // Carga diferida para no bloquear el build inicial
     WidgetsBinding.instance.addPostFrameCallback((_) => _cargar());
   }
 
   Future<void> _cargar() async {
-    final vProvider = context.read<VacantesProvider>();
-    final pProvider = context.read<PostulacionesProvider>();
-    final session = context.read<AuthProvider>().session;
+    final session    = context.read<AuthProvider>().session;
+    final vProvider  = context.read<VacantesProvider>();
+    final pProvider  = context.read<PostulacionesProvider>();
+    final rProvider  = context.read<RecomendacionesProvider>();
 
+    // 1. Siempre cargar vacantes (fallback del ML)
     if (vProvider.status == VacantesStatus.initial) {
       await vProvider.cargar();
     }
+
+    // 2. Cargar postulaciones del candidato
     if (pProvider.status == PostulacionesStatus.initial &&
         session != null &&
         session.profileId.isNotEmpty) {
       await pProvider.cargar(session.profileId);
+    }
+
+    // 3. Intentar cargar recomendaciones IA (puede fallar → fallback)
+    if (rProvider.status == RecomendacionesStatus.initial &&
+        session != null &&
+        session.profileId.isNotEmpty) {
+      await rProvider.cargar(session.profileId);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final vProvider = context.watch<VacantesProvider>();
+    final rProvider = context.watch<RecomendacionesProvider>();
 
     return RefreshIndicator(
       onRefresh: _cargar,
@@ -49,7 +63,8 @@ class _HomeScreenState extends State<HomeScreen> {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(17, 20, 17, 24),
         children: [
-          // ── Saludo ──
+
+          // ── Saludo ───────────────────────────────────────────
           const Text('Buenos días 👋', style: TextStyle(color: kMuted, fontSize: 12)),
           const SizedBox(height: 4),
           const Text(
@@ -58,7 +73,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(height: 18),
 
-          // ── Barra de búsqueda (tap → explorar) ──
+          // ── Barra de búsqueda (tap → explorar) ───────────────
           GestureDetector(
             onTap: widget.onExplore,
             child: Container(
@@ -87,35 +102,30 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(height: 4),
 
-          // ── Sección Vacantes ──
-          _sectionHead(AppStrings.recommended, AppStrings.seeAll, widget.onExplore),
-
-          // Estado de carga / error / datos
-          if (vProvider.status == VacantesStatus.loading)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 40),
-              child: Center(child: CircularProgressIndicator()),
-            )
+          // ── Sección principal: IA o fallback ─────────────────
+          if (rProvider.status == RecomendacionesStatus.loading ||
+              vProvider.status == VacantesStatus.loading)
+            ..._buildLoading()
+          else if (rProvider.hasData)
+            ..._buildRecomendaciones(rProvider)
+          else if (rProvider.isFallback)
+            ..._buildFallback(vProvider)
           else if (vProvider.status == VacantesStatus.error)
-            _ErrorCard(vProvider.error ?? 'Error al cargar vacantes', onRetry: _cargar)
-          else if (vProvider.vacantes.isEmpty)
-            const _EmptyCard()
+            ...[
+              _sectionHead(AppStrings.recommended, AppStrings.seeAll, widget.onExplore),
+              _ErrorCard(vProvider.error ?? 'Error al cargar vacantes', onRetry: _cargar),
+            ]
           else
-            ...vProvider.vacantes.take(4).map(
-                  (v) => Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: _JobCard(vacante: v),
-                  ),
-                ),
+            ..._buildFallback(vProvider),
 
-          // ── Banner IA ──
-          const SizedBox(height: 6),
-          _AiBanner(),
+          // ── Banner IA ─────────────────────────────────────────
+          const SizedBox(height: 8),
+          _AiBanner(isMlActive: rProvider.hasData),
           const SizedBox(height: 4),
 
-          // ── Funcionalidades ──
+          // ── Funcionalidades ───────────────────────────────────
           _sectionHead(AppStrings.features, null, null),
-          Row(children: const [
+          const Row(children: [
             Expanded(child: _FeatureCard(Icons.notifications_none, AppStrings.alertsTitle, AppStrings.alertsDesc)),
             SizedBox(width: 10),
             Expanded(child: _FeatureCard(Icons.location_on_outlined, AppStrings.localTitle, AppStrings.localDesc)),
@@ -123,6 +133,79 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
     );
+  }
+
+  // ────────────────────────────────────────────────
+  // Secciones
+  // ────────────────────────────────────────────────
+
+  List<Widget> _buildLoading() => [
+    _sectionHead(AppStrings.recommended, null, null),
+    const Padding(
+      padding: EdgeInsets.symmetric(vertical: 40),
+      child: Center(child: CircularProgressIndicator()),
+    ),
+  ];
+
+  /// Lista de recomendaciones IA con badge de compatibilidad
+  List<Widget> _buildRecomendaciones(RecomendacionesProvider rProvider) {
+    return [
+      _sectionHead('Recomendadas para ti ✦', AppStrings.seeAll, widget.onExplore),
+      // Banner pequeño de estado IA
+      _IaStatusChip(),
+      const SizedBox(height: 10),
+      ...rProvider.top4.map(
+        (r) => Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: AiExplanationTile(
+            recomendacion: r,
+            onTap: () => _navigateToDetail(r),
+          ),
+        ),
+      ),
+    ];
+  }
+
+  /// Fallback: muestra las vacantes generales sin score IA
+  List<Widget> _buildFallback(VacantesProvider vProvider) {
+    return [
+      _sectionHead(AppStrings.recommended, AppStrings.seeAll, widget.onExplore),
+      if (vProvider.vacantes.isEmpty)
+        const _EmptyCard()
+      else
+        ...vProvider.vacantes.take(4).map(
+          (v) => Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: _JobCard(vacante: v),
+          ),
+        ),
+    ];
+  }
+
+  /// Navega al detalle buscando la vacante en el provider o usando un placeholder
+  void _navigateToDetail(Recomendacion r) {
+    // Busca la vacante cargada en VacantesProvider (puede o no estar cargada)
+    final vProvider = context.read<VacantesProvider>();
+    final match = vProvider.vacantes
+        .where((v) => v.id == r.vacanteId)
+        .toList();
+
+    if (match.isNotEmpty) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => JobDetailScreen(vacante: match.first)),
+      );
+    } else {
+      // Si no está en caché, navega con una vacante mínima reconstruida
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => JobDetailScreen(
+            vacante: _recomendacionToVacanteMin(r),
+          ),
+        ),
+      );
+    }
   }
 
   Widget _sectionHead(String title, String? action, VoidCallback? onTap) => Padding(
@@ -144,9 +227,51 @@ class _HomeScreenState extends State<HomeScreen> {
       );
 }
 
-// ────────────────────────────────────────────────────────
-// _JobCard — tarjeta de vacante (navega a JobDetailScreen)
-// ────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────
+// Helper: convierte Recomendacion a Vacante mínima
+// para poder navegar al detalle aunque no esté en caché
+// ────────────────────────────────────────────────
+
+Vacante _recomendacionToVacanteMin(Recomendacion r) => Vacante(
+      id: r.vacanteId,
+      empresaId: r.empresaId,
+      titulo: r.titulo,
+      descripcion: '',
+      requisitos: [],
+      ubicacion: '',
+      estado: VacanteEstado.activa,
+      creadoEn: DateTime.now(),
+    );
+
+// ────────────────────────────────────────────────
+// _IaStatusChip
+// ────────────────────────────────────────────────
+
+class _IaStatusChip extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: kMatchBg,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.auto_awesome, size: 13, color: kMatchText),
+            SizedBox(width: 5),
+            Text(
+              'Motor IA activo — resultados personalizados',
+              style: TextStyle(color: kMatchText, fontSize: 11, fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
+      );
+}
+
+// ────────────────────────────────────────────────
+// _JobCard — tarjeta simple de vacante (modo fallback)
+// ────────────────────────────────────────────────
 
 class _JobCard extends StatelessWidget {
   final Vacante vacante;
@@ -281,19 +406,45 @@ class _EmptyCard extends StatelessWidget {
       );
 }
 
+// ────────────────────────────────────────────────
+// _AiBanner — muestra estado del motor IA
+// ────────────────────────────────────────────────
+
 class _AiBanner extends StatelessWidget {
+  final bool isMlActive;
+  const _AiBanner({required this.isMlActive});
+
   @override
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), gradient: kBannerGradient),
-        child: const Column(
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(AppStrings.aiBadge, style: TextStyle(fontSize: 9, color: Color(0xFFD9E6FF), fontWeight: FontWeight.w800)),
-            SizedBox(height: 8),
-            Text(AppStrings.aiTitle, style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w800)),
-            SizedBox(height: 5),
-            Text(AppStrings.aiDesc, style: TextStyle(color: Color(0xFFD9E6FF), fontSize: 12, height: 1.4)),
+            Row(children: [
+              const Text(AppStrings.aiBadge,
+                  style: TextStyle(fontSize: 9, color: Color(0xFFD9E6FF), fontWeight: FontWeight.w800)),
+              const Spacer(),
+              if (isMlActive)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: kGreen.withValues(alpha: 0.25),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(Icons.circle, color: kGreen, size: 7),
+                    SizedBox(width: 4),
+                    Text('ACTIVO', style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.w800)),
+                  ]),
+                ),
+            ]),
+            const SizedBox(height: 8),
+            const Text(AppStrings.aiTitle,
+                style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 5),
+            const Text(AppStrings.aiDesc,
+                style: TextStyle(color: Color(0xFFD9E6FF), fontSize: 12, height: 1.4)),
           ],
         ),
       );
