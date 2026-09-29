@@ -83,8 +83,7 @@ class JobDetailScreen extends StatelessWidget {
                           _InfoChip(Icons.attach_money_outlined, vacante.salarioDisplay, accent: true),
                         ],
                       ),
-                      if (vacante.latitud != null && vacante.longitud != null) ...[
-                        const SizedBox(height: 16),
+                      const SizedBox(height: 16),
                         SizedBox(
                           width: double.infinity,
                           child: OutlinedButton.icon(
@@ -105,7 +104,6 @@ class JobDetailScreen extends StatelessWidget {
                             ),
                           ),
                         ),
-                      ],
                       const SizedBox(height: 20),
 
                       // Descripción

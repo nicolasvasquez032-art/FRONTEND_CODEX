@@ -9,8 +9,7 @@ abstract class AuthRepository {
     required String password,
   });
 
-  /// Registra un nuevo candidato. Persiste el token. Devuelve la sesión.
-  Future<UserSession> registerCandidate({
+  Future<void> registerCandidate({
     required String email,
     required String password,
     required String fullName,

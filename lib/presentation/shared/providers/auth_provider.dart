@@ -72,7 +72,7 @@ class AuthProvider extends ChangeNotifier {
   }) async {
     _setLoading(true);
     try {
-      session = await _repo.registerCandidate(
+      await _repo.registerCandidate(
         email: email,
         password: password,
         fullName: fullName,
@@ -81,7 +81,6 @@ class AuthProvider extends ChangeNotifier {
         location: location,
         education: education,
       );
-      status = AuthStatus.authenticated;
       error  = null;
     } on ApiException catch (e) {
       error  = _mapError(e);
