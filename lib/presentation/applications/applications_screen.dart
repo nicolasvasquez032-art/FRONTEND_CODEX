@@ -3,9 +3,11 @@ import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_strings.dart';
 import '../../domain/entities/postulacion.dart';
+import '../../domain/entities/vacante.dart';
 import '../shared/providers/auth_provider.dart';
 import '../shared/providers/postulaciones_provider.dart';
 import '../shared/providers/vacantes_provider.dart';
+import '../job_detail/job_detail_screen.dart';
 
 class ApplicationsScreen extends StatefulWidget {
   const ApplicationsScreen({super.key});
@@ -65,7 +67,7 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
                 padding: const EdgeInsets.only(bottom: 12),
                 child: _PostulacionCard(
                   postulacion: p,
-                  vacanteTitulo: _findVacanteTitulo(vacProvider, p.vacanteId),
+                  vacante: _findVacante(vacProvider, p.vacanteId),
                 ),
               ),
             ),
@@ -75,12 +77,14 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
     );
   }
 
-  String _findVacanteTitulo(VacantesProvider vp, String vacanteId) {
-    final vacante = vp.vacantes.cast<dynamic>().firstWhere(
-      (v) => v.id == vacanteId,
-      orElse: () => null,
-    );
-    return (vacante?.titulo as String?) ?? 'Vacante';
+  Vacante? _findVacante(VacantesProvider vp, String vacanteId) {
+    try {
+      return vp.vacantes.cast<Vacante>().firstWhere(
+        (v) => v.id == vacanteId,
+      );
+    } catch (_) {
+      return null;
+    }
   }
 }
 
@@ -90,9 +94,9 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
 
 class _PostulacionCard extends StatelessWidget {
   final Postulacion postulacion;
-  final String vacanteTitulo;
+  final Vacante? vacante;
 
-  const _PostulacionCard({required this.postulacion, required this.vacanteTitulo});
+  const _PostulacionCard({required this.postulacion, required this.vacante});
 
   Color get _badgeColor {
     switch (postulacion.estado) {
@@ -147,7 +151,7 @@ class _PostulacionCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    vacanteTitulo,
+                    vacante?.titulo ?? 'Vacante',
                     style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: kNavy),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -174,6 +178,32 @@ class _PostulacionCard extends StatelessWidget {
                     _formatDate(postulacion.fecha),
                     style: const TextStyle(color: kMuted, fontSize: 10),
                   ),
+                  if (vacante != null) ...[
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      height: 32,
+                      width: double.infinity,
+                      child: OutlinedButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => JobDetailScreen(vacante: vacante!),
+                            ),
+                          );
+                        },
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: kLine),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          padding: EdgeInsets.zero,
+                        ),
+                        child: const Text(
+                          'Ver detalles',
+                          style: TextStyle(color: kBlue, fontSize: 11, fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),

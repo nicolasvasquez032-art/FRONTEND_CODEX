@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import '../storage/secure_storage.dart';
 
 /// URL base del backend. Cambiar a IP real del servidor en producción.
-const String kBaseUrl = 'http://192.168.1.3:8000'; // 192.168.1.3 = localhost for physical device
+const String kBaseUrl = 'http://127.0.0.1:8000'; // Usa 127.0.0.1 para que funcione en Chrome/Web (y emuladores)
 
 class ApiException implements Exception {
   final int statusCode;

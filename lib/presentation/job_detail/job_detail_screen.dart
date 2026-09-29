@@ -4,6 +4,7 @@ import '../../core/constants/app_colors.dart';
 import '../../domain/entities/vacante.dart';
 import '../shared/providers/auth_provider.dart';
 import '../shared/providers/postulaciones_provider.dart';
+import '../explore/map_screen.dart';
 
 class JobDetailScreen extends StatelessWidget {
   final Vacante vacante;
@@ -82,6 +83,27 @@ class JobDetailScreen extends StatelessWidget {
                           _InfoChip(Icons.attach_money_outlined, vacante.salarioDisplay, accent: true),
                         ],
                       ),
+                      const SizedBox(height: 16),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => MapScreen(focusedVacante: vacante),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.map_outlined, size: 18, color: kBlue),
+                            label: const Text('Ver ubicación en el mapa', style: TextStyle(color: kBlue)),
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: kLine),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                            ),
+                          ),
+                        ),
                       const SizedBox(height: 20),
 
                       // Descripción

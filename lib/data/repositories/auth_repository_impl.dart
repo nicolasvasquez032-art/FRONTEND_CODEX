@@ -65,7 +65,7 @@ class AuthRepositoryImpl implements AuthRepository {
   // ──────────────────────────────────────────────
 
   @override
-  Future<UserSession> registerCandidate({
+  Future<void> registerCandidate({
     required String email,
     required String password,
     required String fullName,
@@ -88,30 +88,6 @@ class AuthRepositoryImpl implements AuthRepository {
       },
       auth: false,
     );
-    final profile = ProfileModel.fromJson(profileData);
-
-    // 2. Login automático para obtener el token
-    final tokenData = await _api.post(
-      '/auth/login',
-      {'email': email, 'password': password},
-      auth: false,
-    );
-    final token = tokenData['access_token'] as String;
-
-    final session = UserSession(
-      userId: profile.userId,
-      profileId: profile.id,
-      role: 'candidate',
-    );
-
-    await _storage.saveSession(
-      token: token,
-      userId: session.userId,
-      profileId: session.profileId,
-      role: session.role,
-    );
-
-    return session;
   }
 
   // ──────────────────────────────────────────────

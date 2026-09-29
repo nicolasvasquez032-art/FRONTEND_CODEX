@@ -26,6 +26,8 @@ dependencies:
 
   # Sprint F-5 — subir CV (PDF/imagen)
   file_picker: ^13.1.0
+  flutter_map: ^8.3.2
+  latlong2: ^0.10.1
 
 dev_dependencies:
   flutter_test:
