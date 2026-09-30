@@ -38,6 +38,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final auth = context.watch<AuthProvider>();
     final session = auth.session;
     final postulacionesCount = context.watch<PostulacionesProvider>().postulaciones.length;
+    final bottomPadding = MediaQuery.paddingOf(context).bottom + 100;
 
     // Calculamos el % de perfil completado dinámicamente
     int completeness = 20; // Base por crear cuenta
@@ -214,11 +215,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             // Details
                             if (pp.profile != null) _DetailsCard(profile: pp.profile!),
                             const SizedBox(height: 40),
-
-                            // Logout
-                            _LogoutButton(),
-                            const SizedBox(height: 40),
                           ],
+                          
+                          // Logout SIEMPRE visible
+                          const SizedBox(height: 20),
+                          _LogoutButton(),
+                          SizedBox(height: bottomPadding),
                         ],
                       ),
                     ),

@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:animations/animations.dart';
@@ -39,8 +40,16 @@ class _CandidateShellState extends State<CandidateShell> {
     ];
 
     return Scaffold(
+      extendBody: true,
+      extendBodyBehindAppBar: true,
       appBar: _tab == 3 ? null : AppBar(
         title: const BrandFull(iconSize: 30),
+        backgroundColor: Colors.white.withValues(alpha: 0.75),
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        flexibleSpace: Container(
+          color: Colors.white.withValues(alpha: 0.95),
+        ),
         actions: [
           // Avatar del usuario
           Padding(
@@ -74,19 +83,14 @@ class _CandidateShellState extends State<CandidateShell> {
           ),
         ],
       ),
-      body: PageTransitionSwitcher(
-        duration: const Duration(milliseconds: 450),
-        transitionBuilder: (child, animation, secondaryAnimation) {
-          return SharedAxisTransition(
-            animation: animation,
-            secondaryAnimation: secondaryAnimation,
-            transitionType: SharedAxisTransitionType.horizontal,
-            child: child,
-          );
-        },
-        child: pages[_tab],
+      body: IndexedStack(
+        index: _tab,
+        children: pages,
       ),
       bottomNavigationBar: NavigationBar(
+        backgroundColor: Colors.white.withValues(alpha: 0.95),
+        elevation: 0,
+        indicatorColor: kBlue.withValues(alpha: 0.1),
         selectedIndex: _tab,
         onDestinationSelected: _goTo,
         destinations: const [

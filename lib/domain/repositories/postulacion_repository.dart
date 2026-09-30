@@ -11,4 +11,7 @@ abstract class PostulacionRepository {
 
   /// Lista las postulaciones del candidato autenticado.
   Future<List<Postulacion>> listarMisPostulaciones(String candidatoId);
+
+  /// Elimina (cancela) una postulación existente.
+  Future<void> cancelarPostulacion(String postulacionId);
 }

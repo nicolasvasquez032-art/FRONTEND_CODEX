@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_strings.dart';
@@ -60,82 +61,125 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final vProvider = context.watch<VacantesProvider>();
     final rProvider = context.watch<RecomendacionesProvider>();
+    final topPadding = MediaQuery.paddingOf(context).top + 15;
+    final bottomPadding = MediaQuery.paddingOf(context).bottom + 100;
 
-    return RefreshIndicator(
-      onRefresh: _cargar,
-      color: kBlue,
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(17, 20, 17, 24),
-        children: [
-
-          // ── Saludo ───────────────────────────────────────────
-          Text('Buenos días 👋', style: TextStyle(color: context.textMuted, fontSize: 12)),
-          const SizedBox(height: 4),
-          Text(
-            'Oportunidades\npara ti',
-            style: TextStyle(fontSize: 27, height: 1.1, fontWeight: FontWeight.w800, color: context.text),
-          ),
-          const SizedBox(height: 18),
-
-          // ── Barra de búsqueda (tap → explorar) ───────────────
-          GestureDetector(
-            onTap: widget.onExplore,
-            child: Container(
-              height: 47,
-              decoration: BoxDecoration(
-                color: context.surface,
-                border: Border.all(color: context.line),
-                borderRadius: BorderRadius.circular(13),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 13),
-              child: Row(
+    return CustomScrollView(
+      physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+      slivers: [
+        CupertinoSliverRefreshControl(
+          onRefresh: _cargar,
+        ),
+        SliverPadding(
+          padding: EdgeInsets.fromLTRB(17, topPadding, 17, bottomPadding),
+          sliver: SliverList(
+            delegate: SliverChildListDelegate([
+              // ── Saludo Clean Tech ───────────────────────────────────────────
+              Row(
                 children: [
-                  Icon(Icons.search, color: context.textMuted, size: 20),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(AppStrings.searchHint, style: TextStyle(color: context.textMuted, fontSize: 13)),
-                  ),
-                  Container(
-                    width: 35, height: 35,
-                    decoration: BoxDecoration(color: kBlue, borderRadius: BorderRadius.circular(10)),
-                    child: Icon(Icons.search, color: Colors.white, size: 18),
+                  Icon(Icons.auto_awesome, size: 16, color: kBlue),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Recomendaciones para ti',
+                    style: TextStyle(
+                      color: kBlue,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.2,
+                    ),
                   ),
                 ],
               ),
-            ),
+              const SizedBox(height: 12),
+              RichText(
+                text: TextSpan(
+                  children: [
+                    TextSpan(
+                      text: 'Encuentra Tu\n',
+                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: context.text, height: 1.2),
+                    ),
+                    const TextSpan(
+                      text: 'Trabajo Ideal',
+                      style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: kBlue, height: 1.1),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // ── Barra de búsqueda Premium ───────────────
+              GestureDetector(
+                onTap: widget.onExplore,
+                child: Container(
+                  height: 58,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(18),
+                    boxShadow: [
+                      BoxShadow(color: kNavy.withValues(alpha: 0.06), blurRadius: 20, offset: const Offset(0, 8)),
+                    ],
+                  ),
+                  padding: const EdgeInsets.only(left: 16, right: 8),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.search, color: kMuted, size: 22),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(AppStrings.searchHint, style: const TextStyle(color: kMuted, fontSize: 14, fontWeight: FontWeight.w500)),
+                      ),
+                      Container(
+                        width: 44, height: 44,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [kBlue.withValues(alpha: 0.8), kBlue],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(14),
+                          boxShadow: [
+                            BoxShadow(color: kBlue.withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 4)),
+                          ],
+                        ),
+                        child: const Icon(Icons.tune_rounded, color: Colors.white, size: 20),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 4),
+
+              // ── Sección principal: IA o fallback ─────────────────
+              if (rProvider.status == RecomendacionesStatus.loading ||
+                  vProvider.status == VacantesStatus.loading)
+                ..._buildLoading()
+              else if (rProvider.hasData)
+                ..._buildRecomendaciones(rProvider)
+              else if (rProvider.isFallback)
+                ..._buildFallback(vProvider)
+              else if (vProvider.status == VacantesStatus.error)
+                ...[
+                  _sectionHead(AppStrings.recommended, AppStrings.seeAll, widget.onExplore),
+                  _ErrorCard(vProvider.error ?? 'Error al cargar vacantes', onRetry: _cargar),
+                ]
+              else
+                ..._buildFallback(vProvider),
+
+              // ── Banner IA ─────────────────────────────────────────
+              const SizedBox(height: 8),
+              _AiBanner(isMlActive: rProvider.hasData),
+              const SizedBox(height: 4),
+
+              // ── Funcionalidades ───────────────────────────────────
+              _sectionHead(AppStrings.features, null, null),
+              const Row(children: [
+                Expanded(child: _FeatureCard(Icons.notifications_none, AppStrings.alertsTitle, AppStrings.alertsDesc)),
+                SizedBox(width: 10),
+                Expanded(child: _FeatureCard(Icons.location_on_outlined, AppStrings.localTitle, AppStrings.localDesc)),
+              ]),
+            ]),
           ),
-          const SizedBox(height: 4),
-
-          // ── Sección principal: IA o fallback ─────────────────
-          if (rProvider.status == RecomendacionesStatus.loading ||
-              vProvider.status == VacantesStatus.loading)
-            ..._buildLoading()
-          else if (rProvider.hasData)
-            ..._buildRecomendaciones(rProvider)
-          else if (rProvider.isFallback)
-            ..._buildFallback(vProvider)
-          else if (vProvider.status == VacantesStatus.error)
-            ...[
-              _sectionHead(AppStrings.recommended, AppStrings.seeAll, widget.onExplore),
-              _ErrorCard(vProvider.error ?? 'Error al cargar vacantes', onRetry: _cargar),
-            ]
-          else
-            ..._buildFallback(vProvider),
-
-          // ── Banner IA ─────────────────────────────────────────
-          const SizedBox(height: 8),
-          _AiBanner(isMlActive: rProvider.hasData),
-          const SizedBox(height: 4),
-
-          // ── Funcionalidades ───────────────────────────────────
-          _sectionHead(AppStrings.features, null, null),
-          const Row(children: [
-            Expanded(child: _FeatureCard(Icons.notifications_none, AppStrings.alertsTitle, AppStrings.alertsDesc)),
-            SizedBox(width: 10),
-            Expanded(child: _FeatureCard(Icons.location_on_outlined, AppStrings.localTitle, AppStrings.localDesc)),
-          ]),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -304,7 +348,7 @@ class _IaStatusChip extends StatelessWidget {
 }
 
 // ────────────────────────────────────────────────
-// _JobCard — tarjeta simple de vacante (modo fallback)
+// _JobCard — tarjeta premium de vacante (modo fallback)
 // ────────────────────────────────────────────────
 
 class _JobCard extends StatelessWidget {
@@ -316,54 +360,101 @@ class _JobCard extends StatelessWidget {
     return BouncingCard(
       onTap: () => Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => JobDetailScreen(vacante: vacante)),
+        MaterialPageRoute(builder: (_) => JobDetailScreen(vacante: vacante, heroTagTitle: 'home_title_${vacante.id}')),
       ),
       child: Container(
-        padding: const EdgeInsets.all(15),
+        padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
           color: context.surface,
-          border: Border.all(color: context.line),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: context.line.withValues(alpha: 0.5), width: 1),
           boxShadow: [
-            BoxShadow(color: context.text.withValues(alpha: 0.04), blurRadius: 15, offset: const Offset(0, 4)),
+            BoxShadow(
+              color: kNavy.withValues(alpha: 0.04),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
           ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(children: [
-              _CompanyMark(vacante.ubicacion),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Hero(
-                    tag: 'title_${vacante.id}',
-                    child: Material(
-                      type: MaterialType.transparency,
-                      child: Text(vacante.titulo,
-                          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: context.text),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis),
-                    ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _CompanyMark(vacante.ubicacion),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Hero(
+                        tag: 'home_title_${vacante.id}',
+                        child: Material(
+                          type: MaterialType.transparency,
+                          child: Text(
+                            vacante.titulo,
+                            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: context.text, height: 1.2),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(Icons.business_center_outlined, size: 12, color: context.textMuted),
+                          const SizedBox(width: 4),
+                          Text('Empresa Confidencial', style: TextStyle(color: context.textMuted, fontSize: 12)),
+                        ],
+                      ),
+                    ],
                   ),
-                  Text(vacante.ubicacion,
-                      style: TextStyle(color: context.textMuted, fontSize: 11)),
-                ]),
-              ),
-              Icon(Icons.chevron_right, color: context.textMuted, size: 18),
-            ]),
-            const SizedBox(height: 10),
-            Wrap(spacing: 6, children: [
-              _Tag('📍 ${vacante.ubicacion}'),
-              if (vacante.categoria != null) _Tag(vacante.categoria!, blue: true),
-            ]),
-            const Divider(height: 22),
-            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              Text(vacante.tiempoRelativo, style: TextStyle(fontSize: 10, color: context.textMuted)),
-              Text(vacante.salarioDisplay,
-                  style: TextStyle(
-                      fontSize: 11, color: Color(0xFF22C55E), fontWeight: FontWeight.w700)),
-            ]),
+                ),
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: context.line.withValues(alpha: 0.5),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.bookmark_border_rounded, size: 18, color: context.textMuted),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _JobTag(icon: Icons.location_on_outlined, text: vacante.ubicacion),
+                if (vacante.categoria != null)
+                  _JobTag(icon: Icons.category_outlined, text: vacante.categoria!, isBlue: true),
+              ],
+            ),
+            const SizedBox(height: 18),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.schedule, size: 12, color: context.textMuted),
+                    const SizedBox(width: 4),
+                    Text(vacante.tiempoRelativo, style: TextStyle(fontSize: 11, color: context.textMuted, fontWeight: FontWeight.w500)),
+                  ],
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF0FDF4),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    vacante.salarioDisplay,
+                    style: const TextStyle(fontSize: 12, color: Color(0xFF16A34A), fontWeight: FontWeight.w800),
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
       ),
@@ -379,30 +470,59 @@ class _CompanyMark extends StatelessWidget {
   Widget build(BuildContext context) {
     final letters = text.trim().isNotEmpty ? text.trim()[0].toUpperCase() : '?';
     return Container(
-      width: 43, height: 43,
+      width: 48,
+      height: 48,
       alignment: Alignment.center,
-      decoration: BoxDecoration(color: const Color(0xFFEDF3FF), borderRadius: BorderRadius.circular(11)),
-      child: Text(letters, style: TextStyle(color: kBlue, fontWeight: FontWeight.w900, fontSize: 16)),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [kBlue.withValues(alpha: 0.8), kBlue],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(color: kBlue.withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 4)),
+        ],
+      ),
+      child: Text(
+        letters,
+        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 18),
+      ),
     );
   }
 }
 
-class _Tag extends StatelessWidget {
+class _JobTag extends StatelessWidget {
+  final IconData icon;
   final String text;
-  final bool blue;
-  const _Tag(this.text, {this.blue = false});
+  final bool isBlue;
+  const _JobTag({required this.icon, required this.text, this.isBlue = false});
 
   @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
-        decoration: BoxDecoration(
-          color: blue ? const Color(0xFFEAF1FF) : const Color(0xFFF1F4F8),
-          borderRadius: BorderRadius.circular(7),
-        ),
-        child: Text(text,
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      decoration: BoxDecoration(
+        color: isBlue ? const Color(0xFFEEF2FF) : context.line.withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: isBlue ? kBlue : context.textMuted),
+          const SizedBox(width: 4),
+          Text(
+            text,
             style: TextStyle(
-                fontSize: 10, color: blue ? const Color(0xFF245BC8) : const Color(0xFF596579))),
-      );
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: isBlue ? kBlue : context.textMuted,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _ErrorCard extends StatelessWidget {

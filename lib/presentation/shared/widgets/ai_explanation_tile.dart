@@ -125,18 +125,26 @@ class _CompanyAvatar extends StatelessWidget {
   Widget build(BuildContext context) {
     final letter = titulo.trim().isNotEmpty ? titulo.trim()[0].toUpperCase() : '?';
     return Container(
-      width: 44, height: 44,
+      width: 48,
+      height: 48,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: const Color(0xFFEDF3FF),
-        borderRadius: BorderRadius.circular(12),
+        gradient: LinearGradient(
+          colors: [kBlue.withValues(alpha: 0.8), kBlue],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(color: kBlue.withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 4)),
+        ],
       ),
       child: Text(
         letter,
         style: const TextStyle(
-          color: kBlue,
+          color: Colors.white,
           fontWeight: FontWeight.w900,
-          fontSize: 17,
+          fontSize: 18,
         ),
       ),
     );

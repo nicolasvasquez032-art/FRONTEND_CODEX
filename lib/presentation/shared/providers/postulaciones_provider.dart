@@ -75,4 +75,27 @@ class PostulacionesProvider extends ChangeNotifier {
       return false;
     }
   }
+
+  // ─────────────────────────────────────────────
+  // Cancelar postulación
+  // ─────────────────────────────────────────────
+
+  Future<bool> cancelar(String postulacionId) async {
+    try {
+      await _repo.cancelarPostulacion(postulacionId);
+      final p = postulaciones.firstWhere((e) => e.id == postulacionId);
+      postulaciones.removeWhere((e) => e.id == postulacionId);
+      _byVacante.remove(p.vacanteId);
+      notifyListeners();
+      return true;
+    } on ApiException catch (e) {
+      error = e.message;
+      notifyListeners();
+      return false;
+    } catch (_) {
+      error = 'Error al cancelar. Verifica tu red.';
+      notifyListeners();
+      return false;
+    }
+  }
 }
