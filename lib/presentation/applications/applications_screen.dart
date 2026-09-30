@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_strings.dart';
@@ -7,6 +8,7 @@ import '../../domain/entities/vacante.dart';
 import '../shared/providers/auth_provider.dart';
 import '../shared/providers/postulaciones_provider.dart';
 import '../shared/providers/vacantes_provider.dart';
+import '../shared/widgets/animated_empty_state.dart';
 import '../job_detail/job_detail_screen.dart';
 
 class ApplicationsScreen extends StatefulWidget {
@@ -33,48 +35,91 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
   Widget build(BuildContext context) {
     final postsProvider = context.watch<PostulacionesProvider>();
     final vacProvider = context.watch<VacantesProvider>();
+    final topPadding = MediaQuery.paddingOf(context).top + 15;
+    final bottomPadding = MediaQuery.paddingOf(context).bottom + 100;
 
-    return RefreshIndicator(
-      onRefresh: _cargar,
-      color: kBlue,
-      child: ListView(
-        padding: const EdgeInsets.all(17),
-        children: [
-          const Text(AppStrings.applicationsSubtitle, style: TextStyle(color: kMuted, fontSize: 12)),
-          const SizedBox(height: 4),
-          const Text(AppStrings.applicationsTitle,
-              style: TextStyle(fontSize: 27, fontWeight: FontWeight.w800, color: kNavy)),
-          const SizedBox(height: 20),
+    return CustomScrollView(
+      physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+        slivers: [
+          CupertinoSliverRefreshControl(
+            onRefresh: _cargar,
+          ),
+          SliverPadding(
+            padding: EdgeInsets.fromLTRB(17, topPadding, 17, 16),
+            sliver: SliverList(
+              delegate: SliverChildListDelegate([
+                const Row(
+                  children: [
+                    Icon(Icons.timeline_outlined, size: 16, color: kBlue),
+                    SizedBox(width: 6),
+                    Text(
+                      AppStrings.applicationsSubtitle,
+                      style: TextStyle(
+                        color: kBlue,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                RichText(
+                  text: const TextSpan(
+                    children: [
+                      TextSpan(
+                        text: 'Mis\n',
+                        style: TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: kNavy, height: 1.2),
+                      ),
+                      TextSpan(
+                        text: 'Postulaciones',
+                        style: TextStyle(fontSize: 30, fontWeight: FontWeight.w900, color: kBlue, height: 1.1),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
 
-          if (postsProvider.status == PostulacionesStatus.loading)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 60),
-              child: Center(child: CircularProgressIndicator()),
-            )
-          else if (postsProvider.status == PostulacionesStatus.error)
-            _ErrorCard(postsProvider.error ?? 'Error', onRetry: _cargar)
-          else if (postsProvider.postulaciones.isEmpty)
-            _EmptyCard()
-          else ...[
-            // Contador
-            Text(
-              '${postsProvider.postulaciones.length} postulación${postsProvider.postulaciones.length != 1 ? 'es' : ''}',
-              style: const TextStyle(color: kMuted, fontSize: 12, fontWeight: FontWeight.w600),
+                if (postsProvider.status == PostulacionesStatus.loading)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 60),
+                    child: Center(child: CircularProgressIndicator()),
+                  )
+                else if (postsProvider.status == PostulacionesStatus.error)
+                  _ErrorCard(postsProvider.error ?? 'Error', onRetry: _cargar)
+                else if (postsProvider.postulaciones.isEmpty)
+                  _EmptyCard()
+                else ...[
+                  // Contador
+                  Text(
+                    '${postsProvider.postulaciones.length} postulación${postsProvider.postulaciones.length != 1 ? 'es' : ''}',
+                    style: const TextStyle(color: kMuted, fontSize: 12, fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ]),
             ),
-            const SizedBox(height: 14),
-            ...postsProvider.postulaciones.map(
-              (p) => Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: _PostulacionCard(
-                  postulacion: p,
-                  vacante: _findVacante(vacProvider, p.vacanteId),
+          ),
+          if (postsProvider.postulaciones.isNotEmpty)
+            SliverPadding(
+              padding: EdgeInsets.fromLTRB(17, 0, 17, bottomPadding),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                    final p = postsProvider.postulaciones[index];
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: _PostulacionCard(
+                        postulacion: p,
+                        vacante: _findVacante(vacProvider, p.vacanteId),
+                      ),
+                    );
+                  },
+                  childCount: postsProvider.postulaciones.length,
                 ),
               ),
             ),
-          ],
         ],
-      ),
-    );
+      );
   }
 
   Vacante? _findVacante(VacantesProvider vp, String vacanteId) {
@@ -98,146 +143,249 @@ class _PostulacionCard extends StatelessWidget {
 
   const _PostulacionCard({required this.postulacion, required this.vacante});
 
-  Color get _badgeColor {
-    switch (postulacion.estado) {
-      case PostulacionEstado.postulado:  return const Color(0xFF3B82F6);
-      case PostulacionEstado.entrevista: return const Color(0xFFF59E0B);
-      case PostulacionEstado.rechazado:  return const Color(0xFFEF4444);
-      case PostulacionEstado.contratado: return const Color(0xFF22C55E);
-    }
-  }
-
-  Color get _badgeBg {
-    switch (postulacion.estado) {
-      case PostulacionEstado.postulado:  return const Color(0xFFEFF6FF);
-      case PostulacionEstado.entrevista: return const Color(0xFFFFFBEB);
-      case PostulacionEstado.rechazado:  return const Color(0xFFFEF2F2);
-      case PostulacionEstado.contratado: return const Color(0xFFF0FDF4);
-    }
-  }
-
-  IconData get _badgeIcon {
-    switch (postulacion.estado) {
-      case PostulacionEstado.postulado:  return Icons.send_outlined;
-      case PostulacionEstado.entrevista: return Icons.calendar_today_outlined;
-      case PostulacionEstado.rechazado:  return Icons.cancel_outlined;
-      case PostulacionEstado.contratado: return Icons.check_circle_outline;
-    }
-  }
-
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: Colors.white,
           border: Border.all(color: kLine),
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
-            BoxShadow(color: kNavy.withValues(alpha: 0.04), blurRadius: 12, offset: const Offset(0, 4)),
+            BoxShadow(color: kNavy.withValues(alpha: 0.04), blurRadius: 15, offset: const Offset(0, 4)),
           ],
         ),
-        child: Row(
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Ícono de estado
-            Container(
-              width: 44, height: 44,
-              decoration: BoxDecoration(color: _badgeBg, borderRadius: BorderRadius.circular(12)),
-              child: Icon(_badgeIcon, color: _badgeColor, size: 22),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
+            // ── Encabezado ──
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Text(
                     vacante?.titulo ?? 'Vacante',
-                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: kNavy),
+                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: kNavy),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 6),
-                  Row(children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(color: _badgeBg, borderRadius: BorderRadius.circular(20)),
-                      child: Text(
-                        postulacion.estado.label,
-                        style: TextStyle(color: _badgeColor, fontSize: 10, fontWeight: FontWeight.w800),
-                      ),
+                ),
+                if (postulacion.scoreMatch != null) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF0FDF4),
+                      borderRadius: BorderRadius.circular(20),
                     ),
-                    const SizedBox(width: 8),
-                    if (postulacion.scoreMatch != null)
-                      Text(
-                        '${(postulacion.scoreMatch! * 100).toStringAsFixed(0)}% match',
-                        style: const TextStyle(color: Color(0xFF22C55E), fontSize: 10, fontWeight: FontWeight.w700),
-                      ),
-                  ]),
-                  const SizedBox(height: 6),
-                  Text(
-                    _formatDate(postulacion.fecha),
-                    style: const TextStyle(color: kMuted, fontSize: 10),
+                    child: Text(
+                      '${(postulacion.scoreMatch! * 100).toStringAsFixed(0)}% Match',
+                      style: const TextStyle(color: Color(0xFF22C55E), fontSize: 10, fontWeight: FontWeight.w800),
+                    ),
                   ),
-                  if (vacante != null) ...[
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      height: 32,
-                      width: double.infinity,
-                      child: OutlinedButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => JobDetailScreen(vacante: vacante!),
-                            ),
-                          );
-                        },
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: kLine),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                          padding: EdgeInsets.zero,
-                        ),
-                        child: const Text(
-                          'Ver detalles',
-                          style: TextStyle(color: kBlue, fontSize: 11, fontWeight: FontWeight.w700),
+                  const SizedBox(width: 4),
+                ],
+                // Menú de opciones (Cancelar)
+                if (postulacion.estado == PostulacionEstado.postulado)
+                  PopupMenuButton<String>(
+                    icon: const Icon(Icons.more_vert, color: kMuted, size: 20),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    onSelected: (value) async {
+                      if (value == 'cancelar') {
+                        final confirm = await showDialog<bool>(
+                          context: context,
+                          builder: (c) => AlertDialog(
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            title: const Text('Cancelar postulación', style: TextStyle(fontWeight: FontWeight.w800)),
+                            content: const Text('¿Estás seguro de que deseas retirar tu postulación a esta vacante? No podrás deshacer esta acción.', style: TextStyle(color: kMuted, height: 1.4)),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(c, false),
+                                child: const Text('Volver', style: TextStyle(color: kMuted, fontWeight: FontWeight.w600)),
+                              ),
+                              ElevatedButton(
+                                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEF4444), elevation: 0),
+                                onPressed: () => Navigator.pop(c, true),
+                                child: const Text('Sí, retirarme', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                              ),
+                            ],
+                          ),
+                        );
+                        if (confirm == true && context.mounted) {
+                          final prov = context.read<PostulacionesProvider>();
+                          final ok = await prov.cancelar(postulacion.id);
+                          if (!ok && context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(prov.error ?? 'Error al cancelar', style: const TextStyle(color: Colors.white)), backgroundColor: Colors.red),
+                            );
+                          }
+                        }
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      const PopupMenuItem(
+                        value: 'cancelar',
+                        child: Row(
+                          children: [
+                            Icon(Icons.delete_outline, color: Color(0xFFEF4444), size: 20),
+                            SizedBox(width: 8),
+                            Text('Retirar postulación', style: TextStyle(color: Color(0xFFEF4444), fontWeight: FontWeight.w600)),
+                          ],
                         ),
                       ),
-                    ),
-                  ],
-                ],
-              ),
+                    ],
+                  ),
+              ],
             ),
+            const SizedBox(height: 4),
+            Text(
+              _formatDate(postulacion.fecha),
+              style: const TextStyle(color: kMuted, fontSize: 11),
+            ),
+            const SizedBox(height: 24),
+
+            // ── Timeline Visual ──
+            _TimelineTracker(currentState: postulacion.estado),
+
+            if (vacante != null) ...[
+              const SizedBox(height: 24),
+              SizedBox(
+                height: 40,
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => JobDetailScreen(vacante: vacante!),
+                      ),
+                    );
+                  },
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: kLine),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text(
+                    'Ver detalles de la vacante',
+                    style: TextStyle(color: kBlue, fontSize: 13, fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       );
 
   String _formatDate(DateTime d) {
     final diff = DateTime.now().difference(d);
-    if (diff.inDays == 0) return 'Hoy';
-    if (diff.inDays == 1) return 'Ayer';
-    return 'Hace ${diff.inDays} días';
+    if (diff.inDays == 0) return 'Postulado hoy';
+    if (diff.inDays == 1) return 'Postulado ayer';
+    return 'Postulado hace ${diff.inDays} días';
+  }
+}
+
+// ────────────────────────────────────────────────────────
+// Widget: Rastreador de línea de tiempo de la postulación
+// ────────────────────────────────────────────────────────
+
+class _TimelineTracker extends StatelessWidget {
+  final PostulacionEstado currentState;
+
+  const _TimelineTracker({required this.currentState});
+
+  @override
+  Widget build(BuildContext context) {
+    final isRechazado = currentState == PostulacionEstado.rechazado;
+    
+    int currentStep = 0;
+    if (currentState == PostulacionEstado.entrevista) currentStep = 1;
+    if (currentState == PostulacionEstado.contratado) currentStep = 2;
+    if (isRechazado) currentStep = -1; // Detenido
+
+    return Row(
+      children: [
+        _buildNode(
+          label: 'Enviada',
+          isActive: currentStep >= 0 || isRechazado, 
+          isDone: currentStep > 0 || isRechazado,
+          isError: false,
+        ),
+        _buildLine(isActive: currentStep > 0 || isRechazado),
+        _buildNode(
+          label: 'En revisión',
+          isActive: currentStep >= 1 || isRechazado,
+          isDone: currentStep > 1,
+          isError: false,
+        ),
+        _buildLine(isActive: currentStep > 1 || (isRechazado && currentStep >= 1)),
+        if (isRechazado)
+          _buildNode(
+            label: 'Cerrada',
+            isActive: true,
+            isDone: true,
+            isError: true,
+          )
+        else
+          _buildNode(
+            label: 'Aceptado',
+            isActive: currentStep >= 2,
+            isDone: currentStep == 2,
+            isError: false,
+          ),
+      ],
+    );
+  }
+
+  Widget _buildNode({required String label, required bool isActive, required bool isDone, required bool isError}) {
+    Color color = kLine;
+    if (isError) color = const Color(0xFFEF4444);
+    else if (isActive) color = kBlue;
+
+    return Column(
+      children: [
+        Container(
+          width: 24, height: 24,
+          decoration: BoxDecoration(
+            color: isActive ? color.withValues(alpha: 0.1) : Colors.transparent,
+            shape: BoxShape.circle,
+            border: Border.all(color: color, width: 2),
+          ),
+          child: Icon(
+            isError ? Icons.close : (isDone ? Icons.check : Icons.circle),
+            size: 14,
+            color: isActive ? color : Colors.transparent,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
+            color: isActive ? (isError ? const Color(0xFFEF4444) : kNavy) : kMuted,
+          ),
+          textAlign: TextAlign.center,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLine({required bool isActive}) {
+    return Expanded(
+      child: Container(
+        height: 2,
+        color: isActive ? kBlue : kLine,
+        margin: const EdgeInsets.only(bottom: 20),
+      ),
+    );
   }
 }
 
 class _EmptyCard extends StatelessWidget {
   @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.all(32),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border.all(color: kLine),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: const Column(children: [
-          Icon(Icons.fact_check_outlined, size: 48, color: kBlue),
-          SizedBox(height: 12),
-          Text(AppStrings.noApplications,
-              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: kNavy)),
-          SizedBox(height: 8),
-          Text(AppStrings.noApplicationsDesc,
-              textAlign: TextAlign.center,
-              style: TextStyle(color: kMuted, fontSize: 12, height: 1.5)),
-        ]),
+  Widget build(BuildContext context) => const AnimatedEmptyState(
+        icon: Icons.fact_check_outlined,
+        title: AppStrings.noApplications,
+        subtitle: AppStrings.noApplicationsDesc,
       );
 }
 

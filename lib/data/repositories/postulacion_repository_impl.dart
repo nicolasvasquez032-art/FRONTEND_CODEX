@@ -35,4 +35,12 @@ class PostulacionRepositoryImpl implements PostulacionRepository {
             PostulacionModel.fromJson(e as Map<String, dynamic>).toEntity())
         .toList();
   }
+
+  @override
+  Future<void> cancelarPostulacion(String postulacionId) async {
+    await _api.delete(
+      '/postulaciones/$postulacionId',
+      auth: true,
+    );
+  }
 }

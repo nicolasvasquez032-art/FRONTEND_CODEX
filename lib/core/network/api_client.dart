@@ -138,6 +138,26 @@ class ApiClient {
   }
 
   // ──────────────────────────────────────────────
+  // DELETE
+  // ──────────────────────────────────────────────
+
+  Future<void> delete(
+    String path, {
+    bool auth = true,
+  }) async {
+    final uri = Uri.parse('$kBaseUrl$path');
+    final res = await http
+        .delete(uri, headers: await _headers(auth: auth))
+        .timeout(const Duration(seconds: 15));
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      return;
+    }
+    final body = utf8.decode(res.bodyBytes);
+    _handleError(res.statusCode, body);
+    throw ApiException(res.statusCode, body);
+  }
+
+  // ──────────────────────────────────────────────
   // Multipart POST (subir archivos — CV)
   // ──────────────────────────────────────────────
 

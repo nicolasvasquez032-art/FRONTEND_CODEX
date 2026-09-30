@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 /// Un wrapper interactivo que encoge ligeramente el child
 /// al ser presionado, dando una sensación táctil y de peso.
@@ -41,7 +42,10 @@ class _BouncingCardState extends State<BouncingCard> with SingleTickerProviderSt
   }
 
   void _onTapDown(TapDownDetails details) {
-    if (widget.onTap != null) _controller.forward();
+    if (widget.onTap != null) {
+      HapticFeedback.lightImpact();
+      _controller.forward();
+    }
   }
 
   void _onTapUp(TapUpDetails details) {
