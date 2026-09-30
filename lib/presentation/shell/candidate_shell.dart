@@ -83,7 +83,7 @@ class _CandidateShellState extends State<CandidateShell> {
           ),
         ],
       ),
-      body: IndexedStack(
+      body: _PremiumIndexedStack(
         index: _tab,
         children: pages,
       ),
@@ -116,6 +116,36 @@ class _CandidateShellState extends State<CandidateShell> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _PremiumIndexedStack extends StatelessWidget {
+  final int index;
+  final List<Widget> children;
+
+  const _PremiumIndexedStack({required this.index, required this.children});
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: List.generate(children.length, (i) {
+        final active = index == i;
+        return IgnorePointer(
+          ignoring: !active,
+          child: AnimatedOpacity(
+            opacity: active ? 1.0 : 0.0,
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeOutCubic,
+            child: AnimatedScale(
+              scale: active ? 1.0 : 0.97,
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeOutCubic,
+              child: children[i],
+            ),
+          ),
+        );
+      }),
     );
   }
 }
