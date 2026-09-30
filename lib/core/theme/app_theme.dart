@@ -5,6 +5,20 @@ import 'package:talentmatch/core/constants/app_colors.dart';
 class AppTheme {
   AppTheme._();
 
+  static ThemeData get darkTheme => ThemeData(
+        useMaterial3: true,
+        brightness: Brightness.dark,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: kBlue,
+          brightness: Brightness.dark,
+          primary: kBlue,
+          secondary: kCyan,
+          surface: const Color(0xFF0B1120),
+          onSurface: Colors.white,
+        ),
+        scaffoldBackgroundColor: const Color(0xFF0B1120),
+      );
+
   static ThemeData get theme => ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(

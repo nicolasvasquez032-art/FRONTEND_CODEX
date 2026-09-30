@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:animations/animations.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_strings.dart';
 import '../shared/providers/auth_provider.dart';
@@ -31,14 +32,14 @@ class _CandidateShellState extends State<CandidateShell> {
     final initial = session != null && session.userId.isNotEmpty ? 'T' : 'T';
 
     final pages = [
-      HomeScreen(onExplore: () => _goTo(1)),
-      const ExploreScreen(),
-      const ApplicationsScreen(),
-      const ProfileScreen(),
+      HomeScreen(key: const ValueKey(0), onExplore: () => _goTo(1)),
+      const ExploreScreen(key: ValueKey(1)),
+      const ApplicationsScreen(key: ValueKey(2)),
+      const ProfileScreen(key: ValueKey(3)),
     ];
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: _tab == 3 ? null : AppBar(
         title: const BrandFull(iconSize: 30),
         actions: [
           // Avatar del usuario
@@ -73,7 +74,18 @@ class _CandidateShellState extends State<CandidateShell> {
           ),
         ],
       ),
-      body: IndexedStack(index: _tab, children: pages),
+      body: PageTransitionSwitcher(
+        duration: const Duration(milliseconds: 450),
+        transitionBuilder: (child, animation, secondaryAnimation) {
+          return SharedAxisTransition(
+            animation: animation,
+            secondaryAnimation: secondaryAnimation,
+            transitionType: SharedAxisTransitionType.horizontal,
+            child: child,
+          );
+        },
+        child: pages[_tab],
+      ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _tab,
         onDestinationSelected: _goTo,

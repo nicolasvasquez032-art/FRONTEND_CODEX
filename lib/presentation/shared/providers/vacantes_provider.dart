@@ -19,15 +19,52 @@ class VacantesProvider extends ChangeNotifier {
   String? _categoria;
   String _query = '';
 
+  // Filtros locales interactivos
+  String? _filtroCategoria;
+  double? _filtroSalarioMin;
+
+  String? get filtroCategoria => _filtroCategoria;
+  double? get filtroSalarioMin => _filtroSalarioMin;
+
   List<Vacante> get filtered {
-    if (_query.isEmpty) return vacantes;
-    final q = _query.toLowerCase();
-    return vacantes.where((v) {
-      return v.titulo.toLowerCase().contains(q) ||
-          v.ubicacion.toLowerCase().contains(q) ||
-          (v.categoria?.toLowerCase().contains(q) ?? false) ||
-          v.descripcion.toLowerCase().contains(q);
-    }).toList();
+    var lista = vacantes;
+
+    if (_filtroCategoria != null) {
+      lista = lista.where((v) => v.categoria?.toLowerCase() == _filtroCategoria!.toLowerCase()).toList();
+    }
+
+    if (_filtroSalarioMin != null) {
+      lista = lista.where((v) => (v.salarioMin ?? 0) >= _filtroSalarioMin!).toList();
+    }
+
+    if (_query.isNotEmpty) {
+      final q = _query.toLowerCase();
+      lista = lista.where((v) {
+        return v.titulo.toLowerCase().contains(q) ||
+            v.ubicacion.toLowerCase().contains(q) ||
+            (v.categoria?.toLowerCase().contains(q) ?? false) ||
+            v.descripcion.toLowerCase().contains(q);
+      }).toList();
+    }
+    return lista;
+  }
+
+  void setCategoriaFiltro(String? cat) {
+    if (_filtroCategoria == cat) {
+      _filtroCategoria = null;
+    } else {
+      _filtroCategoria = cat;
+    }
+    notifyListeners();
+  }
+
+  void setSalarioFiltro(double? min) {
+    if (_filtroSalarioMin == min) {
+      _filtroSalarioMin = null;
+    } else {
+      _filtroSalarioMin = min;
+    }
+    notifyListeners();
   }
 
   // ─────────────────────────────────────────────

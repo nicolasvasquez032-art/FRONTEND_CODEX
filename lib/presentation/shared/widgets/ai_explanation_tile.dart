@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../domain/entities/recomendacion.dart';
+import 'bouncing_card.dart';
 import 'match_badge.dart';
 
 /// Tarjeta que muestra una recomendación IA con título, badge de compatibilidad
@@ -19,7 +20,7 @@ class AiExplanationTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return BouncingCard(
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
@@ -48,15 +49,21 @@ class AiExplanationTile extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        recomendacion.titulo,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 14,
-                          color: kNavy,
+                      Hero(
+                        tag: 'ml_title_${recomendacion.vacanteId}',
+                        child: Material(
+                          type: MaterialType.transparency,
+                          child: Text(
+                            recomendacion.titulo,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 14,
+                              color: kNavy,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 4),
                       MatchBadge(percent: recomendacion.scorePercent),

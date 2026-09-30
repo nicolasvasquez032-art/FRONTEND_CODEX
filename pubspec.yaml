@@ -28,6 +28,9 @@ dependencies:
   file_picker: ^13.1.0
   flutter_map: ^8.3.2
   latlong2: ^0.10.1
+  shimmer: ^4.0.0
+  animate_do: ^5.1.0
+  animations: ^3.0.0
 
 dev_dependencies:
   flutter_test:
