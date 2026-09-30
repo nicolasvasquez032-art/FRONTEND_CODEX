@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:animate_do/animate_do.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_strings.dart';
 import '../../domain/entities/profile.dart';
 import '../shared/providers/auth_provider.dart';
 import '../shared/providers/perfil_provider.dart';
+import '../shared/providers/postulaciones_provider.dart';
 import 'cv_upload_widget.dart';
 import 'edit_profile_screen.dart';
 
@@ -32,177 +34,230 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final pp      = context.watch<PerfilProvider>();
-    final auth    = context.watch<AuthProvider>();
+    final pp = context.watch<PerfilProvider>();
+    final auth = context.watch<AuthProvider>();
     final session = auth.session;
+    final postulacionesCount = context.watch<PostulacionesProvider>().postulaciones.length;
 
-    return RefreshIndicator(
-      onRefresh: () async {
-        final profileId = session?.profileId ?? '';
-        if (profileId.isNotEmpty) {
-          await context.read<PerfilProvider>().cargar(profileId);
-        }
-      },
-      color: kBlue,
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(17, 20, 17, 40),
-        children: [
-          // ── Encabezado ─────────────────────────────────────
-          const Text(
-            AppStrings.profileSubtitle,
-            style: TextStyle(color: kMuted, fontSize: 12),
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            AppStrings.profileTitle,
-            style: TextStyle(fontSize: 27, fontWeight: FontWeight.w800, color: kNavy),
-          ),
-          const SizedBox(height: 20),
+    // Calculamos el % de perfil completado dinámicamente
+    int completeness = 20; // Base por crear cuenta
+    if (pp.profile != null) {
+      if (pp.profile!.skills.isNotEmpty) completeness += 30;
+      if (pp.profile!.location?.isNotEmpty == true || pp.profile!.education?.isNotEmpty == true) completeness += 20;
+      if (pp.profile!.experienceYears > 0) completeness += 10;
+      if (pp.profile!.cvText?.isNotEmpty == true) completeness += 20;
+    }
 
-          // ── Estado de carga ─────────────────────────────────
-          if (pp.status == PerfilStatus.loading)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 60),
-              child: Center(child: CircularProgressIndicator()),
-            )
-          else if (pp.status == PerfilStatus.error)
-            _ErrorCard(pp.error ?? 'Error al cargar perfil', onRetry: _cargar)
-          else ...[
-            // ── Tarjeta de perfil ───────────────────────────
-            _ProfileCard(
-              profile: pp.profile,
-              session: session,
-              onEditTap: () {
-                if (pp.profile == null) return;
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => ChangeNotifierProvider.value(
-                      value: context.read<PerfilProvider>(),
-                      child: EditProfileScreen(profile: pp.profile!),
+    final initial = pp.profile?.initial ?? (session?.userId.isNotEmpty == true ? 'T' : 'T');
+    final name = pp.profile?.fullName ?? 'Tu Perfil';
+
+    return Scaffold(
+      backgroundColor: kBg,
+      body: RefreshIndicator(
+        onRefresh: () async {
+          final profileId = session?.profileId ?? '';
+          if (profileId.isNotEmpty) {
+            await context.read<PerfilProvider>().cargar(profileId);
+            await context.read<PostulacionesProvider>().cargar(session?.userId ?? '');
+          }
+        },
+        color: kBlue,
+        child: CustomScrollView(
+          physics: const BouncingScrollPhysics(),
+          slivers: [
+            SliverAppBar(
+              expandedHeight: 260,
+              pinned: true,
+              stretch: true,
+              backgroundColor: kBlue,
+              flexibleSpace: FlexibleSpaceBar(
+                stretchModes: const [StretchMode.zoomBackground],
+                background: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    // Fondo Degradado Premium
+                    Container(
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [kNavy, kBlue],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                      ),
                     ),
-                  ),
-                );
-              },
+                    // Patrón de fondo sutil
+                    Positioned(
+                      top: -50,
+                      right: -50,
+                      child: CircleAvatar(
+                        radius: 100,
+                        backgroundColor: Colors.white.withValues(alpha: 0.05),
+                      ),
+                    ),
+                    Positioned(
+                      bottom: -20,
+                      left: -20,
+                      child: CircleAvatar(
+                        radius: 70,
+                        backgroundColor: Colors.white.withValues(alpha: 0.05),
+                      ),
+                    ),
+                    // Contenido del Avatar
+                    Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const SizedBox(height: 30),
+                        Container(
+                          width: 90,
+                          height: 90,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white,
+                            boxShadow: [
+                              BoxShadow(color: kNavy.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 10))
+                            ],
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            initial,
+                            style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w900, color: kBlue),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          name,
+                          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Candidato',
+                          style: TextStyle(fontSize: 13, color: Colors.white.withValues(alpha: 0.8)),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.edit, color: Colors.white),
+                  onPressed: () {
+                    if (pp.profile == null) return;
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ChangeNotifierProvider.value(
+                          value: context.read<PerfilProvider>(),
+                          child: EditProfileScreen(profile: pp.profile!),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(width: 8),
+              ],
             ),
-            const SizedBox(height: 16),
 
-            // ── Widget de CV ────────────────────────────────
-            const CvUploadWidget(),
-            const SizedBox(height: 16),
+            // Contenido desplazable
+            SliverToBoxAdapter(
+              child: FadeInUp(
+                duration: const Duration(milliseconds: 600),
+                child: Column(
+                  children: [
+                    // Tarjeta de Estadísticas
+                    Container(
+                      margin: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                      padding: const EdgeInsets.symmetric(vertical: 20),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(color: kNavy.withValues(alpha: 0.06), blurRadius: 20, offset: const Offset(0, 10))
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          _StatItem(label: 'Completado', value: completeness, isPercent: true),
+                          Container(width: 1, height: 40, color: kLine),
+                          _StatItem(label: 'Postulaciones', value: postulacionesCount),
+                          Container(width: 1, height: 40, color: kLine),
+                          const _StatItem(label: 'Vistas', value: 12),
+                        ],
+                      ),
+                    ),
 
-            // ── Habilidades ─────────────────────────────────
-            if (pp.profile != null && pp.profile!.skills.isNotEmpty)
-              _SkillsCard(skills: pp.profile!.skills),
-            const SizedBox(height: 16),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Column(
+                        children: [
+                          if (pp.status == PerfilStatus.loading)
+                            const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 40),
+                              child: CircularProgressIndicator(),
+                            )
+                          else if (pp.status == PerfilStatus.error)
+                            _ErrorCard(pp.error ?? 'Error al cargar', onRetry: () {
+                              final pid = session?.profileId ?? '';
+                              if (pid.isNotEmpty) context.read<PerfilProvider>().cargar(pid);
+                            })
+                          else ...[
+                            // CV Upload
+                            const CvUploadWidget(),
+                            const SizedBox(height: 20),
 
-            // ── Detalles del perfil ─────────────────────────
-            if (pp.profile != null) _DetailsCard(profile: pp.profile!),
-            const SizedBox(height: 16),
+                            // Skills
+                            if (pp.profile != null && pp.profile!.skills.isNotEmpty)
+                              _SkillsCard(skills: pp.profile!.skills),
+                            const SizedBox(height: 20),
 
-            // ── Botón cerrar sesión ─────────────────────────
-            _LogoutButton(),
+                            // Details
+                            if (pp.profile != null) _DetailsCard(profile: pp.profile!),
+                            const SizedBox(height: 40),
+
+                            // Logout
+                            _LogoutButton(),
+                            const SizedBox(height: 40),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ],
-        ],
+        ),
       ),
     );
   }
 }
 
-// ────────────────────────────────────────────────
-// Tarjeta principal del perfil
-// ────────────────────────────────────────────────
+class _StatItem extends StatelessWidget {
+  final String label;
+  final int value;
+  final bool isPercent;
 
-class _ProfileCard extends StatelessWidget {
-  final Profile? profile;
-  final dynamic session;
-  final VoidCallback onEditTap;
-
-  const _ProfileCard({
-    required this.profile,
-    required this.session,
-    required this.onEditTap,
-  });
+  const _StatItem({required this.label, required this.value, this.isPercent = false});
 
   @override
   Widget build(BuildContext context) {
-    final initial  = profile?.initial ?? (session?.userId.isNotEmpty == true ? 'T' : 'T');
-    final name     = profile?.fullName ?? 'Tu perfil';
-    final expYears = profile?.experienceYears ?? 0;
-
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: kLine),
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(color: kNavy.withValues(alpha: 0.04), blurRadius: 16, offset: const Offset(0, 4)),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ── Avatar + nombre ──
-          Row(
-            children: [
-              Container(
-                width: 56, height: 56,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  gradient: kLogoGradient,
-                  shape: BoxShape.circle,
-                  boxShadow: [BoxShadow(color: kBlue.withValues(alpha: 0.2), blurRadius: 12, offset: const Offset(0, 4))],
-                ),
-                child: Text(
-                  initial,
-                  style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900),
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      name,
-                      style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: kNavy),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 3),
-                    Row(children: [
-                      const Icon(Icons.work_outline, size: 13, color: kMuted),
-                      const SizedBox(width: 4),
-                      Text(
-                        expYears == 1 ? '1 año de experiencia' : '$expYears años de experiencia',
-                        style: const TextStyle(color: kMuted, fontSize: 12),
-                      ),
-                    ]),
-                  ],
-                ),
-              ),
-            ],
-          ),
-
-          const Divider(height: 24),
-
-          // ── Botón editar ──
-          SizedBox(
-            width: double.infinity,
-            height: 44,
-            child: FilledButton.icon(
-              icon: const Icon(Icons.edit_outlined, size: 17),
-              label: const Text(AppStrings.editProfile),
-              onPressed: onEditTap,
-              style: FilledButton.styleFrom(
-                backgroundColor: kBlue,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-            ),
-          ),
-        ],
-      ),
+    return Column(
+      children: [
+        TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0, end: value.toDouble()),
+          duration: const Duration(milliseconds: 1500),
+          curve: Curves.easeOutCubic,
+          builder: (context, val, child) {
+            return Text(
+              '${val.toInt()}${isPercent ? '%' : ''}',
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: kNavy),
+            );
+          },
+        ),
+        const SizedBox(height: 4),
+        Text(label, style: const TextStyle(fontSize: 12, color: kMuted, fontWeight: FontWeight.w600)),
+      ],
     );
   }
 }

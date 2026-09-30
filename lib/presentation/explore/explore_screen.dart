@@ -5,6 +5,7 @@ import '../../core/constants/app_strings.dart';
 import '../../domain/entities/vacante.dart';
 import '../job_detail/job_detail_screen.dart';
 import '../shared/providers/vacantes_provider.dart';
+import '../shared/widgets/bouncing_card.dart';
 import 'map_screen.dart';
 
 class ExploreScreen extends StatefulWidget {
@@ -71,6 +72,45 @@ class _ExploreScreenState extends State<ExploreScreen> {
           ),
           const SizedBox(height: 16),
 
+          // ── Filtros Rápidos ──
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _FilterChip(
+                  label: 'Backend',
+                  isSelected: vp.filtroCategoria == 'Backend',
+                  onTap: () => vp.setCategoriaFiltro('Backend'),
+                ),
+                const SizedBox(width: 8),
+                _FilterChip(
+                  label: 'Frontend',
+                  isSelected: vp.filtroCategoria == 'Frontend',
+                  onTap: () => vp.setCategoriaFiltro('Frontend'),
+                ),
+                const SizedBox(width: 8),
+                _FilterChip(
+                  label: 'Fullstack',
+                  isSelected: vp.filtroCategoria == 'Fullstack',
+                  onTap: () => vp.setCategoriaFiltro('Fullstack'),
+                ),
+                const SizedBox(width: 8),
+                _FilterChip(
+                  label: '+\$5000',
+                  isSelected: vp.filtroSalarioMin == 5000,
+                  onTap: () => vp.setSalarioFiltro(5000),
+                ),
+                const SizedBox(width: 8),
+                _FilterChip(
+                  label: '+\$8000',
+                  isSelected: vp.filtroSalarioMin == 8000,
+                  onTap: () => vp.setSalarioFiltro(8000),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
           // ── Contenido ──
           if (vp.status == VacantesStatus.loading)
             const Padding(
@@ -87,10 +127,17 @@ class _ExploreScreenState extends State<ExploreScreen> {
               style: const TextStyle(color: kMuted, fontSize: 12, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 12),
-            ...vp.filtered.map(
-              (v) => Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: _ExploreCard(vacante: v),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              transitionBuilder: (child, animation) => FadeTransition(opacity: animation, child: child),
+              child: Column(
+                key: ValueKey('${vp.filtroCategoria}_${vp.filtroSalarioMin}_${vp.filtered.length}'),
+                children: vp.filtered.map(
+                  (v) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _ExploreCard(vacante: v),
+                  ),
+                ).toList(),
               ),
             ),
           ],
@@ -123,7 +170,7 @@ class _ExploreCard extends StatelessWidget {
   String get _initial => vacante.ubicacion.trim().isNotEmpty ? vacante.ubicacion.trim()[0].toUpperCase() : '?';
 
   @override
-  Widget build(BuildContext context) => GestureDetector(
+  Widget build(BuildContext context) => BouncingCard(
         onTap: () => Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => JobDetailScreen(vacante: vacante)),
@@ -153,10 +200,16 @@ class _ExploreCard extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(vacante.titulo,
-                      style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis),
+                  Hero(
+                    tag: 'title_${vacante.id}',
+                    child: Material(
+                      type: MaterialType.transparency,
+                      child: Text(vacante.titulo,
+                          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: kNavy),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis),
+                    ),
+                  ),
                   Text(vacante.ubicacion,
                       style: const TextStyle(color: kMuted, fontSize: 11)),
                 ]),
@@ -218,4 +271,40 @@ class _EmptyState extends StatelessWidget {
         padding: EdgeInsets.all(40),
         child: Center(child: Text(AppStrings.noResults, style: TextStyle(color: kMuted))),
       );
+}
+
+// ────────────────────────────────────────────────────────
+// Widget: Chip de Filtro Interactivo
+// ────────────────────────────────────────────────────────
+
+class _FilterChip extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _FilterChip({required this.label, required this.isSelected, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? kBlue : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: isSelected ? kBlue : kLine),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.white : kMuted,
+            fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+            fontSize: 13,
+          ),
+        ),
+      ),
+    );
+  }
 }

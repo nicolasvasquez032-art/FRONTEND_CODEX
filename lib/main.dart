@@ -49,6 +49,7 @@ class TalentMatchApp extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         title: 'TalentMatch',
         theme: AppTheme.theme,
+        themeMode: ThemeMode.light,
         home: const _AppRouter(),
       ),
     );

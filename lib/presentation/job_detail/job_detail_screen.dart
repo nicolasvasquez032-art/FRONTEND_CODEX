@@ -1,14 +1,28 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:animate_do/animate_do.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import '../../core/constants/app_colors.dart';
 import '../../domain/entities/vacante.dart';
+import '../../domain/entities/recomendacion.dart';
 import '../shared/providers/auth_provider.dart';
 import '../shared/providers/postulaciones_provider.dart';
+import '../shared/widgets/match_badge.dart';
 import '../explore/map_screen.dart';
 
 class JobDetailScreen extends StatelessWidget {
   final Vacante vacante;
-  const JobDetailScreen({super.key, required this.vacante});
+  final String? heroTagTitle;
+  final Recomendacion? recomendacionML;
+
+  const JobDetailScreen({
+    super.key,
+    required this.vacante,
+    this.heroTagTitle,
+    this.recomendacionML,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -47,13 +61,19 @@ class JobDetailScreen extends StatelessWidget {
                         ),
                       ),
                     const SizedBox(height: 8),
-                    Text(
-                      vacante.titulo,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                        height: 1.2,
+                    Hero(
+                      tag: heroTagTitle ?? 'title_${vacante.id}',
+                      child: Material(
+                        type: MaterialType.transparency,
+                        child: Text(
+                          vacante.titulo,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                            height: 1.2,
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -83,38 +103,115 @@ class JobDetailScreen extends StatelessWidget {
                           _InfoChip(Icons.attach_money_outlined, vacante.salarioDisplay, accent: true),
                         ],
                       ),
-                      const SizedBox(height: 16),
-                        SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton.icon(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => MapScreen(focusedVacante: vacante),
+                      const SizedBox(height: 20),
+
+                      // ML Match Card
+                      if (recomendacionML != null) ...[
+                        FadeInDown(
+                          duration: const Duration(milliseconds: 600),
+                          child: Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: kMatchBg.withValues(alpha: 0.5),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: kGreen.withValues(alpha: 0.3)),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    const Icon(Icons.auto_awesome, color: kGreen, size: 18),
+                                    const SizedBox(width: 8),
+                                    const Text('Análisis de Inteligencia Artificial', style: TextStyle(fontWeight: FontWeight.bold, color: kMatchText)),
+                                    const Spacer(),
+                                    MatchBadge(percent: recomendacionML!.scorePercent, compact: true),
+                                  ],
                                 ),
-                              );
-                            },
-                            icon: const Icon(Icons.map_outlined, size: 18, color: kBlue),
-                            label: const Text('Ver ubicación en el mapa', style: TextStyle(color: kBlue)),
-                            style: OutlinedButton.styleFrom(
-                              side: const BorderSide(color: kLine),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                              padding: const EdgeInsets.symmetric(vertical: 12),
+                                const SizedBox(height: 10),
+                                Text(
+                                  recomendacionML!.explicacion,
+                                  style: const TextStyle(fontSize: 13, color: kMatchText, height: 1.5),
+                                ),
+                              ],
                             ),
                           ),
                         ),
-                      const SizedBox(height: 20),
+                        const SizedBox(height: 20),
+                      ],
+
+                      // Mini Map
+                      if (vacante.latitud != null && vacante.longitud != null && vacante.ubicacion.toLowerCase() != 'remoto') ...[
+                        const Text(
+                          'Ubicación',
+                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: kNavy),
+                        ),
+                        const SizedBox(height: 10),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: SizedBox(
+                            height: 150,
+                            width: double.infinity,
+                            child: Stack(
+                              children: [
+                                FlutterMap(
+                                  options: MapOptions(
+                                    initialCenter: LatLng(vacante.latitud!, vacante.longitud!),
+                                    initialZoom: 14.0,
+                                    interactionOptions: const InteractionOptions(flags: InteractiveFlag.none),
+                                  ),
+                                  children: [
+                                    TileLayer(
+                                      urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                      userAgentPackageName: 'com.example.app',
+                                    ),
+                                    MarkerLayer(
+                                      markers: [
+                                        Marker(
+                                          point: LatLng(vacante.latitud!, vacante.longitud!),
+                                          child: const Icon(Icons.location_on, color: kBlue, size: 40),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                                Positioned.fill(
+                                  child: Material(
+                                    color: Colors.transparent,
+                                    child: InkWell(
+                                      onTap: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => MapScreen(focusedVacante: vacante),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                      ],
 
                       // Descripción
-                      const Text(
-                        'Descripción del cargo',
-                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: kNavy),
+                      FadeIn(
+                        duration: const Duration(milliseconds: 600),
+                        child: const Text(
+                          'Descripción del cargo',
+                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: kNavy),
+                        ),
                       ),
                       const SizedBox(height: 10),
-                      Text(
-                        vacante.descripcion,
-                        style: const TextStyle(color: kMuted, fontSize: 13, height: 1.65),
+                      FadeIn(
+                        duration: const Duration(milliseconds: 800),
+                        child: Text(
+                          vacante.descripcion,
+                          style: const TextStyle(color: kMuted, fontSize: 13, height: 1.65),
+                        ),
                       ),
 
                       // Requisitos
@@ -125,28 +222,30 @@ class JobDetailScreen extends StatelessWidget {
                           style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: kNavy),
                         ),
                         const SizedBox(height: 12),
-                        ...vacante.requisitos.map(
-                          (r) => Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Container(
-                                  margin: const EdgeInsets.only(top: 5),
-                                  width: 7, height: 7,
-                                  decoration: const BoxDecoration(
-                                    color: kBlue,
-                                    shape: BoxShape.circle,
+                        ...vacante.requisitos.asMap().entries.map(
+                          (entry) => FadeInLeft(
+                            delay: Duration(milliseconds: 200 + (100 * entry.key)),
+                            child: Container(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF8FAFC),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: kLine),
+                              ),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Icon(Icons.check_circle_outline, color: kBlue, size: 18),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      entry.value,
+                                      style: const TextStyle(color: kNavy, fontSize: 13, height: 1.5),
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Text(
-                                    r,
-                                    style: const TextStyle(color: kMuted, fontSize: 13, height: 1.5),
-                                  ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
                         ),
@@ -236,14 +335,25 @@ class _PostularseBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 300),
-          child: yaPostulado
-              ? _doneButton()
-              : _applyButton(context),
+    return ClipRRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.7),
+            border: const Border(top: BorderSide(color: kLine, width: 0.5)),
+          ),
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                child: yaPostulado
+                    ? _doneButton()
+                    : _applyButton(context),
+              ),
+            ),
+          ),
         ),
       ),
     );
