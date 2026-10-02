@@ -43,7 +43,7 @@ class _BouncingCardState extends State<BouncingCard> with SingleTickerProviderSt
 
   void _onTapDown(TapDownDetails details) {
     if (widget.onTap != null) {
-      HapticFeedback.lightImpact();
+      HapticFeedback.vibrate();
       _controller.forward();
     }
   }

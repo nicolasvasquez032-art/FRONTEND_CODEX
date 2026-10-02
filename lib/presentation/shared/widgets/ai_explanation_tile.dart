@@ -27,12 +27,13 @@ class AiExplanationTile extends StatelessWidget {
         padding: const EdgeInsets.all(15),
         decoration: BoxDecoration(
           color: Colors.white,
-          border: Border.all(color: kLine),
+          border: Border.all(color: kCyan.withValues(alpha: 0.2), width: 1.2),
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: kNavy.withValues(alpha: 0.04),
-              blurRadius: 14,
+              color: kCyan.withValues(alpha: 0.06),
+              blurRadius: 20,
+              spreadRadius: 2,
               offset: const Offset(0, 4),
             ),
           ],
@@ -82,31 +83,51 @@ class AiExplanationTile extends StatelessWidget {
             ),
 
             // ── Explicación del ML ──
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  margin: const EdgeInsets.only(top: 2),
-                  child: const Icon(
-                    Icons.auto_awesome,
-                    size: 13,
-                    color: kGreen,
-                  ),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [kCyan.withValues(alpha: 0.05), kPurple.withValues(alpha: 0.05)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    recomendacion.explicacion,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: kMuted,
-                      height: 1.5,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: kCyan.withValues(alpha: 0.15)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    margin: const EdgeInsets.only(top: 2),
+                    child: ShaderMask(
+                      shaderCallback: (bounds) => const LinearGradient(
+                        colors: [kCyan, kPurple],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ).createShader(bounds),
+                      child: const Icon(
+                        Icons.auto_awesome,
+                        size: 16,
+                        color: Colors.white,
+                      ),
                     ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-              ],
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      recomendacion.explicacion,
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        color: kNavy,
+                        fontWeight: FontWeight.w600,
+                        height: 1.4,
+                      ),
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),

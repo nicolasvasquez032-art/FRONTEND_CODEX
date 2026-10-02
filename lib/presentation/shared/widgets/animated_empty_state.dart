@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lottie/lottie.dart';
 import '../../../core/constants/app_colors.dart';
 
 class AnimatedEmptyState extends StatefulWidget {
@@ -50,35 +51,39 @@ class _AnimatedEmptyStateState extends State<AnimatedEmptyState> with SingleTick
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           // Icono Flotante con brillos
-          AnimatedBuilder(
-            animation: _animation,
-            builder: (context, child) {
-              return Transform.translate(
-                offset: Offset(0, _animation.value),
-                child: child,
-              );
-            },
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                Container(
-                  width: 120,
-                  height: 120,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: kBlue.withValues(alpha: 0.03),
+          // Icono Flotante con brillos nativo
+          SizedBox(
+            height: 180,
+            child: AnimatedBuilder(
+              animation: _animation,
+              builder: (context, child) {
+                return Transform.translate(
+                  offset: Offset(0, _animation.value),
+                  child: child,
+                );
+              },
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Container(
+                    width: 120,
+                    height: 120,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: kBlue.withValues(alpha: 0.03),
+                    ),
                   ),
-                ),
-                Container(
-                  width: 85,
-                  height: 85,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: kBlue.withValues(alpha: 0.08),
+                  Container(
+                    width: 85,
+                    height: 85,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: kBlue.withValues(alpha: 0.08),
+                    ),
                   ),
-                ),
-                Icon(widget.icon, size: 42, color: kBlue),
-              ],
+                  Icon(widget.icon, size: 42, color: kBlue),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 32),

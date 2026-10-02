@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import '../storage/secure_storage.dart';
 
 /// URL base del backend. Cambiar a IP real del servidor en producción.
-const String kBaseUrl = 'http://127.0.0.1:8000'; // IP para Web/Localhost
+const String kBaseUrl = 'http://18.191.162.235:8000'; // IP para AWS EC2 Production
 
 class ApiException implements Exception {
   final int statusCode;

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:animate_do/animate_do.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_strings.dart';
@@ -7,8 +8,10 @@ import '../../domain/entities/profile.dart';
 import '../shared/providers/auth_provider.dart';
 import '../shared/providers/perfil_provider.dart';
 import '../shared/providers/postulaciones_provider.dart';
+import '../shared/providers/notificaciones_provider.dart';
 import 'cv_upload_widget.dart';
 import 'edit_profile_screen.dart';
+import 'notifications_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -58,8 +61,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
         onRefresh: () async {
           final profileId = session?.profileId ?? '';
           if (profileId.isNotEmpty) {
-            await context.read<PerfilProvider>().cargar(profileId);
-            await context.read<PostulacionesProvider>().cargar(session?.userId ?? '');
+            final pp = context.read<PerfilProvider>();
+            final pop = context.read<PostulacionesProvider>();
+            final userId = session?.userId ?? '';
+            await pp.cargar(profileId);
+            await pop.cargar(userId);
           }
         },
         color: kBlue,
@@ -140,6 +146,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
               actions: [
+                Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.notifications_none, color: Colors.white),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+                        );
+                      },
+                    ),
+                    if (context.watch<NotificacionesProvider>().noLeidasCount > 0)
+                      Positioned(
+                        right: 8,
+                        top: 8,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(
+                            color: Colors.red,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Text(
+                            '${context.watch<NotificacionesProvider>().noLeidasCount}',
+                            style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
                 IconButton(
                   icon: const Icon(Icons.edit, color: Colors.white),
                   onPressed: () {
@@ -193,10 +229,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       child: Column(
                         children: [
                           if (pp.status == PerfilStatus.loading)
-                            const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 40),
-                              child: CircularProgressIndicator(),
-                            )
+                            const _ProfileSkeleton()
                           else if (pp.status == PerfilStatus.error)
                             _ErrorCard(pp.error ?? 'Error al cargar', onRetry: () {
                               final pid = session?.profileId ?? '';
@@ -457,3 +490,61 @@ class _ErrorCard extends StatelessWidget {
         ]),
       );
 }
+
+// ────────────────────────────────────────────────────────
+// Widget Custom: Skeleton de Perfil
+// ────────────────────────────────────────────────────────
+
+class _ProfileSkeleton extends StatelessWidget {
+  const _ProfileSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 20),
+      child: Shimmer.fromColors(
+        baseColor: Colors.grey.shade200,
+        highlightColor: Colors.grey.shade50,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Esqueleto de CV
+            Container(
+              height: 100,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+              ),
+            ),
+            const SizedBox(height: 24),
+            // Esqueleto de titulo de skills
+            Container(width: 120, height: 18, color: Colors.white),
+            const SizedBox(height: 16),
+            // Esqueleto de chips de skills
+            Wrap(
+              spacing: 8,
+              runSpacing: 10,
+              children: List.generate(4, (i) => Container(
+                width: 80 + (i * 15.0),
+                height: 36,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              )),
+            ),
+            const SizedBox(height: 24),
+            // Esqueleto de formulario
+            Container(width: 150, height: 18, color: Colors.white),
+            const SizedBox(height: 16),
+            Container(height: 50, width: double.infinity, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14))),
+            const SizedBox(height: 16),
+            Container(height: 50, width: double.infinity, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14))),
+          ],
+        ),
+      ),
+    );
+  }
+}
+

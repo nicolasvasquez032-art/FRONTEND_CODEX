@@ -26,11 +26,17 @@ class _MatchBadgeState extends State<MatchBadge> with SingleTickerProviderStateM
     // Controlador para el resplandor infinito
     _glowController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1600),
-    )..repeat(reverse: true);
+      duration: const Duration(milliseconds: 1200),
+    );
 
-    _glowAnimation = Tween<double>(begin: 0.0, end: 6.0).animate(
-      CurvedAnimation(parent: _glowController, curve: Curves.easeInOut),
+    final isHighMatch = widget.percent >= 85;
+    
+    if (isHighMatch) {
+      _glowController.repeat(reverse: true);
+    }
+
+    _glowAnimation = Tween<double>(begin: 2.0, end: isHighMatch ? 16.0 : 2.0).animate(
+      CurvedAnimation(parent: _glowController, curve: Curves.easeInOutCubic),
     );
   }
 
@@ -42,7 +48,8 @@ class _MatchBadgeState extends State<MatchBadge> with SingleTickerProviderStateM
 
   @override
   Widget build(BuildContext context) {
-    // TweenAnimationBuilder para animar el número del 0% al porcentaje real una sola vez
+    final isHighMatch = widget.percent >= 85;
+
     return TweenAnimationBuilder<double>(
       tween: Tween<double>(begin: 0, end: widget.percent.toDouble()),
       duration: const Duration(milliseconds: 1400),
@@ -57,20 +64,31 @@ class _MatchBadgeState extends State<MatchBadge> with SingleTickerProviderStateM
             return Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
-                color: kMatchBg,
+                color: isHighMatch ? const Color(0xFFE8F5E9) : kMatchBg,
                 borderRadius: BorderRadius.circular(20),
-                boxShadow: [
+                border: Border.all(
+                  color: isHighMatch 
+                      ? const Color(0xFF22C55E).withValues(alpha: 0.5) 
+                      : Colors.transparent,
+                  width: 1,
+                ),
+                boxShadow: isHighMatch ? [
                   BoxShadow(
-                    color: kMatchText.withValues(alpha: 0.25),
-                    blurRadius: _glowAnimation.value + 3,
-                    spreadRadius: _glowAnimation.value * 0.4,
+                    color: Colors.greenAccent.withValues(alpha: 0.6),
+                    blurRadius: _glowAnimation.value,
+                    spreadRadius: _glowAnimation.value * 0.3,
                   ),
-                ],
+                  BoxShadow(
+                    color: const Color(0xFF22C55E).withValues(alpha: 0.3),
+                    blurRadius: _glowAnimation.value + 8,
+                    spreadRadius: _glowAnimation.value * 0.5,
+                  ),
+                ] : [],
               ),
               child: Text(
                 label,
-                style: const TextStyle(
-                  color: kMatchText,
+                style: TextStyle(
+                  color: isHighMatch ? const Color(0xFF15803D) : kMatchText,
                   fontSize: 11,
                   fontWeight: FontWeight.w800,
                   letterSpacing: 0.2,

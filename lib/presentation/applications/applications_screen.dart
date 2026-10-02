@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
+import 'package:animate_do/animate_do.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_strings.dart';
 import '../../domain/entities/postulacion.dart';
@@ -10,6 +11,7 @@ import '../shared/providers/postulaciones_provider.dart';
 import '../shared/providers/vacantes_provider.dart';
 import '../shared/widgets/animated_empty_state.dart';
 import '../job_detail/job_detail_screen.dart';
+import 'package:shimmer/shimmer.dart';
 
 class ApplicationsScreen extends StatefulWidget {
   const ApplicationsScreen({super.key});
@@ -81,10 +83,7 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
                 const SizedBox(height: 20),
 
                 if (postsProvider.status == PostulacionesStatus.loading)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 60),
-                    child: Center(child: CircularProgressIndicator()),
-                  )
+                  const _ShimmerApplicationsList()
                 else if (postsProvider.status == PostulacionesStatus.error)
                   _ErrorCard(postsProvider.error ?? 'Error', onRetry: _cargar)
                 else if (postsProvider.postulaciones.isEmpty)
@@ -106,11 +105,15 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
                 delegate: SliverChildBuilderDelegate(
                   (context, index) {
                     final p = postsProvider.postulaciones[index];
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: _PostulacionCard(
-                        postulacion: p,
-                        vacante: _findVacante(vacProvider, p.vacanteId),
+                    return FadeInUp(
+                      delay: Duration(milliseconds: 100 * (index % 10)),
+                      duration: const Duration(milliseconds: 500),
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _PostulacionCard(
+                          postulacion: p,
+                          vacante: _findVacante(vacProvider, p.vacanteId),
+                        ),
                       ),
                     );
                   },
@@ -408,4 +411,59 @@ class _ErrorCard extends StatelessWidget {
           TextButton(onPressed: onRetry, child: const Text('Reintentar')),
         ]),
       );
+}
+
+// ────────────────────────────────────────────────────────
+// Widget: Shimmer de Esqueletos para Postulaciones
+// ────────────────────────────────────────────────────────
+
+class _ShimmerApplicationsList extends StatelessWidget {
+  const _ShimmerApplicationsList();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: List.generate(4, (index) => Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: kLine.withValues(alpha: 0.5)),
+          ),
+          child: Shimmer.fromColors(
+            baseColor: Colors.grey.shade200,
+            highlightColor: Colors.grey.shade50,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Container(width: 80, height: 12, color: Colors.white),
+                    Container(width: 60, height: 12, color: Colors.white),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Container(width: 180, height: 18, color: Colors.white),
+                const SizedBox(height: 8),
+                Container(width: 120, height: 12, color: Colors.white),
+                const SizedBox(height: 16),
+                Container(width: double.infinity, height: 1, color: Colors.white),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Container(width: 100, height: 26, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20))),
+                    Container(width: 80, height: 26, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20))),
+                  ],
+                )
+              ],
+            ),
+          ),
+        ),
+      )),
+    );
+  }
 }

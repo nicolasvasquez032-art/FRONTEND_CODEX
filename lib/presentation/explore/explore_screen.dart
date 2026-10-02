@@ -1,6 +1,10 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
+import 'package:animate_do/animate_do.dart';
+import 'package:animations/animations.dart';
+import 'package:shimmer/shimmer.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_strings.dart';
 import '../../domain/entities/vacante.dart';
@@ -87,70 +91,51 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 const SizedBox(height: 18),
 
                 // ── Buscador ──
-                TextField(
-                  controller: _searchController,
-                  onChanged: (v) => vp.setQuery(v),
-                  decoration: InputDecoration(
-                    hintText: AppStrings.searchJobHint,
-                    prefixIcon: const Icon(Icons.search, color: kMuted),
-                    suffixIcon: _searchController.text.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear, color: kMuted, size: 18),
-                            onPressed: () {
-                              _searchController.clear();
-                              vp.clearQuery();
-                            },
-                          )
-                        : null,
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // ── Filtros Rápidos ──
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      _FilterChip(
-                        label: 'Backend',
-                        isSelected: vp.filtroCategoria == 'Backend',
-                        onTap: () => vp.setCategoriaFiltro('Backend'),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _searchController,
+                        onChanged: (v) => vp.setQuery(v),
+                        decoration: InputDecoration(
+                          hintText: AppStrings.searchJobHint,
+                          prefixIcon: const Icon(Icons.search, color: kMuted),
+                          suffixIcon: _searchController.text.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear, color: kMuted, size: 18),
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    vp.clearQuery();
+                                  },
+                                )
+                              : null,
+                        ),
                       ),
-                      const SizedBox(width: 8),
-                      _FilterChip(
-                        label: 'Frontend',
-                        isSelected: vp.filtroCategoria == 'Frontend',
-                        onTap: () => vp.setCategoriaFiltro('Frontend'),
+                    ),
+                    const SizedBox(width: 12),
+                    GestureDetector(
+                      onTap: () => _showFilterBottomSheet(context, vp),
+                      child: Container(
+                        width: 54,
+                        height: 54,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(color: kBlue.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4)),
+                          ],
+                          border: Border.all(color: kBlue.withValues(alpha: 0.2)),
+                        ),
+                        child: const Icon(Icons.tune, color: kBlue),
                       ),
-                      const SizedBox(width: 8),
-                      _FilterChip(
-                        label: 'Fullstack',
-                        isSelected: vp.filtroCategoria == 'Fullstack',
-                        onTap: () => vp.setCategoriaFiltro('Fullstack'),
-                      ),
-                      const SizedBox(width: 8),
-                      _FilterChip(
-                        label: '+\$5000',
-                        isSelected: vp.filtroSalarioMin == 5000,
-                        onTap: () => vp.setSalarioFiltro(5000),
-                      ),
-                      const SizedBox(width: 8),
-                      _FilterChip(
-                        label: '+\$8000',
-                        isSelected: vp.filtroSalarioMin == 8000,
-                        onTap: () => vp.setSalarioFiltro(8000),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 16),
 
                 // ── Contenido ──
                 if (vp.status == VacantesStatus.loading)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 60),
-                    child: Center(child: CircularProgressIndicator()),
-                  )
+                  const _ShimmerList()
                 else if (vp.status == VacantesStatus.error)
                   _ErrorState(vp.error ?? 'Error al cargar', onRetry: () => vp.cargar())
                 else if (vp.filtered.isEmpty)
@@ -171,9 +156,13 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 delegate: SliverChildBuilderDelegate(
                   (context, index) {
                     final v = vp.filtered[index];
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: _ExploreCard(vacante: v),
+                    return FadeInUp(
+                      delay: Duration(milliseconds: 100 * (index % 10)),
+                      duration: const Duration(milliseconds: 500),
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _ExploreCard(vacante: v),
+                      ),
                     );
                   },
                   childCount: vp.filtered.length,
@@ -184,16 +173,22 @@ class _ExploreScreenState extends State<ExploreScreen> {
       ),
       floatingActionButton: Padding(
         padding: const EdgeInsets.only(bottom: 90),
-        child: FloatingActionButton.extended(
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const MapScreen()),
-            );
-          },
-          backgroundColor: kBlue,
-          icon: const Icon(Icons.map_outlined, color: Colors.white),
-          label: const Text('Ver Mapa', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        child: OpenContainer(
+          transitionType: ContainerTransitionType.fadeThrough,
+          transitionDuration: const Duration(milliseconds: 500),
+          closedElevation: 6.0,
+          closedShape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+          closedColor: kBlue,
+          openColor: Colors.white,
+          middleColor: kBlue.withValues(alpha: 0.5),
+          openBuilder: (context, _) => const MapScreen(),
+          closedBuilder: (context, openContainer) => FloatingActionButton.extended(
+            onPressed: openContainer,
+            elevation: 0,
+            backgroundColor: Colors.transparent, // Fondo manejado por el Container
+            icon: const Icon(Icons.map_outlined, color: Colors.white),
+            label: const Text('Ver Mapa', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
         ),
       ),
     );
@@ -235,7 +230,13 @@ class _ExploreCard extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _CompanyMark(vacante.ubicacion),
+                Hero(
+                  tag: 'explore_logo_${vacante.id}',
+                  child: Material(
+                    type: MaterialType.transparency,
+                    child: _CompanyMark(vacante.ubicacion),
+                  ),
+                ),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
@@ -253,12 +254,17 @@ class _ExploreCard extends StatelessWidget {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      const Row(
+                      Row(
                         children: [
-                          Icon(Icons.business_center_outlined, size: 12, color: kMuted),
-                          SizedBox(width: 4),
-                          Text('Empresa Confidencial', style: TextStyle(color: kMuted, fontSize: 12)),
+                          const Icon(Icons.business_center_outlined, size: 12, color: kMuted),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: const Text(
+                              'Empresa Confidencial', 
+                              style: TextStyle(color: kMuted, fontSize: 12),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
                         ],
                       ),
                     ],
@@ -407,6 +413,86 @@ class _EmptyState extends StatelessWidget {
       );
 }
 
+  void _showFilterBottomSheet(BuildContext context, VacantesProvider vp) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.7),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.8), width: 1.5),
+          ),
+          padding: const EdgeInsets.all(24),
+          child: SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40, height: 5,
+                    decoration: BoxDecoration(
+                      color: kNavy.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const Text('Especialidad', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: kNavy)),
+                const SizedBox(height: 16),
+                Wrap(
+                  spacing: 10, runSpacing: 10,
+                  children: ['Backend', 'Frontend', 'Fullstack', 'DevOps', 'Mobile', 'Data', 'Design'].map((cat) => _FilterChip(
+                    label: cat,
+                    isSelected: vp.filtroCategoria == cat,
+                    onTap: () {
+                      vp.setCategoriaFiltro(vp.filtroCategoria == cat ? '' : cat);
+                      Navigator.pop(ctx);
+                    },
+                  )).toList(),
+                ),
+                const SizedBox(height: 28),
+                const Text('Salario Mínimo', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: kNavy)),
+                const SizedBox(height: 16),
+                Wrap(
+                  spacing: 10, runSpacing: 10,
+                  children: [3000, 5000, 8000, 10000].map((sal) => _FilterChip(
+                    label: '+\$$sal',
+                    isSelected: vp.filtroSalarioMin == sal.toDouble(),
+                    onTap: () {
+                      vp.setSalarioFiltro(vp.filtroSalarioMin == sal.toDouble() ? 0 : sal.toDouble());
+                      Navigator.pop(ctx);
+                    },
+                  )).toList(),
+                ),
+                const SizedBox(height: 30),
+                SizedBox(
+                  width: double.infinity,
+                  height: 54,
+                  child: FilledButton.icon(
+                    onPressed: () { vp.clearQuery(); vp.setCategoriaFiltro(''); vp.setSalarioFiltro(0); Navigator.pop(ctx); },
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.white.withValues(alpha: 0.9),
+                      foregroundColor: kNavy,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      elevation: 0,
+                    ),
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Limpiar todos los filtros', style: TextStyle(fontWeight: FontWeight.w700)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
 // ────────────────────────────────────────────────────────
 // Widget: Chip de Filtro Interactivo
 // ────────────────────────────────────────────────────────
@@ -439,6 +525,60 @@ class _FilterChip extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+// ────────────────────────────────────────────────────────
+// Widget: Shimmer de Esqueletos
+// ────────────────────────────────────────────────────────
+
+class _ShimmerList extends StatelessWidget {
+  const _ShimmerList();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: List.generate(4, (index) => Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: kLine.withValues(alpha: 0.5)),
+          ),
+          child: Shimmer.fromColors(
+            baseColor: Colors.grey.shade200,
+            highlightColor: Colors.grey.shade50,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(width: 45, height: 45, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12))),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(width: double.infinity, height: 16, color: Colors.white),
+                      const SizedBox(height: 8),
+                      Container(width: 100, height: 12, color: Colors.white),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Container(width: 70, height: 24, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(6))),
+                          const SizedBox(width: 8),
+                          Container(width: 70, height: 24, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(6))),
+                        ],
+                      )
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      )),
     );
   }
 }

@@ -10,15 +10,21 @@ import 'data/repositories/perfil_repository_impl.dart';
 import 'data/repositories/postulacion_repository_impl.dart';
 import 'data/repositories/recomendacion_repository_impl.dart';
 import 'data/repositories/vacante_repository_impl.dart';
+import 'data/repositories/notificacion_repository_impl.dart';
+import 'core/notifications/fcm_service.dart';
 import 'presentation/auth/login_screen.dart';
 import 'presentation/shared/providers/auth_provider.dart';
 import 'presentation/shared/providers/perfil_provider.dart';
 import 'presentation/shared/providers/postulaciones_provider.dart';
 import 'presentation/shared/providers/recomendaciones_provider.dart';
 import 'presentation/shared/providers/vacantes_provider.dart';
+import 'presentation/shared/providers/notificaciones_provider.dart';
 import 'presentation/shell/candidate_shell.dart';
 
-void main() => runApp(const TalentMatchApp());
+void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  runApp(const TalentMatchApp());
+}
 
 class TalentMatchApp extends StatelessWidget {
   const TalentMatchApp({super.key});
@@ -33,6 +39,11 @@ class TalentMatchApp extends StatelessWidget {
     final postulacionRepo  = PostulacionRepositoryImpl(apiClient);
     final perfilRepo       = PerfilRepositoryImpl(apiClient);
     final recomendacionRepo = RecomendacionRepositoryImpl(apiClient);
+    final notificacionRepo = NotificacionRepositoryImpl(apiClient);
+
+    // Inicializar FCM
+    final fcmService = FcmService(notificacionRepo);
+    fcmService.initialize();
 
     return MultiProvider(
       providers: [
@@ -44,6 +55,8 @@ class TalentMatchApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => PerfilProvider(perfilRepo)),
         // Sprint F-3: Recomendaciones IA (con fallback al listado general)
         ChangeNotifierProvider(create: (_) => RecomendacionesProvider(recomendacionRepo)),
+        // Sprint F-6: Notificaciones
+        ChangeNotifierProvider(create: (_) => NotificacionesProvider(notificacionRepo)),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
