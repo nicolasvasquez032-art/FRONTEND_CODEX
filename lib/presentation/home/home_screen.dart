@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
+import 'package:lottie/lottie.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_strings.dart';
 import '../../core/theme/theme_ext.dart';
@@ -57,6 +58,56 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Widget _buildLottieRefresh(
+      BuildContext context,
+      RefreshIndicatorMode refreshState,
+      double pulledExtent,
+      double refreshTriggerPullDistance,
+      double refreshIndicatorExtent,
+      ) {
+    final double percentage = (pulledExtent / refreshTriggerPullDistance).clamp(0.0, 1.0);
+
+    return Container(
+      height: pulledExtent,
+      alignment: Alignment.bottomCenter,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 15),
+        child: Opacity(
+          opacity: percentage,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: 45,
+                height: 45,
+                child: SpinPerfect(
+                  infinite: true,
+                  spins: 2,
+                  animate: refreshState == RefreshIndicatorMode.refresh || refreshState == RefreshIndicatorMode.armed,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(color: kBlue.withValues(alpha: 0.2), blurRadius: 10, offset: const Offset(0, 4))
+                      ]
+                    ),
+                    child: const Icon(Icons.auto_awesome, color: kBlue, size: 24),
+                  ),
+                ),
+              ),
+              if (percentage > 0.8)
+                const Padding(
+                  padding: EdgeInsets.only(top: 8),
+                  child: Text('Escaneando vacantes IA...', style: TextStyle(color: kBlue, fontSize: 11, fontWeight: FontWeight.bold)),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final vProvider = context.watch<VacantesProvider>();
@@ -69,6 +120,7 @@ class _HomeScreenState extends State<HomeScreen> {
       slivers: [
         CupertinoSliverRefreshControl(
           onRefresh: _cargar,
+          builder: _buildLottieRefresh,
         ),
         SliverPadding(
           padding: EdgeInsets.fromLTRB(17, topPadding, 17, bottomPadding),
@@ -382,7 +434,13 @@ class _JobCard extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _CompanyMark(vacante.ubicacion),
+                Hero(
+                  tag: 'home_logo_${vacante.id}',
+                  child: Material(
+                    type: MaterialType.transparency,
+                    child: _CompanyMark(vacante.ubicacion),
+                  ),
+                ),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
@@ -405,7 +463,13 @@ class _JobCard extends StatelessWidget {
                         children: [
                           Icon(Icons.business_center_outlined, size: 12, color: context.textMuted),
                           const SizedBox(width: 4),
-                          Text('Empresa Confidencial', style: TextStyle(color: context.textMuted, fontSize: 12)),
+                          Expanded(
+                            child: Text(
+                              'Empresa Confidencial', 
+                              style: TextStyle(color: context.textMuted, fontSize: 12),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
                         ],
                       ),
                     ],
