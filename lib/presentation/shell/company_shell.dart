@@ -6,6 +6,8 @@ import '../shared/providers/auth_provider.dart';
 import '../company/publicar_vacante_screen.dart';
 import '../company/mis_vacantes_screen.dart';
 import '../company/company_profile_screen.dart';
+import '../company/premium_subscription_screen.dart';
+import '../shared/providers/vacantes_provider.dart';
 
 class CompanyShell extends StatefulWidget {
   const CompanyShell({super.key});
@@ -17,10 +19,10 @@ class CompanyShell extends StatefulWidget {
 class _CompanyShellState extends State<CompanyShell> {
   int _currentIndex = 0;
 
-  final List<Widget> _pages = const [
-    MisVacantesScreen(),
-    PublicarVacanteScreen(),
-    CompanyProfileScreen(),
+  List<Widget> get _pages => [
+    const MisVacantesScreen(),
+    PublicarVacanteScreen(onPublished: () => setState(() => _currentIndex = 0)),
+    const CompanyProfileScreen(),
   ];
 
   @override
@@ -59,7 +61,19 @@ class _CompanyShellState extends State<CompanyShell> {
                   indicatorColor: kBlue.withValues(alpha: 0.15),
                   labelBehavior: NavigationDestinationLabelBehavior.alwaysHide,
                   selectedIndex: _currentIndex,
-                  onDestinationSelected: (idx) => setState(() => _currentIndex = idx),
+                  onDestinationSelected: (idx) {
+                    if (idx == 1) {
+                      final session = context.read<AuthProvider>().session;
+                      final vacantes = context.read<VacantesProvider>().vacantes
+                          .where((v) => v.empresaId == session?.userId).toList();
+                          
+                      if (session != null && !session.isPremium && vacantes.length >= 2) {
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const PremiumSubscriptionScreen()));
+                        return;
+                      }
+                    }
+                    setState(() => _currentIndex = idx);
+                  },
                   destinations: const [
                     NavigationDestination(
                       icon: Icon(Icons.business_center_outlined),

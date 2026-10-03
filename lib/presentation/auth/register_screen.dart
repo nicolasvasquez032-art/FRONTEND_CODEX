@@ -1,5 +1,8 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:animate_do/animate_do.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../core/constants/app_colors.dart';
 import '../shared/providers/auth_provider.dart';
 import '../shared/widgets/brand_logo.dart';
@@ -89,111 +92,234 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     return Scaffold(
-      backgroundColor: kBg,
+      backgroundColor: const Color(0xFFF4F7FC),
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        leading: BackButton(color: kNavy),
-        backgroundColor: kBg,
+        leading: const BackButton(color: kNavy),
+        backgroundColor: Colors.transparent,
         elevation: 0,
-        title: const BrandFull(iconSize: 28),
+        centerTitle: true,
+        title: const BrandFull(iconSize: 24),
       ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 28),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 24),
+      body: Stack(
+        children: [
+          // Background Glows
+          Positioned(
+            top: -100,
+            left: -100,
+            child: Container(
+              width: 300,
+              height: 300,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: kBlue.withOpacity(0.15),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: -50,
+            right: -50,
+            child: Container(
+              width: 250,
+              height: 250,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: kPurple.withOpacity(0.15),
+              ),
+            ),
+          ),
+          BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 40, sigmaY: 40),
+            child: Container(color: Colors.transparent),
+          ),
 
-              // ── Paso indicador (solo si es candidato) ──
-              if (!_isCompany) ...[
-                _StepIndicator(current: _step, total: 2),
-                const SizedBox(height: 28),
-              ],
+          // Main Content
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(height: 12),
 
-              // ── Toggle Empresa / Candidato ──
-              if (_step == 0)
-                Center(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: kLine,
-                      borderRadius: BorderRadius.circular(10),
+                  // ── Paso indicador ──
+                  if (!_isCompany) ...[
+                    FadeInDown(
+                      duration: const Duration(milliseconds: 600),
+                      child: _StepIndicator(current: _step, total: 2),
                     ),
-                    padding: const EdgeInsets.all(4),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _RoleToggleBtn(
-                          title: 'Candidato',
-                          active: !_isCompany,
-                          onTap: () => setState(() => _isCompany = false),
+                    const SizedBox(height: 28),
+                  ],
+
+                  // ── Toggle Empresa / Candidato ──
+                  if (_step == 0)
+                    FadeInDown(
+                      duration: const Duration(milliseconds: 600),
+                      delay: const Duration(milliseconds: 100),
+                      child: Center(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.5),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.white, width: 1.5),
+                          ),
+                          padding: const EdgeInsets.all(4),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              _RoleToggleBtn(
+                                title: 'Candidato',
+                                active: !_isCompany,
+                                onTap: () => setState(() => _isCompany = false),
+                              ),
+                              _RoleToggleBtn(
+                                title: 'Empresa',
+                                active: _isCompany,
+                                onTap: () => setState(() => _isCompany = true),
+                              ),
+                            ],
+                          ),
                         ),
-                        _RoleToggleBtn(
-                          title: 'Empresa',
-                          active: _isCompany,
-                          onTap: () => setState(() => _isCompany = true),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              const SizedBox(height: 24),
-
-              Text(
-                _step == 0 ? 'Crear cuenta' : 'Tu perfil profesional',
-                style: const TextStyle(
-                  fontSize: 22, fontWeight: FontWeight.w800, color: kNavy,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                _step == 0
-                    ? (_isCompany ? 'Registra tu empresa para publicar vacantes' : 'Primero, tus datos de acceso')
-                    : 'Cuéntanos sobre ti para mejores recomendaciones',
-                style: const TextStyle(fontSize: 13, color: kMuted),
-              ),
-              const SizedBox(height: 28),
-
-              // ── Formulario ──
-              Form(
-                key: _formKey,
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 300),
-                  child: _step == 0
-                      ? _buildStep0()
-                      : _buildStep1(),
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // ── Botón ──
-              _GradientButton(
-                text: _step == 0 ? (_isCompany ? 'Registrar Empresa' : 'Continuar') : 'Crear cuenta',
-                loading: auth.loading,
-                onPressed: (_step == 0 && !_isCompany) ? _nextStep : _submit,
-              ),
-              const SizedBox(height: 20),
-
-              // ── Ya tienes cuenta ──
-              Center(
-                child: Wrap(
-                  alignment: WrapAlignment.center,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    const Text('¿Ya tienes cuenta?', style: TextStyle(color: kMuted, fontSize: 13)),
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text(
-                        'Inicia sesión',
-                        style: TextStyle(color: kBlue, fontWeight: FontWeight.w700, fontSize: 13),
                       ),
                     ),
-                  ],
-                ),
+                  const SizedBox(height: 24),
+
+                  // ── Form Glassmorphism Container ──
+                  FadeInUp(
+                    duration: const Duration(milliseconds: 600),
+                    delay: const Duration(milliseconds: 200),
+                    child: Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.6),
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(color: Colors.white, width: 1.5),
+                        boxShadow: [
+                          BoxShadow(
+                            color: kNavy.withOpacity(0.03),
+                            blurRadius: 30,
+                            offset: const Offset(0, 15),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _step == 0 ? 'Crear cuenta' : 'Tu perfil profesional',
+                            style: const TextStyle(
+                              fontSize: 22, fontWeight: FontWeight.w800, color: kNavy,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            _step == 0
+                                ? (_isCompany ? 'Registra tu empresa para publicar vacantes' : 'Primero, tus datos de acceso')
+                                : 'Cuéntanos sobre ti para mejores recomendaciones',
+                            style: const TextStyle(fontSize: 13, color: kMuted),
+                          ),
+                          const SizedBox(height: 28),
+
+                          Form(
+                            key: _formKey,
+                            child: AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 300),
+                              child: _step == 0 ? _buildStep0() : _buildStep1(),
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+
+                          _GradientButton(
+                            text: _step == 0 ? (_isCompany ? 'Registrar Empresa' : 'Continuar') : 'Crear cuenta',
+                            loading: auth.loading,
+                            onPressed: (_step == 0 && !_isCompany) ? _nextStep : _submit,
+                          ),
+                          
+                          if (_step == 0) ...[
+                            const SizedBox(height: 24),
+                            // ── Divisor O ──
+                            Row(
+                              children: [
+                                Expanded(child: Divider(color: kNavy.withOpacity(0.1))),
+                                const Padding(
+                                  padding: EdgeInsets.symmetric(horizontal: 16),
+                                  child: Text('O registrarse con', style: TextStyle(color: kMuted, fontSize: 12)),
+                                ),
+                                Expanded(child: Divider(color: kNavy.withOpacity(0.1))),
+                              ],
+                            ),
+                            const SizedBox(height: 24),
+
+                            // ── Botones Sociales ──
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton.icon(
+                                    onPressed: () {
+                                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Integración con Google próximamente')));
+                                    },
+                                    style: OutlinedButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(vertical: 14),
+                                      backgroundColor: Colors.white.withOpacity(0.8),
+                                      side: BorderSide(color: kNavy.withOpacity(0.1)),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    ),
+                                    icon: FaIcon(FontAwesomeIcons.google, color: const Color(0xFFDB4437), size: 18),
+                                    label: const Text('Google', style: TextStyle(color: kNavy, fontWeight: FontWeight.w700, fontSize: 13)),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: OutlinedButton.icon(
+                                    onPressed: () {
+                                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Integración con LinkedIn próximamente')));
+                                    },
+                                    style: OutlinedButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(vertical: 14),
+                                      backgroundColor: Colors.white.withOpacity(0.8),
+                                      side: BorderSide(color: kNavy.withOpacity(0.1)),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    ),
+                                    icon: FaIcon(FontAwesomeIcons.linkedin, color: const Color(0xFF0077B5), size: 18),
+                                    label: const Text('LinkedIn', style: TextStyle(color: kNavy, fontWeight: FontWeight.w700, fontSize: 13)),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+
+                  // ── Ya tienes cuenta ──
+                  FadeInUp(
+                    duration: const Duration(milliseconds: 600),
+                    delay: const Duration(milliseconds: 300),
+                    child: Center(
+                      child: Wrap(
+                        alignment: WrapAlignment.center,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          const Text('¿Ya tienes cuenta?', style: TextStyle(color: kMuted, fontSize: 14)),
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text(
+                              'Inicia sesión',
+                              style: TextStyle(color: kBlue, fontWeight: FontWeight.w800, fontSize: 14),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                ],
               ),
-              const SizedBox(height: 24),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -526,6 +652,21 @@ class _LabeledField extends StatelessWidget {
               hintText: hint,
               prefixIcon: Icon(icon, color: kMuted, size: 20),
               suffixIcon: suffix,
+              filled: true,
+              fillColor: Colors.white.withOpacity(0.9),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: kNavy.withOpacity(0.05)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: kBlue, width: 1.5),
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             ),
           ),
         ],

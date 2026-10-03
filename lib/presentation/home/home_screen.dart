@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
@@ -115,123 +116,184 @@ class _HomeScreenState extends State<HomeScreen> {
     final topPadding = MediaQuery.paddingOf(context).top + 15;
     final bottomPadding = MediaQuery.paddingOf(context).bottom + 100;
 
-    return CustomScrollView(
-      physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-      slivers: [
-        CupertinoSliverRefreshControl(
-          onRefresh: _cargar,
-          builder: _buildLottieRefresh,
-        ),
-        SliverPadding(
-          padding: EdgeInsets.fromLTRB(17, topPadding, 17, bottomPadding),
-          sliver: SliverList(
-            delegate: SliverChildListDelegate([
-              // ── Saludo Clean Tech ───────────────────────────────────────────
-              Row(
-                children: [
-                  Icon(Icons.auto_awesome, size: 16, color: kBlue),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Recomendaciones para ti',
-                    style: TextStyle(
-                      color: kBlue,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.2,
-                    ),
-                  ),
-                ],
+    return Scaffold(
+      backgroundColor: const Color(0xFFF4F7FC),
+      body: Stack(
+        children: [
+          // Background Glows
+          Positioned(
+            top: -150,
+            left: -100,
+            child: Container(
+              width: 350,
+              height: 350,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: kBlue.withOpacity(0.15),
               ),
-              const SizedBox(height: 12),
-              RichText(
-                text: TextSpan(
-                  children: [
-                    TextSpan(
-                      text: 'Encuentra Tu\n',
-                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: context.text, height: 1.2),
-                    ),
-                    const TextSpan(
-                      text: 'Trabajo Ideal',
-                      style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: kBlue, height: 1.1),
-                    ),
-                  ],
-                ),
+            ),
+          ),
+          Positioned(
+            top: 200,
+            right: -100,
+            child: Container(
+              width: 300,
+              height: 300,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: kPurple.withOpacity(0.12),
               ),
-              const SizedBox(height: 24),
+            ),
+          ),
+          BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 50, sigmaY: 50),
+            child: Container(color: Colors.transparent),
+          ),
 
-              // ── Barra de búsqueda Premium ───────────────
-              GestureDetector(
-                onTap: widget.onExplore,
-                child: Container(
-                  height: 58,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(18),
-                    boxShadow: [
-                      BoxShadow(color: kNavy.withValues(alpha: 0.06), blurRadius: 20, offset: const Offset(0, 8)),
-                    ],
-                  ),
-                  padding: const EdgeInsets.only(left: 16, right: 8),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.search, color: kMuted, size: 22),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(AppStrings.searchHint, style: const TextStyle(color: kMuted, fontSize: 14, fontWeight: FontWeight.w500)),
-                      ),
-                      Container(
-                        width: 44, height: 44,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [kBlue.withValues(alpha: 0.8), kBlue],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
+          CustomScrollView(
+            physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+            slivers: [
+              CupertinoSliverRefreshControl(
+                onRefresh: _cargar,
+                builder: _buildLottieRefresh,
+              ),
+              SliverPadding(
+                padding: EdgeInsets.fromLTRB(17, topPadding, 17, bottomPadding),
+                sliver: SliverList(
+                  delegate: SliverChildListDelegate([
+                    // ── Saludo Clean Tech ───────────────────────────────────────────
+                    FadeInDown(
+                      duration: const Duration(milliseconds: 600),
+                      child: Row(
+                        children: [
+                          Icon(Icons.auto_awesome, size: 16, color: kBlue),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Recomendaciones para ti',
+                            style: TextStyle(
+                              color: kBlue,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.2,
+                            ),
                           ),
-                          borderRadius: BorderRadius.circular(14),
-                          boxShadow: [
-                            BoxShadow(color: kBlue.withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 4)),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    FadeInDown(
+                      delay: const Duration(milliseconds: 100),
+                      duration: const Duration(milliseconds: 600),
+                      child: RichText(
+                        text: TextSpan(
+                          children: [
+                            TextSpan(
+                              text: 'Encuentra Tu\n',
+                              style: TextStyle(fontSize: 28, fontWeight: FontWeight.w600, color: context.text, height: 1.2),
+                            ),
+                            const TextSpan(
+                              text: 'Trabajo Ideal',
+                              style: TextStyle(fontSize: 34, fontWeight: FontWeight.w900, color: kBlue, height: 1.1),
+                            ),
                           ],
                         ),
-                        child: const Icon(Icons.tune_rounded, color: Colors.white, size: 20),
                       ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // ── Barra de búsqueda Premium ───────────────
+                    FadeInUp(
+                      delay: const Duration(milliseconds: 200),
+                      duration: const Duration(milliseconds: 600),
+                      child: GestureDetector(
+                        onTap: widget.onExplore,
+                        child: Container(
+                          height: 58,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.8),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: Colors.white, width: 1.5),
+                            boxShadow: [
+                              BoxShadow(color: kNavy.withOpacity(0.04), blurRadius: 20, offset: const Offset(0, 8)),
+                            ],
+                          ),
+                          padding: const EdgeInsets.only(left: 16, right: 8),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.search, color: kMuted, size: 22),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(AppStrings.searchHint, style: const TextStyle(color: kMuted, fontSize: 14, fontWeight: FontWeight.w500)),
+                              ),
+                              Container(
+                                width: 44, height: 44,
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    colors: [Color(0xFF5C83F6), Color(0xFF2A5AF1)],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                  borderRadius: BorderRadius.circular(14),
+                                  boxShadow: [
+                                    BoxShadow(color: kBlue.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4)),
+                                  ],
+                                ),
+                                child: const Icon(Icons.tune_rounded, color: Colors.white, size: 20),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+
+                    // ── Sección principal: IA o fallback ─────────────────
+                    if (rProvider.status == RecomendacionesStatus.loading ||
+                        vProvider.status == VacantesStatus.loading)
+                      ..._buildLoading()
+                    else if (rProvider.hasData)
+                      ..._buildRecomendaciones(rProvider)
+                    else if (rProvider.isFallback)
+                      ..._buildFallback(vProvider)
+                    else if (vProvider.status == VacantesStatus.error)
+                      ...[
+                        _sectionHead(AppStrings.recommended, AppStrings.seeAll, widget.onExplore),
+                        _ErrorCard(vProvider.error ?? 'Error al cargar vacantes', onRetry: _cargar),
+                      ]
+                    else
+                      ..._buildFallback(vProvider),
+
+                    // ── Banner IA ─────────────────────────────────────────
+                    const SizedBox(height: 8),
+                    FadeInUp(
+                      delay: const Duration(milliseconds: 300),
+                      duration: const Duration(milliseconds: 600),
+                      child: _AiBanner(isMlActive: rProvider.hasData),
+                    ),
+                    const SizedBox(height: 4),
+
+                    // ── Funcionalidades ───────────────────────────────────
+                    FadeInUp(
+                      delay: const Duration(milliseconds: 400),
+                      duration: const Duration(milliseconds: 600),
+                      child: _sectionHead(AppStrings.features, null, null),
+                    ),
+                    FadeInUp(
+                      delay: const Duration(milliseconds: 500),
+                      duration: const Duration(milliseconds: 600),
+                      child: const Row(children: [
+                        Expanded(child: _FeatureCard(Icons.notifications_none, AppStrings.alertsTitle, AppStrings.alertsDesc)),
+                        SizedBox(width: 10),
+                        Expanded(child: _FeatureCard(Icons.location_on_outlined, AppStrings.localTitle, AppStrings.localDesc)),
+                      ]),
+                    ),
+                  ]),
                 ),
               ),
-              const SizedBox(height: 4),
-
-              // ── Sección principal: IA o fallback ─────────────────
-              if (rProvider.status == RecomendacionesStatus.loading ||
-                  vProvider.status == VacantesStatus.loading)
-                ..._buildLoading()
-              else if (rProvider.hasData)
-                ..._buildRecomendaciones(rProvider)
-              else if (rProvider.isFallback)
-                ..._buildFallback(vProvider)
-              else if (vProvider.status == VacantesStatus.error)
-                ...[
-                  _sectionHead(AppStrings.recommended, AppStrings.seeAll, widget.onExplore),
-                  _ErrorCard(vProvider.error ?? 'Error al cargar vacantes', onRetry: _cargar),
-                ]
-              else
-                ..._buildFallback(vProvider),
-
-              // ── Banner IA ─────────────────────────────────────────
-              const SizedBox(height: 8),
-              _AiBanner(isMlActive: rProvider.hasData),
-              const SizedBox(height: 4),
-
-              // ── Funcionalidades ───────────────────────────────────
-              _sectionHead(AppStrings.features, null, null),
-              const Row(children: [
-                Expanded(child: _FeatureCard(Icons.notifications_none, AppStrings.alertsTitle, AppStrings.alertsDesc)),
-                SizedBox(width: 10),
-                Expanded(child: _FeatureCard(Icons.location_on_outlined, AppStrings.localTitle, AppStrings.localDesc)),
-              ]),
-            ]),
+            ],
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -417,14 +479,14 @@ class _JobCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: context.surface,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: context.line.withValues(alpha: 0.5), width: 1),
+          color: Colors.white.withOpacity(0.85),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: Colors.white, width: 1.5),
           boxShadow: [
             BoxShadow(
-              color: kNavy.withValues(alpha: 0.04),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
+              color: kNavy.withOpacity(0.04),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
             ),
           ],
         ),
@@ -534,23 +596,23 @@ class _CompanyMark extends StatelessWidget {
   Widget build(BuildContext context) {
     final letters = text.trim().isNotEmpty ? text.trim()[0].toUpperCase() : '?';
     return Container(
-      width: 48,
-      height: 48,
+      width: 52,
+      height: 52,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [kBlue.withValues(alpha: 0.8), kBlue],
+        gradient: const LinearGradient(
+          colors: [Color(0xFF5C83F6), Color(0xFF2A5AF1)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
-          BoxShadow(color: kBlue.withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 4)),
+          BoxShadow(color: kBlue.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 6)),
         ],
       ),
       child: Text(
         letters,
-        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 18),
+        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 20),
       ),
     );
   }
@@ -681,18 +743,30 @@ class _FeatureCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: context.surface, border: Border.all(color: context.line), borderRadius: BorderRadius.circular(13),
+          color: Colors.white.withOpacity(0.85),
+          border: Border.all(color: Colors.white, width: 1.5),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(color: kNavy.withOpacity(0.03), blurRadius: 15, offset: const Offset(0, 8)),
+          ]
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, color: kBlue),
-            const SizedBox(height: 8),
-            Text(title, style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
-            const SizedBox(height: 5),
-            Text(text, style: TextStyle(color: context.textMuted, fontSize: 10, height: 1.45)),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: kBlue.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: kBlue, size: 20),
+            ),
+            const SizedBox(height: 12),
+            Text(title, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: kNavy)),
+            const SizedBox(height: 6),
+            Text(text, style: const TextStyle(color: kMuted, fontSize: 11, height: 1.45)),
           ],
         ),
       );

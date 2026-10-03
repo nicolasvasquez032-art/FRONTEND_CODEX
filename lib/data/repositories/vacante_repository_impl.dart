@@ -63,4 +63,9 @@ class VacanteRepositoryImpl implements VacanteRepository {
     );
     return VacanteModel.fromJson(response as Map<String, dynamic>).toEntity();
   }
+
+  @override
+  Future<void> eliminarVacante(String id) async {
+    await _api.delete('/vacantes/$id', auth: true);
+  }
 }
