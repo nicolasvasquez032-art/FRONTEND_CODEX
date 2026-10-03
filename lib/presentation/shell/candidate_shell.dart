@@ -16,6 +16,7 @@ import '../explore/explore_screen.dart';
 import '../applications/applications_screen.dart';
 import '../profile/profile_screen.dart';
 import '../profile/notifications_screen.dart';
+import '../chat/chat_screen.dart';
 
 class CandidateShell extends StatefulWidget {
   const CandidateShell({super.key});
@@ -115,6 +116,22 @@ class _CandidateShellState extends State<CandidateShell> {
                       ),
                     ),
                 ],
+              );
+            },
+          ),
+          // Botón temporal de Chat para pruebas
+          IconButton(
+            icon: const Icon(Icons.chat_bubble_outline, color: kNavy, size: 26),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const ChatScreen(
+                    roomId: '00000000-0000-0000-0000-000000000000', // Sala de prueba
+                    otherUserName: 'Google LLC (Prueba)',
+                    otherUserRole: 'Empresa',
+                  ),
+                ),
               );
             },
           ),

@@ -1,5 +1,7 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:animate_do/animate_do.dart';
 import '../../core/constants/app_colors.dart';
 import '../shared/providers/auth_provider.dart';
 import '../shared/widgets/brand_logo.dart';
@@ -39,35 +41,91 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     return Scaffold(
-      backgroundColor: kBg,
+      backgroundColor: const Color(0xFFF4F7FC),
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        leading: BackButton(color: kNavy),
-        backgroundColor: kBg,
+        leading: const BackButton(color: kNavy),
+        backgroundColor: Colors.transparent,
         elevation: 0,
-        title: const BrandFull(iconSize: 28),
+        centerTitle: true,
+        title: const BrandFull(iconSize: 24),
       ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(28),
-          child: _sent ? _buildSuccess() : _buildForm(auth),
-        ),
+      body: Stack(
+        children: [
+          // Background Glows
+          Positioned(
+            top: -100,
+            left: -100,
+            child: Container(
+              width: 300,
+              height: 300,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: kBlue.withOpacity(0.15),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: -50,
+            right: -50,
+            child: Container(
+              width: 250,
+              height: 250,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: kPurple.withOpacity(0.15),
+              ),
+            ),
+          ),
+          BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 40, sigmaY: 40),
+            child: Container(color: Colors.transparent),
+          ),
+
+          SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: FadeInUp(
+                  duration: const Duration(milliseconds: 600),
+                  child: Container(
+                    padding: const EdgeInsets.all(28),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.6),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: Colors.white, width: 1.5),
+                      boxShadow: [
+                        BoxShadow(
+                          color: kNavy.withOpacity(0.03),
+                          blurRadius: 30,
+                          offset: const Offset(0, 15),
+                        ),
+                      ],
+                    ),
+                    child: _sent ? _buildSuccess() : _buildForm(auth),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildForm(AuthProvider auth) => SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-          const SizedBox(height: 16),
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              color: const Color(0xFFE7EFFF),
-              borderRadius: BorderRadius.circular(16),
+  Widget _buildForm(AuthProvider auth) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.8),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: const Icon(Icons.lock_reset, color: kBlue, size: 28),
             ),
-            child: const Icon(Icons.lock_reset, color: kBlue, size: 28),
           ),
           const SizedBox(height: 24),
           const Text(
@@ -90,9 +148,24 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           TextField(
             controller: _emailCtrl,
             keyboardType: TextInputType.emailAddress,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               hintText: 'tu@correo.com',
-              prefixIcon: Icon(Icons.email_outlined, color: kMuted, size: 20),
+              prefixIcon: const Icon(Icons.email_outlined, color: kMuted, size: 20),
+              filled: true,
+              fillColor: Colors.white.withOpacity(0.9),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: kNavy.withOpacity(0.05)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: kBlue, width: 1.5),
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             ),
           ),
           const SizedBox(height: 24),
@@ -124,39 +197,45 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             ),
           ),
         ],
-      ),
-    );
+      );
 
-  Widget _buildSuccess() => Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                color: kMatchBg,
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: const Icon(Icons.mark_email_read_outlined, color: kMatchText, size: 40),
+  Widget _buildSuccess() => Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              color: kMatchBg.withOpacity(0.5),
+              borderRadius: BorderRadius.circular(24),
             ),
-            const SizedBox(height: 24),
-            const Text(
-              '¡Listo!',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: kNavy),
-            ),
-            const SizedBox(height: 10),
-            const Text(
-              'Si el correo está registrado, recibirás un enlace de recuperación en los próximos minutos.',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 13, color: kMuted, height: 1.6),
-            ),
-            const SizedBox(height: 32),
-            OutlinedButton(
+            child: const Icon(Icons.mark_email_read_outlined, color: kMatchText, size: 40),
+          ),
+          const SizedBox(height: 24),
+          const Text(
+            '¡Listo!',
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: kNavy),
+          ),
+          const SizedBox(height: 10),
+          const Text(
+            'Si el correo está registrado, recibirás un enlace de recuperación en los próximos minutos.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 13, color: kMuted, height: 1.6),
+          ),
+          const SizedBox(height: 32),
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: OutlinedButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Volver al inicio de sesión'),
+              style: OutlinedButton.styleFrom(
+                side: BorderSide(color: kNavy.withOpacity(0.1)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                backgroundColor: Colors.white.withOpacity(0.5),
+              ),
+              child: const Text('Volver al inicio de sesión', style: TextStyle(color: kNavy, fontWeight: FontWeight.bold)),
             ),
-          ],
-        ),
+          ),
+        ],
       );
 }

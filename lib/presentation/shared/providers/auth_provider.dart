@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:talentmatch/core/network/api_client.dart';
 import 'package:talentmatch/domain/entities/user_session.dart';
 import 'package:talentmatch/domain/repositories/auth_repository.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 enum AuthStatus { unknown, authenticated, unauthenticated }
 
@@ -16,6 +17,7 @@ class AuthProvider extends ChangeNotifier {
   UserSession? session;
   bool loading       = false;
   String? error;
+  bool hasSeenOnboarding = false;
 
   // ──────────────────────────────────────────────
   // Inicialización: restaurar sesión guardada
@@ -23,6 +25,9 @@ class AuthProvider extends ChangeNotifier {
 
   Future<void> _init() async {
     try {
+      final prefs = await SharedPreferences.getInstance();
+      hasSeenOnboarding = prefs.getBool('has_seen_onboarding') ?? false;
+      
       final s = await _repo.restoreSession();
       if (s != null) {
         session = s;
@@ -33,6 +38,13 @@ class AuthProvider extends ChangeNotifier {
     } catch (_) {
       status = AuthStatus.unauthenticated;
     }
+    notifyListeners();
+  }
+
+  Future<void> completeOnboarding() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('has_seen_onboarding', true);
+    hasSeenOnboarding = true;
     notifyListeners();
   }
 

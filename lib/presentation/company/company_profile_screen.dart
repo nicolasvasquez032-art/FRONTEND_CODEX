@@ -19,163 +19,287 @@ class CompanyProfileScreen extends StatelessWidget {
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
         slivers: [
-          // 1. Cabecera Hero Elástica
-          SliverAppBar(
-            expandedHeight: 330,
-            pinned: true,
-            stretch: true, // Efecto rebote elástico al tirar hacia abajo
-            backgroundColor: kBlue,
-            flexibleSpace: FlexibleSpaceBar(
-              stretchModes: const [StretchMode.zoomBackground, StretchMode.blurBackground],
-              background: Stack(
-                fit: StackFit.expand,
+          // 1. Cabecera Curva con Tarjeta Superpuesta (Estilo Mis Vacantes)
+          SliverToBoxAdapter(
+            child: SizedBox(
+              height: 520, // 280 (cabecera azul) + 240 (altura expuesta de la tarjeta)
+              child: Stack(
+                clipBehavior: Clip.none,
                 children: [
-                  // Gradiente de fondo
+                  // Fondo curvo
                   Container(
+                    height: 280,
+                    width: double.infinity,
                     decoration: const BoxDecoration(
                       gradient: LinearGradient(
                         colors: [Color(0xFF0F172A), Color(0xFF1E3A8A)],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
+                      borderRadius: BorderRadius.only(
+                        bottomLeft: Radius.circular(40),
+                        bottomRight: Radius.circular(40),
+                      ),
+                    ),
+                    child: Stack(
+                      children: [
+                        // Ondas decorativas animadas
+                        Positioned(
+                          right: -60,
+                          top: -40,
+                          child: Pulse(
+                            infinite: true,
+                            duration: const Duration(seconds: 4),
+                            child: ImageFiltered(imageFilter: ImageFilter.blur(sigmaX: 10, sigmaY: 10), child: Container(width: 250, height: 250, decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withValues(alpha: 0.05)))),
+                          ),
+                        ),
+                        Positioned(
+                          left: -40,
+                          bottom: -20,
+                          child: Pulse(
+                            infinite: true,
+                            duration: const Duration(seconds: 6),
+                            child: ImageFiltered(imageFilter: ImageFilter.blur(sigmaX: 20, sigmaY: 20), child: Container(width: 180, height: 180, decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withValues(alpha: 0.03)))),
+                          ),
+                        ),
+                        Positioned(
+                          left: 100,
+                          top: 40,
+                          child: Pulse(
+                            infinite: true, 
+                            duration: const Duration(seconds: 5), 
+                            child: ImageFiltered(imageFilter: ImageFilter.blur(sigmaX: 15, sigmaY: 15), child: Container(width: 80, height: 80, decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.cyanAccent.withValues(alpha: 0.1)))),
+                          ),
+                        ),
+                        // Contenido de Cabecera Alineado a la Izquierda
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(24, 60, 24, 0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  FadeInDown(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text('MI EMPRESA', style: TextStyle(color: Colors.blueAccent.shade100, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+                                        const SizedBox(height: 6),
+                                        const Text('Global Tech', style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: -0.5, height: 1.1)),
+                                        const Text('Solutions', style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: -0.5, height: 1.1)),
+                                      ],
+                                    ),
+                                  ),
+                                  FadeInDown(
+                                    child: Pulse(
+                                      infinite: true,
+                                      duration: const Duration(seconds: 3),
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(30),
+                                        child: BackdropFilter(
+                                          filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                                          child: Container(
+                                            width: 60,
+                                            height: 60,
+                                            decoration: BoxDecoration(
+                                              color: Colors.white.withValues(alpha: 0.1),
+                                              shape: BoxShape.circle,
+                                              border: Border.all(color: Colors.white.withValues(alpha: 0.4), width: 1.5),
+                                              boxShadow: [BoxShadow(color: Colors.cyanAccent.withValues(alpha: 0.2), blurRadius: 10, spreadRadius: 2)],
+                                            ),
+                                            child: const Icon(Icons.apartment, size: 28, color: Colors.white),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 24),
+                              FadeInDown(
+                                delay: const Duration(milliseconds: 100),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.15), 
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                                  ),
+                                  child: Builder(
+                                    builder: (context) {
+                                      final id = auth.session?.userId;
+                                      final shortId = (id != null && id.length > 8) ? id.substring(0,8) : '001';
+                                      return Text('ID: $shortId... • Premium Plan', style: const TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.bold));
+                                    }
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  // Ondas decorativas
+                  
+                  // Tarjeta Superpuesta
                   Positioned(
-                    right: -50,
-                    top: -50,
-                    child: FadeIn(duration: const Duration(seconds: 2), child: Container(width: 200, height: 200, decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withValues(alpha: 0.05)))),
-                  ),
-                  Positioned(
-                    left: -30,
-                    bottom: 20,
-                    child: FadeIn(duration: const Duration(seconds: 2), child: Container(width: 140, height: 140, decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withValues(alpha: 0.03)))),
-                  ),
-                  // Contenido central del Hero
-                  Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const SizedBox(height: 30),
-                      // Logotipo Glassmorphism animado
-                      ZoomIn(
-                        duration: const Duration(milliseconds: 600),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(55),
-                          child: BackdropFilter(
-                            filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-                            child: Container(
-                              width: 100,
-                              height: 100,
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.15),
-                                shape: BoxShape.circle,
-                                border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1.5),
-                                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 20, offset: const Offset(0, 10))],
-                              ),
-                              child: const Icon(Icons.apartment, size: 45, color: Colors.white),
+                    top: 220, // Montado encima del borde curvo
+                    left: 0,
+                    right: 0,
+                    child: FadeInUp(
+                      delay: const Duration(milliseconds: 500),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        // Círculo decorativo líquido detrás (Cian)
+                        Positioned(
+                          top: -20,
+                          left: -20,
+                          child: Container(
+                            width: 140,
+                            height: 140,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.cyan.withValues(alpha: 0.3),
                             ),
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 16),
-                      // Nombre y Tag
-                      FadeInUp(
-                        delay: const Duration(milliseconds: 200),
-                        child: const Text('Global Tech Solutions', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: -0.5)),
-                      ),
-                      const SizedBox(height: 8),
-                      FadeInUp(
-                        delay: const Duration(milliseconds: 300),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                          decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(20)),
-                          child: Text('ID: ${auth.session?.userId ?? "001"} • Premium Plan', style: const TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.bold)),
+                        // Círculo decorativo líquido detrás (Morado)
+                        Positioned(
+                          bottom: -20,
+                          right: -20,
+                          child: Container(
+                            width: 120,
+                            height: 120,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.purpleAccent.withValues(alpha: 0.2),
+                            ),
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-          
-          // 2. Contenido
-          SliverToBoxAdapter(
-            child: Column(
-              children: [
-                const SizedBox(height: 20), // Padding extra para separarlo de la barra
-                
-                // Tarjeta de Analíticas (Dona)
-                FadeInUp(
-                  delay: const Duration(milliseconds: 500),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28), // Más espacio interno para respirar
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(24),
-                        boxShadow: [BoxShadow(color: kNavy.withValues(alpha: 0.08), blurRadius: 30, offset: const Offset(0, 15))],
-                        border: Border.all(color: Colors.white, width: 2),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text('Rendimiento del mes', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: kNavy)),
-                              Icon(Icons.show_chart, color: kBlue),
-                            ],
+                        // Tarjeta de Cristal
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(28),
+                          child: BackdropFilter(
+                            filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    Colors.white.withValues(alpha: 0.7),
+                                    Colors.white.withValues(alpha: 0.4),
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                borderRadius: BorderRadius.circular(28),
+                                border: Border.all(color: Colors.white.withValues(alpha: 0.6), width: 1.5),
+                                boxShadow: [
+                                  BoxShadow(color: kNavy.withValues(alpha: 0.05), blurRadius: 30, offset: const Offset(0, 15)),
+                                ],
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      const Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text('Rendimiento del mes', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: kNavy)),
+                                          SizedBox(height: 4),
+                                          Text('+15% vs mes anterior', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF10B981))),
+                                        ],
+                                      ),
+                                      Container(
+                                        padding: const EdgeInsets.all(10),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius: BorderRadius.circular(12),
+                                          boxShadow: [BoxShadow(color: kBlue.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4))],
+                                        ),
+                                        child: const Icon(Icons.show_chart, color: kBlue, size: 20),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 28),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                    children: [
+                                      _buildDonutChart('Contratos', '12', 0.85, kBlue, 600),
+                                      _buildDonutChart('Respuesta', '92%', 0.92, const Color(0xFF10B981), 700),
+                                      _buildDonutChart('Vistas', '4k', 0.65, Colors.orangeAccent, 800),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
-                          const SizedBox(height: 24),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceAround,
-                            children: [
-                              _buildDonutChart('Contratos', '12', 0.85, kBlue, 600),
-                              _buildDonutChart('Respuesta', '92%', 0.92, const Color(0xFF10B981), 700),
-                              _buildDonutChart('Vistas', '4k', 0.65, Colors.amber, 800),
-                            ],
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
+              ),
+            ],
+          ),
+        ),
+      ),
+          
+          // Título de Configuración (fuera de la lista para no iterar)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.only(left: 28, bottom: 12, top: 40),
+              child: FadeInLeft(
+                child: const Text('Configuración', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: kMuted)),
+              ),
+            ),
+          ),
                 
-                const SizedBox(height: 30),
-                
-                // Opciones de Configuración
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      FadeInLeft(
-                        delay: const Duration(milliseconds: 600),
-                        child: const Padding(
-                          padding: EdgeInsets.only(left: 8, bottom: 12),
-                          child: Text('Configuración', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: kMuted)),
+          // Opciones animadas on-scroll
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            sliver: SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
+                  // Definimos las opciones de configuración
+                  final List<Map<String, dynamic>> configOptions = [
+                    {'icon': Icons.bar_chart, 'title': 'Reportes y Exportación', 'isPremium': false, 'onTap': () {}},
+                    {'icon': Icons.payment, 'title': 'Planes y Facturación', 'isPremium': true, 'onTap': () {
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => const PremiumSubscriptionScreen()));
+                    }},
+                    {'icon': Icons.people_outline, 'title': 'Equipo y Permisos', 'isPremium': false, 'onTap': () {}},
+                    {'icon': Icons.settings_outlined, 'title': 'Preferencias de Cuenta', 'isPremium': false, 'onTap': () {}},
+                  ];
+
+                  if (index < configOptions.length) {
+                    final opt = configOptions[index];
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: FadeInUp(
+                        // Eliminamos el delay fijo grande, ahora se animan con un ligero retraso de entrada
+                        delay: Duration(milliseconds: 100 * index),
+                        duration: const Duration(milliseconds: 600),
+                        from: 50,
+                        child: _buildConfigTile(
+                          opt['icon'] as IconData,
+                          opt['title'] as String,
+                          isPremium: opt['isPremium'] as bool,
+                          onTap: opt['onTap'] as VoidCallback,
                         ),
                       ),
-                      FadeInUp(delay: const Duration(milliseconds: 700), child: _buildConfigTile(Icons.bar_chart, 'Reportes y Exportación', onTap: () {})),
-                      const SizedBox(height: 12),
-                      FadeInUp(
-                        delay: const Duration(milliseconds: 800), 
-                        child: _buildConfigTile(Icons.payment, 'Planes y Facturación', isPremium: true, onTap: () {
-                          Navigator.push(context, MaterialPageRoute(builder: (_) => const PremiumSubscriptionScreen()));
-                        }),
-                      ),
-                      const SizedBox(height: 12),
-                      FadeInUp(delay: const Duration(milliseconds: 900), child: _buildConfigTile(Icons.people_outline, 'Equipo y Permisos', onTap: () {})),
-                      const SizedBox(height: 12),
-                      FadeInUp(delay: const Duration(milliseconds: 1000), child: _buildConfigTile(Icons.settings_outlined, 'Preferencias de Cuenta', onTap: () {})),
-                      
-                      const SizedBox(height: 40),
-                      
-                      // Botón Salir
-                      FadeInUp(
-                        delay: const Duration(milliseconds: 1100),
+                    );
+                  } else if (index == configOptions.length) {
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 28, bottom: 100),
+                      child: FadeInUp(
+                        delay: const Duration(milliseconds: 400),
+                        from: 40,
                         child: SizedBox(
                           width: double.infinity,
                           height: 55,
@@ -191,11 +315,12 @@ class CompanyProfileScreen extends StatelessWidget {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 100), // Padding inferior
-                    ],
-                  ),
-                )
-              ],
+                    );
+                  }
+                  return null;
+                },
+                childCount: 5, // 4 opciones + 1 botón salir
+              ),
             ),
           ),
         ],
@@ -209,31 +334,47 @@ class CompanyProfileScreen extends StatelessWidget {
       delay: Duration(milliseconds: delayMs),
       child: Column(
         children: [
-          SizedBox(
-            height: 65,
-            width: 65,
-            child: TweenAnimationBuilder<double>(
-              tween: Tween<double>(begin: 0, end: percent),
-              duration: const Duration(milliseconds: 2000),
-              curve: Curves.elasticOut,
-              builder: (context, val, child) {
-                return Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    // Fondo de la dona
-                    CircularProgressIndicator(value: 1.0, strokeWidth: 7, color: color.withValues(alpha: 0.15)),
-                    // Progreso animado
-                    CircularProgressIndicator(value: val, strokeWidth: 7, color: color, strokeCap: StrokeCap.round),
-                    // Texto central animado (Contador)
-                    Text('${(val * 100).toInt()}%', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: kNavy)),
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              // Efecto de sombra para volumen
+              Container(
+                height: 55,
+                width: 55,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(color: color.withValues(alpha: 0.3), blurRadius: 15, spreadRadius: 0),
                   ],
-                );
-              },
-            ),
+                ),
+              ),
+              SizedBox(
+                height: 75,
+                width: 75,
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween<double>(begin: 0, end: percent),
+                  duration: const Duration(milliseconds: 2000),
+                  curve: Curves.easeOutCubic,
+                  builder: (context, val, child) {
+                    return Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        // Fondo de la dona (gris claro transparente)
+                        CircularProgressIndicator(value: 1.0, strokeWidth: 8, color: Colors.white.withValues(alpha: 0.5)),
+                        // Progreso animado (líquido)
+                        CircularProgressIndicator(value: val, strokeWidth: 8, color: color, strokeCap: StrokeCap.round),
+                        // Texto central animado (Contador)
+                        Text('${(val * 100).toInt()}%', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: kNavy)),
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 12),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: kNavy)),
-          Text(label, style: const TextStyle(color: kMuted, fontSize: 11, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 16),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 20, color: kNavy, letterSpacing: -0.5)),
+          Text(label, style: const TextStyle(color: kMuted, fontSize: 13, fontWeight: FontWeight.bold)),
         ],
       ),
     );

@@ -36,6 +36,10 @@ dependencies:
   confetti: ^0.8.0
   lottie: ^3.6.1
   liquid_pull_to_refresh: ^3.0.1
+  url_launcher: ^6.3.3
+  smooth_page_indicator: ^3.0.0
+  font_awesome_flutter: ^11.0.0
+  web_socket_channel: ^3.0.3
 
 dev_dependencies:
   flutter_test:
@@ -52,3 +56,4 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/logo.png
+    - assets/lottie/

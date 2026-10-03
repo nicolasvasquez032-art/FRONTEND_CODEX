@@ -19,8 +19,10 @@ import 'presentation/shared/providers/postulaciones_provider.dart';
 import 'presentation/shared/providers/recomendaciones_provider.dart';
 import 'presentation/shared/providers/vacantes_provider.dart';
 import 'presentation/shared/providers/notificaciones_provider.dart';
+import 'presentation/shared/providers/chat_provider.dart';
 import 'presentation/shell/candidate_shell.dart';
 import 'presentation/shell/company_shell.dart';
+import 'presentation/onboarding/onboarding_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -58,6 +60,8 @@ class TalentMatchApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => RecomendacionesProvider(recomendacionRepo)),
         // Sprint F-6: Notificaciones
         ChangeNotifierProvider(create: (_) => NotificacionesProvider(notificacionRepo)),
+        // Chat
+        ChangeNotifierProvider(create: (_) => ChatProvider()),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
@@ -81,13 +85,14 @@ class _AppRouter extends StatelessWidget {
   Widget build(BuildContext context) {
     final status = context.select<AuthProvider, AuthStatus>((p) => p.status);
     final role = context.select<AuthProvider, String?>((p) => p.session?.role);
+    final hasSeenOnboarding = context.select<AuthProvider, bool>((p) => p.hasSeenOnboarding);
 
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 400),
       child: switch (status) {
         AuthStatus.unknown         => const _SplashScreen(),
         AuthStatus.authenticated   => role == 'company' ? const CompanyShell() : const CandidateShell(),
-        AuthStatus.unauthenticated => const LoginScreen(),
+        AuthStatus.unauthenticated => hasSeenOnboarding ? const LoginScreen() : const OnboardingScreen(),
       },
     );
   }

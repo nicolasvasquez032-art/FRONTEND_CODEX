@@ -256,18 +256,42 @@ class _MisVacantesScreenState extends State<MisVacantesScreen> {
       itemBuilder: (context, index) {
         final v = vacantes[index];
         return FadeInUp(
+          key: ValueKey('fade_${v.id}'),
           duration: const Duration(milliseconds: 500),
           delay: Duration(milliseconds: 100 * (index % 10)),
-          child: _VacanteCard(vacante: v),
+          child: _VacanteCard(key: ValueKey(v.id), vacante: v),
         );
       },
     );
   }
 }
 
-class _VacanteCard extends StatelessWidget {
+class _VacanteCard extends StatefulWidget {
   final Vacante vacante;
-  const _VacanteCard({required this.vacante});
+  const _VacanteCard({super.key, required this.vacante});
+
+  @override
+  State<_VacanteCard> createState() => _VacanteCardState();
+}
+
+class _VacanteCardState extends State<_VacanteCard> with SingleTickerProviderStateMixin {
+  late AnimationController _animController;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _opacityAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _animController = AnimationController(vsync: this, duration: const Duration(milliseconds: 350));
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.8).animate(CurvedAnimation(parent: _animController, curve: Curves.easeIn));
+    _opacityAnimation = Tween<double>(begin: 1.0, end: 0.0).animate(CurvedAnimation(parent: _animController, curve: Curves.easeOut));
+  }
+
+  @override
+  void dispose() {
+    _animController.dispose();
+    super.dispose();
+  }
 
   String _formatCurrency(double value) {
     final intValue = value.toInt();
@@ -279,99 +303,156 @@ class _VacanteCard extends StatelessWidget {
 
   String get _monedaDisplay {
     final reg = RegExp(r'\*Salario expresado en ([A-Z]{3})\*');
-    final match = reg.firstMatch(vacante.descripcion);
+    final match = reg.firstMatch(widget.vacante.descripcion);
     return match != null ? match.group(1)! : 'COP';
   }
 
   String get _descripcionLimpia {
-    return vacante.descripcion.replaceAll(RegExp(r'\n\n\*Salario expresado en [A-Z]{3}\*'), '');
+    return widget.vacante.descripcion.replaceAll(RegExp(r'\n\n\*Salario expresado en [A-Z]{3}\*'), '');
+  }
+
+  Future<void> _handleDelete() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Eliminar Vacante'),
+        content: const Text('¿Estás seguro de que deseas eliminar esta vacante de forma permanente?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true), 
+            child: const Text('Eliminar', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true && mounted) {
+      final provider = context.read<VacantesProvider>();
+      
+      // Reproduce la animación de salida
+      await _animController.forward();
+      
+      final ok = await provider.eliminarVacante(widget.vacante.id);
+      
+      if (mounted) {
+        if (ok) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Vacante eliminada'), backgroundColor: Colors.redAccent));
+        } else {
+          // Revertimos la animación si falla
+          _animController.reverse();
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(provider.error ?? 'Error al eliminar vacante')));
+        }
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final bool isActiva = vacante.estado == VacanteEstado.activa;
+    final bool isActiva = widget.vacante.estado == VacanteEstado.activa;
     
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: kNavy.withValues(alpha: 0.06), 
-            blurRadius: 15, 
-            offset: const Offset(0, 8),
-          )
-        ],
-        border: Border.all(color: kLine.withValues(alpha: 0.5)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 46,
-                height: 46,
-                decoration: BoxDecoration(
-                  gradient: kButtonGradient,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [BoxShadow(color: kBlue.withValues(alpha: 0.2), blurRadius: 8, offset: const Offset(0, 4))],
+    return AnimatedBuilder(
+      animation: _animController,
+      builder: (context, child) {
+        return Opacity(
+          opacity: _opacityAnimation.value,
+          child: Transform.scale(
+            scale: _scaleAnimation.value,
+            child: child,
+          ),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: kNavy.withValues(alpha: 0.06), 
+              blurRadius: 15, 
+              offset: const Offset(0, 8),
+            )
+          ],
+          border: Border.all(color: kLine.withValues(alpha: 0.5)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 46,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    gradient: kButtonGradient,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [BoxShadow(color: kBlue.withValues(alpha: 0.2), blurRadius: 8, offset: const Offset(0, 4))],
+                  ),
+                  child: const Icon(Icons.business_center, color: Colors.white, size: 22),
                 ),
-                child: const Icon(Icons.business_center, color: Colors.white, size: 22),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      vacante.titulo,
-                      style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: kNavy, height: 1.2),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      vacante.categoria ?? 'Sin categoría',
-                      style: const TextStyle(fontSize: 12, color: kBlue, fontWeight: FontWeight.w600),
-                    ),
-                  ],
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.vacante.titulo,
+                        style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: kNavy, height: 1.2),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        widget.vacante.categoria ?? 'Sin categoría',
+                        style: const TextStyle(fontSize: 12, color: kBlue, fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(width: 10),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: (isActiva ? Colors.green : Colors.orange).withValues(alpha: 0.1),
+                const SizedBox(width: 10),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: (isActiva ? Colors.green : Colors.orange).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: (isActiva ? Colors.green : Colors.orange).withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          color: isActiva ? Colors.green : Colors.orange,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        widget.vacante.estado.name.toUpperCase(),
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          color: isActiva ? Colors.green : Colors.orange,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                InkWell(
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: (isActiva ? Colors.green : Colors.orange).withValues(alpha: 0.3)),
+                  onTap: _handleDelete,
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(color: Colors.red.withValues(alpha: 0.1), shape: BoxShape.circle),
+                  child: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 6,
-                      height: 6,
-                      decoration: BoxDecoration(
-                        color: isActiva ? Colors.green : Colors.orange,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      vacante.estado.name.toUpperCase(),
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800,
-                        color: isActiva ? Colors.green : Colors.orange,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ],
-                ),
-              )
+              ),
             ],
           ),
           const Padding(
@@ -396,7 +477,7 @@ class _VacanteCard extends StatelessWidget {
                     const Icon(Icons.location_on_outlined, size: 14, color: kNavy),
                     const SizedBox(width: 4),
                     Text(
-                      vacante.ubicacion,
+                      widget.vacante.ubicacion,
                       style: const TextStyle(fontSize: 11, color: kNavy, fontWeight: FontWeight.w600),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -405,11 +486,11 @@ class _VacanteCard extends StatelessWidget {
                 ),
               ),
               const Spacer(),
-              if (vacante.salarioMin != null) ...[
+              if (widget.vacante.salarioMin != null) ...[
                 const Icon(Icons.monetization_on, size: 16, color: kBlue),
                 const SizedBox(width: 4),
                 Text(
-                  '${_formatCurrency(vacante.salarioMin!)} $_monedaDisplay',
+                  '${_formatCurrency(widget.vacante.salarioMin!)} $_monedaDisplay',
                   style: const TextStyle(fontSize: 14, color: kNavy, fontWeight: FontWeight.w800),
                 ),
               ] else ...[
@@ -426,7 +507,7 @@ class _VacanteCard extends StatelessWidget {
                   onPressed: () {
                     Navigator.push(
                       context, 
-                      MaterialPageRoute(builder: (_) => JobDetailScreen(vacante: vacante))
+                      MaterialPageRoute(builder: (_) => JobDetailScreen(vacante: widget.vacante))
                     );
                   },
                   child: SizedBox(
@@ -449,7 +530,7 @@ class _VacanteCard extends StatelessWidget {
                   onPressed: () {
                     Navigator.push(
                       context, 
-                      MaterialPageRoute(builder: (_) => CandidatosVacanteScreen(vacante: vacante))
+                      MaterialPageRoute(builder: (_) => CandidatosVacanteScreen(vacante: widget.vacante))
                     );
                   },
                   child: SizedBox(
@@ -482,6 +563,6 @@ class _VacanteCard extends StatelessWidget {
           ),
         ],
       ),
-    );
+    ));
   }
 }

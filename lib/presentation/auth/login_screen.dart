@@ -1,5 +1,8 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:animate_do/animate_do.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../core/constants/app_colors.dart';
 import '../shared/providers/auth_provider.dart';
 import '../shared/widgets/brand_logo.dart';
@@ -54,155 +57,274 @@ class _LoginScreenState extends State<LoginScreen>
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     return Scaffold(
-      backgroundColor: kBg,
-      body: SafeArea(
-        child: FadeTransition(
-          opacity: _fadeAnim,
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 28),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 48),
-                // ── Logotipo ──
-                Center(child: BrandLogo(size: 64)),
-                const SizedBox(height: 18),
-                Center(
-                  child: Text(
-                    'TalentMatch',
-                    style: TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.w800,
-                      color: kNavy,
-                    ),
-                  ),
-                ),
-                Center(
-                  child: Text(
-                    'Empleo inteligente para tu futuro',
-                    style: TextStyle(fontSize: 13, color: kMuted),
-                  ),
-                ),
-                const SizedBox(height: 48),
-
-                // ── Encabezado ──
-                Text(
-                  'Iniciar sesión',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                    color: kNavy,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Bienvenido de vuelta',
-                  style: TextStyle(fontSize: 13, color: kMuted),
-                ),
-                const SizedBox(height: 28),
-
-                // ── Formulario ──
-                Form(
-                  key: _formKey,
-                  child: Column(
-                    children: [
-                      _Field(
-                        controller: _emailCtrl,
-                        label: 'Correo electrónico',
-                        hint: 'tu@correo.com',
-                        icon: Icons.email_outlined,
-                        keyboardType: TextInputType.emailAddress,
-                        validator: (v) {
-                          if (v == null || v.isEmpty) return 'Campo obligatorio';
-                          if (!v.contains('@')) return 'Correo inválido';
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 14),
-                      _Field(
-                        controller: _passwordCtrl,
-                        label: 'Contraseña',
-                        hint: '••••••••',
-                        icon: Icons.lock_outline,
-                        obscure: _obscure,
-                        suffix: IconButton(
-                          icon: Icon(
-                            _obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                            color: kMuted,
-                          ),
-                          onPressed: () => setState(() => _obscure = !_obscure),
-                        ),
-                        validator: (v) {
-                          if (v == null || v.isEmpty) return 'Campo obligatorio';
-                          if (v.length < 8) return 'Mínimo 8 caracteres';
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 10),
-
-                      // ── ¿Olvidaste tu contraseña? ──
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton(
-                          onPressed: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
-                          ),
-                          child: Text(
-                            '¿Olvidaste tu contraseña?',
-                            style: TextStyle(color: kBlue, fontSize: 12, fontWeight: FontWeight.w600),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-
-                      // ── Botón ──
-                      _GradientButton(
-                        text: 'Iniciar sesión',
-                        loading: auth.loading,
-                        onPressed: _submit,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 32),
-
-                // ── Divisor ──
-                Row(children: [
-                  const Expanded(child: Divider()),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: Text('o', style: TextStyle(color: kMuted, fontSize: 12)),
-                  ),
-                  const Expanded(child: Divider()),
-                ]),
-                const SizedBox(height: 24),
-
-                // ── Registro ──
-                Center(
-                  child: Wrap(
-                    alignment: WrapAlignment.center,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      Text('¿No tienes cuenta?', style: TextStyle(color: kMuted, fontSize: 13)),
-                      TextButton(
-                        onPressed: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const RegisterScreen()),
-                        ),
-                        child: Text(
-                          'Crear cuenta',
-                          style: TextStyle(color: kBlue, fontWeight: FontWeight.w700, fontSize: 13),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 24),
-              ],
+      backgroundColor: const Color(0xFFF4F7FC),
+      body: Stack(
+        children: [
+          // Background Glows
+          Positioned(
+            top: -100,
+            left: -100,
+            child: Container(
+              width: 300,
+              height: 300,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: kBlue.withOpacity(0.15),
+              ),
             ),
           ),
-        ),
+          Positioned(
+            bottom: -50,
+            right: -50,
+            child: Container(
+              width: 250,
+              height: 250,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: kPurple.withOpacity(0.15),
+              ),
+            ),
+          ),
+          BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 40, sigmaY: 40),
+            child: Container(color: Colors.transparent),
+          ),
+
+          // Main Content
+          SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const SizedBox(height: 20),
+                    // ── Logotipo ──
+                    FadeInDown(
+                      duration: const Duration(milliseconds: 600),
+                      child: Center(
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: kNavy.withOpacity(0.05),
+                                blurRadius: 20,
+                                offset: const Offset(0, 10),
+                              ),
+                            ],
+                          ),
+                          child: const BrandLogo(size: 54),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    
+                    FadeInUp(
+                      duration: const Duration(milliseconds: 600),
+                      delay: const Duration(milliseconds: 100),
+                      child: const Text(
+                        'TalentMatch',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w900,
+                          color: kNavy,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                    ),
+                    FadeInUp(
+                      duration: const Duration(milliseconds: 600),
+                      delay: const Duration(milliseconds: 200),
+                      child: const Text(
+                        'Empleo inteligente para tu futuro',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 14, color: kMuted, fontWeight: FontWeight.w500),
+                      ),
+                    ),
+                    const SizedBox(height: 40),
+
+                    // ── Formulario Glassmorphism ──
+                    FadeInUp(
+                      duration: const Duration(milliseconds: 600),
+                      delay: const Duration(milliseconds: 300),
+                      child: Container(
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.6),
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(color: Colors.white, width: 1.5),
+                          boxShadow: [
+                            BoxShadow(
+                              color: kNavy.withOpacity(0.03),
+                              blurRadius: 30,
+                              offset: const Offset(0, 15),
+                            ),
+                          ],
+                        ),
+                        child: Form(
+                          key: _formKey,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Iniciar sesión',
+                                style: TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w800,
+                                  color: kNavy,
+                                ),
+                              ),
+                              const SizedBox(height: 24),
+                              _Field(
+                                controller: _emailCtrl,
+                                label: 'Correo electrónico',
+                                hint: 'tu@correo.com',
+                                icon: Icons.email_outlined,
+                                keyboardType: TextInputType.emailAddress,
+                                validator: (v) {
+                                  if (v == null || v.isEmpty) return 'Campo obligatorio';
+                                  if (!v.contains('@')) return 'Correo inválido';
+                                  return null;
+                                },
+                              ),
+                              const SizedBox(height: 16),
+                              _Field(
+                                controller: _passwordCtrl,
+                                label: 'Contraseña',
+                                hint: '••••••••',
+                                icon: Icons.lock_outline,
+                                obscure: _obscure,
+                                suffix: IconButton(
+                                  icon: Icon(
+                                    _obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                                    color: kMuted,
+                                  ),
+                                  onPressed: () => setState(() => _obscure = !_obscure),
+                                ),
+                                validator: (v) {
+                                  if (v == null || v.isEmpty) return 'Campo obligatorio';
+                                  if (v.length < 8) return 'Mínimo 8 caracteres';
+                                  return null;
+                                },
+                              ),
+                              const SizedBox(height: 8),
+
+                              // ── ¿Olvidaste tu contraseña? ──
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: TextButton(
+                                  onPressed: () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
+                                  ),
+                                  child: const Text(
+                                    '¿Olvidaste tu contraseña?',
+                                    style: TextStyle(color: kBlue, fontSize: 13, fontWeight: FontWeight.w700),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+
+                              // ── Botón ──
+                              _GradientButton(
+                                text: 'Iniciar sesión',
+                                loading: auth.loading,
+                                onPressed: _submit,
+                              ),
+                              const SizedBox(height: 24),
+
+                              // ── Divisor O ──
+                              Row(
+                                children: [
+                                  Expanded(child: Divider(color: kNavy.withOpacity(0.1))),
+                                  const Padding(
+                                    padding: EdgeInsets.symmetric(horizontal: 16),
+                                    child: Text('O continuar con', style: TextStyle(color: kMuted, fontSize: 12)),
+                                  ),
+                                  Expanded(child: Divider(color: kNavy.withOpacity(0.1))),
+                                ],
+                              ),
+                              const SizedBox(height: 24),
+
+                              // ── Botones Sociales ──
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: OutlinedButton.icon(
+                                      onPressed: () {
+                                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Integración con Google próximamente')));
+                                      },
+                                      style: OutlinedButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(vertical: 14),
+                                        backgroundColor: Colors.white.withOpacity(0.8),
+                                        side: BorderSide(color: kNavy.withOpacity(0.1)),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                      ),
+                                      icon: FaIcon(FontAwesomeIcons.google, color: const Color(0xFFDB4437), size: 18),
+                                      label: const Text('Google', style: TextStyle(color: kNavy, fontWeight: FontWeight.w700, fontSize: 13)),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: OutlinedButton.icon(
+                                      onPressed: () {
+                                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Integración con LinkedIn próximamente')));
+                                      },
+                                      style: OutlinedButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(vertical: 14),
+                                        backgroundColor: Colors.white.withOpacity(0.8),
+                                        side: BorderSide(color: kNavy.withOpacity(0.1)),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                      ),
+                                      icon: FaIcon(FontAwesomeIcons.linkedin, color: const Color(0xFF0077B5), size: 18),
+                                      label: const Text('LinkedIn', style: TextStyle(color: kNavy, fontWeight: FontWeight.w700, fontSize: 13)),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+
+                    // ── Registro ──
+                    FadeInUp(
+                      duration: const Duration(milliseconds: 600),
+                      delay: const Duration(milliseconds: 400),
+                      child: Center(
+                        child: Wrap(
+                          alignment: WrapAlignment.center,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            const Text('¿No tienes cuenta?', style: TextStyle(color: kMuted, fontSize: 14)),
+                            TextButton(
+                              onPressed: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (_) => const RegisterScreen()),
+                              ),
+                              child: const Text(
+                                'Crear cuenta',
+                                style: TextStyle(color: kBlue, fontWeight: FontWeight.w800, fontSize: 14),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 40),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -254,6 +376,21 @@ class _Field extends StatelessWidget {
               hintText: hint,
               prefixIcon: Icon(icon, color: kMuted, size: 20),
               suffixIcon: suffix,
+              filled: true,
+              fillColor: Colors.white.withOpacity(0.9),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: kNavy.withOpacity(0.05)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: kBlue, width: 1.5),
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             ),
           ),
         ],

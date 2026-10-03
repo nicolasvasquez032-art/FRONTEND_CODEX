@@ -1,7 +1,12 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
+import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/network/api_client.dart';
+import '../../core/storage/secure_storage.dart';
+import '../shared/providers/auth_provider.dart';
 import '../shared/widgets/bouncy_tap.dart';
 
 class PremiumSubscriptionScreen extends StatefulWidget {
@@ -15,14 +20,38 @@ class _PremiumSubscriptionScreenState extends State<PremiumSubscriptionScreen> {
   int _selectedPlan = 1; // 0 = Free, 1 = Pro
   bool _isProcessing = false;
 
-  void _simularPago() {
+  Future<void> _iniciarPagoReal() async {
     setState(() => _isProcessing = true);
-    Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) {
-        setState(() => _isProcessing = false);
-        _showSuccessDialog();
+    try {
+      final session = context.read<AuthProvider>().session;
+      if (session == null) throw Exception("No hay sesión activa.");
+
+      final body = {
+        "empresa_id": session.userId,
+        "email": "contacto@tuempresa.com", // Modificable por el usuario en MercadoPago
+      };
+
+      final response = await ApiClient(SecureStorage()).post('/pagos/crear-preferencia-pro', body);
+      
+      if (response != null && response['init_point'] != null) {
+        final url = Uri.parse(response['init_point']);
+        if (await canLaunchUrl(url)) {
+          await launchUrl(url, mode: LaunchMode.externalApplication);
+          // Si quisieras, aquí podrías esperar a que el usuario vuelva a la app
+          // y revisar en el servidor si su cuenta ya es PRO.
+        } else {
+          throw Exception("No se pudo abrir la pasarela de pagos.");
+        }
+      } else {
+        throw Exception("Error de respuesta del servidor.");
       }
-    });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error al iniciar pago: $e"), backgroundColor: Colors.red),
+      );
+    } finally {
+      if (mounted) setState(() => _isProcessing = false);
+    }
   }
 
   void _showSuccessDialog() {
@@ -188,7 +217,7 @@ class _PremiumSubscriptionScreenState extends State<PremiumSubscriptionScreen> {
                         ),
                         const SizedBox(height: 24),
                         BouncyTap(
-                          onPressed: _selectedPlan == 1 ? (_isProcessing ? null : _simularPago) : () => Navigator.pop(context),
+                          onPressed: _selectedPlan == 1 ? (_isProcessing ? null : _iniciarPagoReal) : () => Navigator.pop(context),
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 300),
                             width: double.infinity,
@@ -221,7 +250,7 @@ class _PremiumSubscriptionScreenState extends State<PremiumSubscriptionScreen> {
                           children: [
                             Icon(Icons.lock_outline, size: 14, color: Colors.white.withValues(alpha: 0.4)),
                             const SizedBox(width: 6),
-                            Text('Pagos procesados por Stripe', style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 12)),
+                            Text('Pagos procesados por Mercado Pago', style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 12)),
                           ],
                         )
                       ],

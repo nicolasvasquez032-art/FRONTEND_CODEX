@@ -4,11 +4,13 @@ class UserSession {
   final String userId;
   final String profileId;
   final String role; // 'candidate' | 'company' | 'admin'
+  final bool isPremium;
 
   const UserSession({
     required this.userId,
     required this.profileId,
     required this.role,
+    this.isPremium = false,
   });
 
   bool get isCandidate => role == 'candidate';

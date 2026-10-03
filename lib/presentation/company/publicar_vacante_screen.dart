@@ -6,7 +6,8 @@ import '../shared/widgets/colombia_location_picker.dart';
 import 'package:flutter/services.dart';
 
 class PublicarVacanteScreen extends StatefulWidget {
-  const PublicarVacanteScreen({super.key});
+  final VoidCallback? onPublished;
+  const PublicarVacanteScreen({super.key, this.onPublished});
 
   @override
   State<PublicarVacanteScreen> createState() => _PublicarVacanteScreenState();
@@ -78,6 +79,7 @@ class _PublicarVacanteScreenState extends State<PublicarVacanteScreen> {
           _categoriaSeleccionada = 'Tecnología';
           _monedaSeleccionada = 'COP';
         });
+        widget.onPublished?.call();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(provider.error ?? 'Error al publicar la vacante')),
@@ -115,7 +117,7 @@ class _PublicarVacanteScreenState extends State<PublicarVacanteScreen> {
                   label: 'Título de la vacante',
                   hint: 'Ej. Desarrollador Flutter Senior',
                   icon: Icons.work_outline,
-                  validator: (v) => v!.isEmpty ? 'Requerido' : null,
+                  validator: (v) => v!.isEmpty ? 'Requerido' : (v.length < 5 ? 'Mínimo 5 caracteres' : null),
                 ),
                 const SizedBox(height: 16),
                 
@@ -171,7 +173,8 @@ class _PublicarVacanteScreenState extends State<PublicarVacanteScreen> {
                         hint: '0',
                         icon: Icons.attach_money,
                         keyboardType: TextInputType.number,
-                        inputFormatters: [_CurrencyInputFormatter()],
+                        inputFormatters: [LengthLimitingTextInputFormatter(14), _CurrencyInputFormatter()],
+                        validator: (v) => (v != null && v.length > 13) ? 'Cantidad máxima de caracteres' : null,
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -182,7 +185,8 @@ class _PublicarVacanteScreenState extends State<PublicarVacanteScreen> {
                         hint: '0',
                         icon: Icons.attach_money,
                         keyboardType: TextInputType.number,
-                        inputFormatters: [_CurrencyInputFormatter()],
+                        inputFormatters: [LengthLimitingTextInputFormatter(14), _CurrencyInputFormatter()],
+                        validator: (v) => (v != null && v.length > 13) ? 'Cantidad máxima de caracteres' : null,
                       ),
                     ),
                   ],

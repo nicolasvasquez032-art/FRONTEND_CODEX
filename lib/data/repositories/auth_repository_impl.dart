@@ -33,6 +33,7 @@ class AuthRepositoryImpl implements AuthRepository {
       userId: '',
       profileId: '',
       role: 'candidate',
+      isPremium: false,
     );
 
     // 3. Obtener el perfil del candidato para extraer user_id y profile_id
@@ -48,13 +49,14 @@ class AuthRepositoryImpl implements AuthRepository {
       userId: session.userId,
       profileId: session.profileId,
       role: session.role,
+      isPremium: session.isPremium,
     );
 
     // Obtener el profile_id real desde el backend (el JWT no lo incluye)
     final profileId = await _fetchProfileId();
     if (profileId.isNotEmpty) {
       await _storage.saveProfileId(profileId);
-      return UserSession(userId: session.userId, profileId: profileId, role: session.role);
+      return UserSession(userId: session.userId, profileId: profileId, role: session.role, isPremium: session.isPremium);
     }
 
     return session;
@@ -139,7 +141,8 @@ class AuthRepositoryImpl implements AuthRepository {
     final userId    = await _storage.getUserId() ?? '';
     final profileId = await _storage.getProfileId() ?? '';
     final role      = await _storage.getRole() ?? 'candidate';
-    return UserSession(userId: userId, profileId: profileId, role: role);
+    final isPremium = await _storage.getIsPremium();
+    return UserSession(userId: userId, profileId: profileId, role: role, isPremium: isPremium);
   }
 
   // ──────────────────────────────────────────────
@@ -182,11 +185,14 @@ class AuthRepositoryImpl implements AuthRepository {
       final userId    = claims['sub']?.toString() ?? '';
       final role      = claims['role']?.toString() ?? 'candidate';
       final profileId = claims['profile_id']?.toString() ?? '';
+      
+      final isPremiumStr = claims['is_premium']?.toString().toLowerCase();
+      final isPremium = (isPremiumStr == 'true' || isPremiumStr == '1');
 
-      return UserSession(userId: userId, profileId: profileId, role: role);
+      return UserSession(userId: userId, profileId: profileId, role: role, isPremium: isPremium);
     } catch (_) {
       // Fallback: sesión vacía (el usuario verá su perfil en blanco)
-      return const UserSession(userId: '', profileId: '', role: 'candidate');
+      return const UserSession(userId: '', profileId: '', role: 'candidate', isPremium: false);
     }
   }
 

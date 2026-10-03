@@ -135,6 +135,19 @@ class VacantesProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> eliminarVacante(String id) async {
+    try {
+      await _repo.eliminarVacante(id);
+      vacantes.removeWhere((v) => v.id == id);
+      notifyListeners();
+      return true;
+    } catch (e) {
+      error = e is ApiException ? e.message : 'Error al eliminar vacante.';
+      notifyListeners();
+      return false;
+    }
+  }
+
   void setQuery(String q) {
     _query = q;
     notifyListeners();

@@ -24,4 +24,7 @@ abstract class VacanteRepository {
     double? latitud,
     double? longitud,
   });
+
+  /// Elimina una vacante creada por esta empresa.
+  Future<void> eliminarVacante(String id);
 }
