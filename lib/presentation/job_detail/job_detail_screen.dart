@@ -402,7 +402,7 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
       ),
 
       // ── Botón flotante de postulación ──
-      bottomNavigationBar: _PostularseBar(
+      bottomNavigationBar: session?.role == 'company' ? null : _PostularseBar(
         vacante: vacante,
         yaPostulado: yaPostulado,
         candidatoId: session?.profileId ?? '',

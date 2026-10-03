@@ -13,6 +13,7 @@ class VacantesProvider extends ChangeNotifier {
   VacantesStatus status = VacantesStatus.initial;
   List<Vacante> vacantes = [];
   String? error;
+  bool loadingPub = false;
 
   // Filtros activos
   String? _ubicacion;
@@ -92,6 +93,46 @@ class VacantesProvider extends ChangeNotifier {
       status = VacantesStatus.error;
     }
     notifyListeners();
+  }
+
+  Future<bool> publicarVacante({
+    required String titulo,
+    required String descripcion,
+    required List<String> requisitos,
+    required String ubicacion,
+    required String categoria,
+    double? salarioMin,
+    double? salarioMax,
+  }) async {
+    loadingPub = true;
+    error = null;
+    notifyListeners();
+
+    try {
+      final nuevaVacante = await _repo.publicarVacante(
+        titulo: titulo,
+        descripcion: descripcion,
+        requisitos: requisitos,
+        ubicacion: ubicacion,
+        categoria: categoria,
+        salarioMin: salarioMin,
+        salarioMax: salarioMax,
+      );
+      vacantes.insert(0, nuevaVacante);
+      loadingPub = false;
+      notifyListeners();
+      return true;
+    } on ApiException catch (e) {
+      error = e.message;
+      loadingPub = false;
+      notifyListeners();
+      return false;
+    } catch (_) {
+      error = 'Sin conexión. Verifica tu red.';
+      loadingPub = false;
+      notifyListeners();
+      return false;
+    }
   }
 
   void setQuery(String q) {

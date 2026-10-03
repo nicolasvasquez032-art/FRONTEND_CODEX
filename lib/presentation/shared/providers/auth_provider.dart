@@ -94,6 +94,32 @@ class AuthProvider extends ChangeNotifier {
   }
 
   // ──────────────────────────────────────────────
+  // Registro empresa
+  // ──────────────────────────────────────────────
+
+  Future<void> registerCompany({
+    required String email,
+    required String password,
+  }) async {
+    _setLoading(true);
+    try {
+      await _repo.registerCompany(
+        email: email,
+        password: password,
+      );
+      error  = null;
+    } on ApiException catch (e) {
+      error  = _mapError(e);
+      status = AuthStatus.unauthenticated;
+    } catch (_) {
+      error  = 'Sin conexión a internet.';
+      status = AuthStatus.unauthenticated;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // ──────────────────────────────────────────────
   // Recuperar contraseña
   // ──────────────────────────────────────────────
 

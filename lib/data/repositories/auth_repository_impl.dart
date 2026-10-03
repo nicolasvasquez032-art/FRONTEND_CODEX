@@ -91,6 +91,25 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   // ──────────────────────────────────────────────
+  // Registro empresa
+  // ──────────────────────────────────────────────
+
+  @override
+  Future<void> registerCompany({
+    required String email,
+    required String password,
+  }) async {
+    await _api.post(
+      '/auth/registro/empresa',
+      {
+        'email': email,
+        'password': password,
+      },
+      auth: false,
+    );
+  }
+
+  // ──────────────────────────────────────────────
   // Recuperar contraseña
   // ──────────────────────────────────────────────
 

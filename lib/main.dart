@@ -20,6 +20,7 @@ import 'presentation/shared/providers/recomendaciones_provider.dart';
 import 'presentation/shared/providers/vacantes_provider.dart';
 import 'presentation/shared/providers/notificaciones_provider.dart';
 import 'presentation/shell/candidate_shell.dart';
+import 'presentation/shell/company_shell.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -79,12 +80,13 @@ class _AppRouter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final status = context.select<AuthProvider, AuthStatus>((p) => p.status);
+    final role = context.select<AuthProvider, String?>((p) => p.session?.role);
 
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 400),
       child: switch (status) {
         AuthStatus.unknown         => const _SplashScreen(),
-        AuthStatus.authenticated   => const CandidateShell(),
+        AuthStatus.authenticated   => role == 'company' ? const CompanyShell() : const CandidateShell(),
         AuthStatus.unauthenticated => const LoginScreen(),
       },
     );

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1020908302582",
+    "project_id": "talentmatch-df6e1",
+    "storage_bucket": "talentmatch-df6e1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1020908302582:android:05e09dae952cfe2be7bcd7",
+        "android_client_info": {
+          "package_name": "co.talentmatch.talentmatch"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCGBVNweEDevZJeQXVN9wtLOen3FqBcBog"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

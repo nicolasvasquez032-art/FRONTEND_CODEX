@@ -33,4 +33,34 @@ class VacanteRepositoryImpl implements VacanteRepository {
     final raw = await _api.get('/vacantes/$id', auth: true);
     return VacanteModel.fromJson(raw).toEntity();
   }
+
+  @override
+  Future<Vacante> publicarVacante({
+    required String titulo,
+    required String descripcion,
+    required List<String> requisitos,
+    required String ubicacion,
+    required String categoria,
+    double? salarioMin,
+    double? salarioMax,
+    double? latitud,
+    double? longitud,
+  }) async {
+    final response = await _api.post(
+      '/vacantes',
+      {
+        'titulo': titulo,
+        'descripcion': descripcion,
+        'requisitos': requisitos,
+        'ubicacion': ubicacion,
+        'categoria': categoria,
+        if (salarioMin != null) 'salario_min': salarioMin,
+        if (salarioMax != null) 'salario_max': salarioMax,
+        if (latitud != null) 'latitud': latitud,
+        if (longitud != null) 'longitud': longitud,
+      },
+      auth: true,
+    );
+    return VacanteModel.fromJson(response as Map<String, dynamic>).toEntity();
+  }
 }
