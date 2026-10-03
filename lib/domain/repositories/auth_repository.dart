@@ -19,6 +19,11 @@ abstract class AuthRepository {
     String? education,
   });
 
+  Future<void> registerCompany({
+    required String email,
+    required String password,
+  });
+
   /// Envía un correo de recuperación de contraseña.
   Future<void> requestPasswordReset(String email);
 

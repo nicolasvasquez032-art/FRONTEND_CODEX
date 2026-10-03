@@ -23,7 +23,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _educationCtrl    = TextEditingController();
   final _expCtrl          = TextEditingController(text: '0');
   bool _obscure           = true;
-  int _step               = 0; // 0 = datos básicos, 1 = perfil profesional
+  int _step               = 0; // 0 = datos básicos, 1 = perfil profesional (solo candidato)
+  bool _isCompany         = false; // true = Registro Empresa, false = Registro Candidato
 
   @override
   void dispose() {
@@ -41,21 +42,29 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     final auth = context.read<AuthProvider>();
-    final skills = _skillsCtrl.text
-        .split(',')
-        .map((s) => s.trim())
-        .where((s) => s.isNotEmpty)
-        .toList();
 
-    await auth.registerCandidate(
-      email: _emailCtrl.text.trim(),
-      password: _passwordCtrl.text,
-      fullName: _fullNameCtrl.text.trim(),
-      skills: skills,
-      experienceYears: int.tryParse(_expCtrl.text) ?? 0,
-      location: _locationCtrl.text.trim().isEmpty ? null : _locationCtrl.text.trim(),
-      education: _educationCtrl.text.trim().isEmpty ? null : _educationCtrl.text.trim(),
-    );
+    if (_isCompany) {
+      await auth.registerCompany(
+        email: _emailCtrl.text.trim(),
+        password: _passwordCtrl.text,
+      );
+    } else {
+      final skills = _skillsCtrl.text
+          .split(',')
+          .map((s) => s.trim())
+          .where((s) => s.isNotEmpty)
+          .toList();
+
+      await auth.registerCandidate(
+        email: _emailCtrl.text.trim(),
+        password: _passwordCtrl.text,
+        fullName: _fullNameCtrl.text.trim(),
+        skills: skills,
+        experienceYears: int.tryParse(_expCtrl.text) ?? 0,
+        location: _locationCtrl.text.trim().isEmpty ? null : _locationCtrl.text.trim(),
+        education: _educationCtrl.text.trim().isEmpty ? null : _educationCtrl.text.trim(),
+      );
+    }
 
     if (mounted) {
       if (auth.error != null) {
@@ -95,9 +104,39 @@ class _RegisterScreenState extends State<RegisterScreen> {
             children: [
               const SizedBox(height: 24),
 
-              // ── Paso indicador ──
-              _StepIndicator(current: _step, total: 2),
-              const SizedBox(height: 28),
+              // ── Paso indicador (solo si es candidato) ──
+              if (!_isCompany) ...[
+                _StepIndicator(current: _step, total: 2),
+                const SizedBox(height: 28),
+              ],
+
+              // ── Toggle Empresa / Candidato ──
+              if (_step == 0)
+                Center(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: kLine,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    padding: const EdgeInsets.all(4),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _RoleToggleBtn(
+                          title: 'Candidato',
+                          active: !_isCompany,
+                          onTap: () => setState(() => _isCompany = false),
+                        ),
+                        _RoleToggleBtn(
+                          title: 'Empresa',
+                          active: _isCompany,
+                          onTap: () => setState(() => _isCompany = true),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              const SizedBox(height: 24),
 
               Text(
                 _step == 0 ? 'Crear cuenta' : 'Tu perfil profesional',
@@ -108,7 +147,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               const SizedBox(height: 6),
               Text(
                 _step == 0
-                    ? 'Primero, tus datos de acceso'
+                    ? (_isCompany ? 'Registra tu empresa para publicar vacantes' : 'Primero, tus datos de acceso')
                     : 'Cuéntanos sobre ti para mejores recomendaciones',
                 style: const TextStyle(fontSize: 13, color: kMuted),
               ),
@@ -128,9 +167,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
               // ── Botón ──
               _GradientButton(
-                text: _step == 0 ? 'Continuar' : 'Crear cuenta',
+                text: _step == 0 ? (_isCompany ? 'Registrar Empresa' : 'Continuar') : 'Crear cuenta',
                 loading: auth.loading,
-                onPressed: _step == 0 ? _nextStep : _submit,
+                onPressed: (_step == 0 && !_isCompany) ? _nextStep : _submit,
               ),
               const SizedBox(height: 20),
 
@@ -162,14 +201,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget _buildStep0() => Column(
         key: const ValueKey(0),
         children: [
-          _LabeledField(
-            controller: _fullNameCtrl,
-            label: 'Nombre completo',
-            hint: 'Ej. Andrés Gómez',
-            icon: Icons.person_outline,
-            validator: (v) => (v == null || v.trim().length < 2) ? 'Mínimo 2 caracteres' : null,
-          ),
-          const SizedBox(height: 14),
+          if (!_isCompany) ...[
+            _LabeledField(
+              controller: _fullNameCtrl,
+              label: 'Nombre completo',
+              hint: 'Ej. Andrés Gómez',
+              icon: Icons.person_outline,
+              validator: (v) => (v == null || v.trim().length < 2) ? 'Mínimo 2 caracteres' : null,
+            ),
+            const SizedBox(height: 14),
+          ],
           _LabeledField(
             controller: _emailCtrl,
             label: 'Correo electrónico',
@@ -327,7 +368,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   void _nextStep() {
     // Validar solo los campos del paso 0
-    if (_fullNameCtrl.text.trim().length < 2) {
+    if (!_isCompany && _fullNameCtrl.text.trim().length < 2) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Ingresa tu nombre completo.')),
       );
@@ -372,6 +413,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
+    if (_isCompany) {
+      // Si es empresa, en teoría no deberíamos estar llamando a _nextStep, pero por si acaso.
+      return;
+    }
     setState(() => _step = 1);
   }
 }
@@ -401,6 +446,40 @@ class _StepIndicator extends StatelessWidget {
           );
         }),
       );
+}
+
+class _RoleToggleBtn extends StatelessWidget {
+  final String title;
+  final bool active;
+  final VoidCallback onTap;
+
+  const _RoleToggleBtn({required this.title, required this.active, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+        decoration: BoxDecoration(
+          color: active ? Colors.white : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: active
+              ? [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4, offset: const Offset(0, 2))]
+              : null,
+        ),
+        child: Text(
+          title,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: active ? FontWeight.bold : FontWeight.w600,
+            color: active ? kNavy : kMuted,
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _LabeledField extends StatelessWidget {

@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_strings.dart';
 import '../shared/providers/auth_provider.dart';
+import '../shared/providers/notificaciones_provider.dart';
 import '../shared/widgets/brand_logo.dart';
 
 // Las pantallas de contenido se importarán aquí en Sprints F-2 a F-6.
@@ -14,6 +15,7 @@ import '../home/home_screen.dart';
 import '../explore/explore_screen.dart';
 import '../applications/applications_screen.dart';
 import '../profile/profile_screen.dart';
+import '../profile/notifications_screen.dart';
 
 class CandidateShell extends StatefulWidget {
   const CandidateShell({super.key});
@@ -25,6 +27,17 @@ class CandidateShell extends StatefulWidget {
 class _CandidateShellState extends State<CandidateShell> {
   int _tab = 0;
   bool _isNavBarVisible = true;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final userId = context.read<AuthProvider>().session?.userId ?? '';
+      if (userId.isNotEmpty) {
+        context.read<NotificacionesProvider>().cargar(userId);
+      }
+    });
+  }
 
   void _setNavBarVisibility(bool isVisible) {
     if (_isNavBarVisible != isVisible) {
@@ -69,6 +82,43 @@ class _CandidateShellState extends State<CandidateShell> {
           ),
         ),
         actions: [
+          // Ícono de notificaciones con badge
+          Consumer<NotificacionesProvider>(
+            builder: (context, np, child) {
+              return Stack(
+                alignment: Alignment.center,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.notifications_none, color: kNavy, size: 28),
+                    onPressed: () {
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationsScreen()));
+                    },
+                  ),
+                  if (np.noLeidasCount > 0)
+                    Positioned(
+                      right: 10,
+                      top: 10,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: Colors.redAccent,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Text(
+                          '${np.noLeidasCount > 9 ? '+9' : np.noLeidasCount}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
+          const SizedBox(width: 8),
           // Avatar del usuario
           Padding(
             padding: const EdgeInsets.only(right: 16),
