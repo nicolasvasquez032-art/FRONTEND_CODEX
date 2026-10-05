@@ -168,6 +168,7 @@ class AuthProvider extends ChangeNotifier {
     session = null;
     status = AuthStatus.unauthenticated;
     error = null;
+    loading = false;
     notifyListeners();
   }
 
