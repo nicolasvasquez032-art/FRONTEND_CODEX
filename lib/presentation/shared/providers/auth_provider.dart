@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:talentmatch/core/network/api_client.dart';
 import 'package:talentmatch/domain/entities/user_session.dart';
@@ -13,9 +15,9 @@ class AuthProvider extends ChangeNotifier {
     _init();
   }
 
-  AuthStatus status  = AuthStatus.unknown;
+  AuthStatus status = AuthStatus.unknown;
   UserSession? session;
-  bool loading       = false;
+  bool loading = false;
   String? error;
   bool hasSeenOnboarding = false;
 
@@ -27,13 +29,13 @@ class AuthProvider extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       hasSeenOnboarding = prefs.getBool('has_seen_onboarding') ?? false;
-      
+
       final s = await _repo.restoreSession();
       if (s != null) {
         session = s;
-        status  = AuthStatus.authenticated;
+        status = AuthStatus.authenticated;
       } else {
-        status  = AuthStatus.unauthenticated;
+        status = AuthStatus.unauthenticated;
       }
     } catch (_) {
       status = AuthStatus.unauthenticated;
@@ -55,14 +57,22 @@ class AuthProvider extends ChangeNotifier {
   Future<void> login(String email, String password) async {
     _setLoading(true);
     try {
-      session = await _repo.login(email: email, password: password);
-      status  = AuthStatus.authenticated;
-      error   = null;
+      // El repositorio hace el login y, para candidatos, obtiene el perfil.
+      // Un límite global evita que el botón quede cargando indefinidamente si
+      // alguna de esas dos peticiones queda retenida por la red.
+      session = await _repo
+          .login(email: email, password: password)
+          .timeout(const Duration(seconds: 20));
+      status = AuthStatus.authenticated;
+      error = null;
+    } on TimeoutException {
+      error = 'El servidor tardó demasiado en responder. Verifica tu conexión e inténtalo de nuevo.';
+      status = AuthStatus.unauthenticated;
     } on ApiException catch (e) {
       error = _mapError(e);
       status = AuthStatus.unauthenticated;
     } catch (_) {
-      error  = 'Sin conexión a internet.';
+      error = 'Sin conexión a internet.';
       status = AuthStatus.unauthenticated;
     } finally {
       _setLoading(false);
@@ -93,12 +103,12 @@ class AuthProvider extends ChangeNotifier {
         location: location,
         education: education,
       );
-      error  = null;
+      error = null;
     } on ApiException catch (e) {
-      error  = _mapError(e);
+      error = _mapError(e);
       status = AuthStatus.unauthenticated;
     } catch (_) {
-      error  = 'Sin conexión a internet.';
+      error = 'Sin conexión a internet.';
       status = AuthStatus.unauthenticated;
     } finally {
       _setLoading(false);
@@ -115,16 +125,13 @@ class AuthProvider extends ChangeNotifier {
   }) async {
     _setLoading(true);
     try {
-      await _repo.registerCompany(
-        email: email,
-        password: password,
-      );
-      error  = null;
+      await _repo.registerCompany(email: email, password: password);
+      error = null;
     } on ApiException catch (e) {
-      error  = _mapError(e);
+      error = _mapError(e);
       status = AuthStatus.unauthenticated;
     } catch (_) {
-      error  = 'Sin conexión a internet.';
+      error = 'Sin conexión a internet.';
       status = AuthStatus.unauthenticated;
     } finally {
       _setLoading(false);
@@ -159,8 +166,8 @@ class AuthProvider extends ChangeNotifier {
   Future<void> logout() async {
     await _repo.logout();
     session = null;
-    status  = AuthStatus.unauthenticated;
-    error   = null;
+    status = AuthStatus.unauthenticated;
+    error = null;
     notifyListeners();
   }
 
@@ -180,11 +187,16 @@ class AuthProvider extends ChangeNotifier {
 
   String _mapError(ApiException e) {
     switch (e.statusCode) {
-      case 401: return 'Correo o contraseña incorrectos.';
-      case 409: return 'Este correo ya está registrado.';
-      case 422: return 'Datos inválidos. Revisa los campos.';
-      case 500: return 'Error del servidor. Intenta más tarde.';
-      default:  return e.message;
+      case 401:
+        return 'Correo o contraseña incorrectos.';
+      case 409:
+        return 'Este correo ya está registrado.';
+      case 422:
+        return 'Datos inválidos. Revisa los campos.';
+      case 500:
+        return 'Error del servidor. Intenta más tarde.';
+      default:
+        return e.message;
     }
   }
 }
