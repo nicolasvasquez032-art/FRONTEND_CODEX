@@ -1,9 +1,19 @@
 import 'dart:convert';
+
 import 'package:http/http.dart' as http;
+
 import '../storage/secure_storage.dart';
 
-/// URL base del backend. Cambiar a IP real del servidor en producción.
-const String kBaseUrl = 'http://18.191.162.235:8000'; // IP para AWS EC2 Production
+/// URL base del backend.
+///
+/// Se puede reemplazar al compilar sin editar el código:
+/// `flutter build apk --dart-define=API_BASE_URL=https://api.tu-dominio.com`
+/// Mantener la URL fuera del binario evita que una IP pública nueva de EC2
+/// deje a las versiones ya compiladas apuntando a un servidor inexistente.
+const String kBaseUrl = String.fromEnvironment(
+  'API_BASE_URL',
+  defaultValue: 'http://18.191.162.235:8000',
+);
 
 class ApiException implements Exception {
   final int statusCode;
@@ -102,7 +112,11 @@ class ApiClient {
   }) async {
     final uri = Uri.parse('$kBaseUrl$path');
     final res = await http
-        .post(uri, headers: await _headers(auth: auth), body: jsonEncode(body))
+        .post(
+          uri,
+          headers: await _headers(auth: auth),
+          body: jsonEncode(body),
+        )
         .timeout(const Duration(seconds: 15));
     return _decode(res);
   }
@@ -141,10 +155,7 @@ class ApiClient {
   // DELETE
   // ──────────────────────────────────────────────
 
-  Future<void> delete(
-    String path, {
-    bool auth = true,
-  }) async {
+  Future<void> delete(String path, {bool auth = true}) async {
     final uri = Uri.parse('$kBaseUrl$path');
     final res = await http
         .delete(uri, headers: await _headers(auth: auth))
@@ -171,11 +182,9 @@ class ApiClient {
     final uri = Uri.parse('$kBaseUrl$path');
     final request = http.MultipartRequest('POST', uri);
     if (token != null) request.headers['Authorization'] = 'Bearer $token';
-    request.files.add(http.MultipartFile.fromBytes(
-      'file',
-      fileBytes,
-      filename: fileName,
-    ));
+    request.files.add(
+      http.MultipartFile.fromBytes('file', fileBytes, filename: fileName),
+    );
     final streamed = await request.send().timeout(const Duration(seconds: 30));
     final res = await http.Response.fromStream(streamed);
     return _decode(res);
