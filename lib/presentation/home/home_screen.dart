@@ -117,40 +117,9 @@ class _HomeScreenState extends State<HomeScreen> {
     final bottomPadding = MediaQuery.paddingOf(context).bottom + 100;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F7FC),
-      body: Stack(
-        children: [
-          // Background Glows
-          Positioned(
-            top: -150,
-            left: -100,
-            child: Container(
-              width: 350,
-              height: 350,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: kBlue.withOpacity(0.15),
-              ),
-            ),
-          ),
-          Positioned(
-            top: 200,
-            right: -100,
-            child: Container(
-              width: 300,
-              height: 300,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: kPurple.withOpacity(0.12),
-              ),
-            ),
-          ),
-          BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 50, sigmaY: 50),
-            child: Container(color: Colors.transparent),
-          ),
-
-          CustomScrollView(
+      extendBodyBehindAppBar: true,
+      backgroundColor: Colors.transparent, // Background now handled by CandidateShell
+      body: CustomScrollView(
             physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
             slivers: [
               CupertinoSliverRefreshControl(
@@ -207,16 +176,20 @@ class _HomeScreenState extends State<HomeScreen> {
                       duration: const Duration(milliseconds: 600),
                       child: GestureDetector(
                         onTap: widget.onExplore,
-                        child: Container(
-                          height: 58,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.8),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: Colors.white, width: 1.5),
-                            boxShadow: [
-                              BoxShadow(color: kNavy.withOpacity(0.04), blurRadius: 20, offset: const Offset(0, 8)),
-                            ],
-                          ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(20),
+                          child: BackdropFilter(
+                            filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                            child: Container(
+                              height: 58,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.65),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: Colors.white.withValues(alpha: 0.8), width: 1.5),
+                                boxShadow: [
+                                  BoxShadow(color: kNavy.withValues(alpha: 0.05), blurRadius: 20, offset: const Offset(0, 8)),
+                                ],
+                              ),
                           padding: const EdgeInsets.only(left: 16, right: 8),
                           child: Row(
                             children: [
@@ -245,7 +218,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 4),
+                  ),
+                ),
+                const SizedBox(height: 4),
 
                     // ── Sección principal: IA o fallback ─────────────────
                     if (rProvider.status == RecomendacionesStatus.loading ||
@@ -292,8 +267,6 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ],
           ),
-        ],
-      ),
     );
   }
 
@@ -476,20 +449,24 @@ class _JobCard extends StatelessWidget {
         context,
         MaterialPageRoute(builder: (_) => JobDetailScreen(vacante: vacante, heroTagTitle: 'home_title_${vacante.id}')),
       ),
-      child: Container(
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.85),
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: Colors.white, width: 1.5),
-          boxShadow: [
-            BoxShadow(
-              color: kNavy.withOpacity(0.04),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+          child: Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.65),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.8), width: 1.5),
+              boxShadow: [
+                BoxShadow(
+                  color: kNavy.withValues(alpha: 0.05),
+                  blurRadius: 20,
+                  offset: const Offset(0, 8),
+                ),
+              ],
             ),
-          ],
-        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -584,7 +561,9 @@ class _JobCard extends StatelessWidget {
           ],
         ),
       ),
-    );
+    ),
+  ),
+);
   }
 }
 
@@ -742,16 +721,20 @@ class _FeatureCard extends StatelessWidget {
   const _FeatureCard(this.icon, this.title, this.text);
 
   @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.85),
-          border: Border.all(color: Colors.white, width: 1.5),
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(color: kNavy.withOpacity(0.03), blurRadius: 15, offset: const Offset(0, 8)),
-          ]
-        ),
+  Widget build(BuildContext context) => ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.65),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.8), width: 1.5),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(color: kNavy.withValues(alpha: 0.03), blurRadius: 15, offset: const Offset(0, 8)),
+              ]
+            ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -769,5 +752,7 @@ class _FeatureCard extends StatelessWidget {
             Text(text, style: const TextStyle(color: kMuted, fontSize: 11, height: 1.45)),
           ],
         ),
-      );
+      ),
+    ),
+  );
 }

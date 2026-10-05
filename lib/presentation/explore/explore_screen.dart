@@ -210,20 +210,24 @@ class _ExploreCard extends StatelessWidget {
         context,
         MaterialPageRoute(builder: (_) => JobDetailScreen(vacante: vacante, heroTagTitle: 'explore_title_${vacante.id}')),
       ),
-      child: Container(
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: kLine.withValues(alpha: 0.5), width: 1),
-          boxShadow: [
-            BoxShadow(
-              color: kNavy.withValues(alpha: 0.04),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+          child: Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.65),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.8), width: 1.5),
+              boxShadow: [
+                BoxShadow(
+                  color: kNavy.withValues(alpha: 0.05),
+                  blurRadius: 20,
+                  offset: const Offset(0, 8),
+                ),
+              ],
             ),
-          ],
-        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -317,7 +321,9 @@ class _ExploreCard extends StatelessWidget {
           ],
         ),
       ),
-    );
+    ),
+  ),
+);
   }
 }
 

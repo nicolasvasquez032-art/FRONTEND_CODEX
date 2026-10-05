@@ -39,12 +39,19 @@ class ChatProvider extends ChangeNotifier {
   List<Message> get messages => _messages;
   bool get isConnected => _isConnected;
 
-  void connect(String userId) {
+  /// Conecta al WebSocket autenticado.
+  ///
+  /// [userId] — UUID del usuario autenticado.
+  /// [token]  — JWT access_token obtenido al hacer login. Se envía como
+  ///            query param `?token=` para que el backend valide la identidad.
+  void connect(String userId, String token) {
     if (_isConnected) return;
-    
-    // IP para AWS EC2 Production
-    final wsUrl = Uri.parse('ws://18.191.162.235:8000/chat/ws/$userId');
-    
+
+    // IP para AWS EC2 Production — token JWT como query param para autenticación
+    final wsUrl = Uri.parse(
+      'ws://18.191.162.235:8000/chat/ws/$userId?token=${Uri.encodeComponent(token)}',
+    );
+
     try {
       _channel = WebSocketChannel.connect(wsUrl);
       _isConnected = true;
@@ -54,8 +61,6 @@ class ChatProvider extends ChangeNotifier {
         (data) {
           final decoded = jsonDecode(data);
           final newMessage = Message.fromJson(decoded);
-          
-          // Agregamos el mensaje nuevo (o lo actualizamos)
           _messages.add(newMessage);
           notifyListeners();
         },
@@ -77,16 +82,13 @@ class ChatProvider extends ChangeNotifier {
 
   void sendMessage(String roomId, String senderId, String content) {
     if (!_isConnected || _channel == null) return;
-    
+
     final payload = {
       'room_id': roomId,
       'content': content,
     };
-    
+
     _channel!.sink.add(jsonEncode(payload));
-    
-    // We can optimistically add the message to the UI here if we want,
-    // but our backend logic echoes the message back to the sender, so we just wait.
   }
 
   void disconnect() {
@@ -95,7 +97,7 @@ class ChatProvider extends ChangeNotifier {
     _messages.clear();
     notifyListeners();
   }
-  
+
   @override
   void dispose() {
     disconnect();

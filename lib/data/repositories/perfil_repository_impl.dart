@@ -30,6 +30,10 @@ class PerfilRepositoryImpl implements PerfilRepository {
     required int experienceYears,
     String? location,
     String? education,
+    String? phone,
+    String? portfolioUrl,
+    String? aboutMe,
+    String? jobTitle,
   }) async {
     final body = <String, dynamic>{
       'full_name': fullName,
@@ -37,6 +41,10 @@ class PerfilRepositoryImpl implements PerfilRepository {
       'experience_years': experienceYears,
       if (location != null && location.isNotEmpty) 'location': location,
       if (education != null && education.isNotEmpty) 'education': education,
+      if (phone != null && phone.isNotEmpty) 'phone': phone,
+      if (portfolioUrl != null && portfolioUrl.isNotEmpty) 'portfolio_url': portfolioUrl,
+      if (aboutMe != null && aboutMe.isNotEmpty) 'about_me': aboutMe,
+      if (jobTitle != null && jobTitle.isNotEmpty) 'job_title': jobTitle,
     };
     final raw = await _api.put('/perfiles/$profileId', body);
     return ProfileModel.fromJson(raw);

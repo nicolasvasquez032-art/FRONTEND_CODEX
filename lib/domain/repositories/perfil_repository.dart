@@ -14,6 +14,10 @@ abstract class PerfilRepository {
     required int experienceYears,
     String? location,
     String? education,
+    String? phone,
+    String? portfolioUrl,
+    String? aboutMe,
+    String? jobTitle,
   });
 
   /// Sube el CV (PDF / JPG / PNG / WEBP) via POST /perfiles/{profileId}/cv

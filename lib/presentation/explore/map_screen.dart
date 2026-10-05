@@ -41,27 +41,37 @@ class _MapScreenState extends State<MapScreen> {
     super.dispose();
   }
 
+  // Helper para resolver ubicación si vienen en null
+  LatLng _getCoordinates(Vacante vacante) {
+    if (vacante.latitud != null && vacante.longitud != null) {
+      return LatLng(vacante.latitud!, vacante.longitud!);
+    }
+    final loc = vacante.ubicacion.toLowerCase();
+    if (loc.contains('fusagasugá') || loc.contains('fusagasuga')) return const LatLng(4.33646, -74.36378);
+    if (loc.contains('bogotá') || loc.contains('bogota')) return const LatLng(4.60971, -74.08175);
+    if (loc.contains('medellín') || loc.contains('medellin')) return const LatLng(6.2442, -75.5812);
+    if (loc.contains('cali')) return const LatLng(3.4516, -76.5320);
+    if (loc.contains('barranquilla')) return const LatLng(10.9639, -74.7964);
+    if (loc.contains('bucaramanga')) return const LatLng(7.1254, -73.1198);
+    
+    return const LatLng(4.6097, -74.0817); // Bogotá por defecto
+  }
+
   @override
   Widget build(BuildContext context) {
     final vp = context.watch<VacantesProvider>();
-    final vacantesConUbicacion = vp.filtered
-        .where((v) => v.latitud != null && v.longitud != null)
+    
+    // Filtrar remoto y resolver coordenadas para todas las demás
+    final vacantesEnMapa = vp.filtered
+        .where((v) => v.ubicacion.toLowerCase() != 'remoto')
         .toList();
 
-    // Centro por defecto (puedes ajustar a la ciudad por defecto del backend)
-    var center = const LatLng(4.6097, -74.0817); // Bogotá, Colombia por defecto
-    if (widget.focusedVacante != null &&
-        widget.focusedVacante!.latitud != null &&
-        widget.focusedVacante!.longitud != null) {
-      center = LatLng(
-        widget.focusedVacante!.latitud!,
-        widget.focusedVacante!.longitud!,
-      );
-    } else if (vacantesConUbicacion.isNotEmpty) {
-      center = LatLng(
-        vacantesConUbicacion.first.latitud!,
-        vacantesConUbicacion.first.longitud!,
-      );
+    var center = const LatLng(4.6097, -74.0817); 
+    
+    if (widget.focusedVacante != null && widget.focusedVacante!.ubicacion.toLowerCase() != 'remoto') {
+      center = _getCoordinates(widget.focusedVacante!);
+    } else if (vacantesEnMapa.isNotEmpty) {
+      center = _getCoordinates(vacantesEnMapa.first);
     }
 
     return Scaffold(
@@ -77,7 +87,7 @@ class _MapScreenState extends State<MapScreen> {
         mapController: _mapController,
         options: MapOptions(
           initialCenter: center,
-          initialZoom: 12.0,
+          initialZoom: 13.0,
         ),
         children: [
           TileLayer(
@@ -85,19 +95,21 @@ class _MapScreenState extends State<MapScreen> {
             userAgentPackageName: 'co.talentmatch.talentmatch',
           ),
           MarkerLayer(
-            markers: vacantesConUbicacion.map((vacante) {
+            markers: vacantesEnMapa.map((vacante) {
+              final pos = _getCoordinates(vacante);
+              final isFocused = widget.focusedVacante?.id == vacante.id;
               return Marker(
-                point: LatLng(vacante.latitud!, vacante.longitud!),
-                width: 40,
-                height: 40,
+                point: pos,
+                width: isFocused ? 50 : 40,
+                height: isFocused ? 50 : 40,
                 child: GestureDetector(
                   onTap: () {
                     _showJobPreview(context, vacante);
                   },
-                  child: const Icon(
+                  child: Icon(
                     Icons.location_on,
-                    color: kBlue,
-                    size: 40,
+                    color: isFocused ? Colors.red : kBlue,
+                    size: isFocused ? 50 : 40,
                   ),
                 ),
               );

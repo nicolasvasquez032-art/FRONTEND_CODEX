@@ -1,3 +1,4 @@
+import 'dart:convert';
 import '../../core/network/api_client.dart';
 import '../../core/storage/secure_storage.dart';
 import '../../domain/entities/user_session.dart';
@@ -162,6 +163,7 @@ class AuthRepositoryImpl implements AuthRepository {
 
   /// Decodifica el payload del JWT (base64url) para extraer `sub` y `role`.
   /// No verifica la firma — solo lee los claims para uso interno en el cliente.
+  /// Usa dart:convert jsonDecode para parsear correctamente JSON con cualquier tipo de valor.
   UserSession _decodeJwtSession(String token) {
     try {
       final parts = token.split('.');
@@ -174,20 +176,16 @@ class AuthRepositoryImpl implements AuthRepository {
         payload += '=';
       }
 
-      final decoded = String.fromCharCodes(
-        Uri.parse(
-          'data:application/octet-stream;base64,$payload',
-        ).data!.contentAsBytes(),
-      );
+      final decoded = utf8.decode(base64Decode(payload));
 
-      // El payload del JWT del backend incluye: sub (user_id), role, profile_id
-      final claims = _parseSimpleJson(decoded);
+      // Parsear con jsonDecode estándar — soporta cualquier valor JSON válido
+      final claims = jsonDecode(decoded) as Map<String, dynamic>;
       final userId    = claims['sub']?.toString() ?? '';
       final role      = claims['role']?.toString() ?? 'candidate';
       final profileId = claims['profile_id']?.toString() ?? '';
-      
-      final isPremiumStr = claims['is_premium']?.toString().toLowerCase();
-      final isPremium = (isPremiumStr == 'true' || isPremiumStr == '1');
+
+      final isPremiumRaw = claims['is_premium'];
+      final isPremium = isPremiumRaw == true || isPremiumRaw.toString().toLowerCase() == 'true';
 
       return UserSession(userId: userId, profileId: profileId, role: role, isPremium: isPremium);
     } catch (_) {
@@ -195,19 +193,5 @@ class AuthRepositoryImpl implements AuthRepository {
       return const UserSession(userId: '', profileId: '', role: 'candidate', isPremium: false);
     }
   }
-
-  /// Parser JSON simple para el payload JWT (evita importar dart:convert dos veces).
-  Map<String, dynamic> _parseSimpleJson(String json) {
-    final map = <String, dynamic>{};
-    final cleaned = json.trim().replaceAll('{', '').replaceAll('}', '');
-    for (final entry in cleaned.split(',')) {
-      final parts = entry.split(':');
-      if (parts.length >= 2) {
-        final key = parts[0].trim().replaceAll('"', '');
-        final value = parts.sublist(1).join(':').trim().replaceAll('"', '');
-        map[key] = value;
-      }
-    }
-    return map;
-  }
 }
+
