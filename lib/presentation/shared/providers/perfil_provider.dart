@@ -60,6 +60,10 @@ class PerfilProvider extends ChangeNotifier {
     required int experienceYears,
     String? location,
     String? education,
+    String? phone,
+    String? portfolioUrl,
+    String? aboutMe,
+    String? jobTitle,
   }) async {
     saving = true;
     saveError = null;
@@ -73,6 +77,10 @@ class PerfilProvider extends ChangeNotifier {
         experienceYears: experienceYears,
         location: location,
         education: education,
+        phone: phone,
+        portfolioUrl: portfolioUrl,
+        aboutMe: aboutMe,
+        jobTitle: jobTitle,
       );
       saving = false;
       notifyListeners();

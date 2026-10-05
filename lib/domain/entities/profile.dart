@@ -8,6 +8,10 @@ class Profile {
   final String? location;
   final String? education;
   final String? cvText;
+  final String? phone;
+  final String? portfolioUrl;
+  final String? aboutMe;
+  final String? jobTitle;
 
   const Profile({
     required this.id,
@@ -18,6 +22,10 @@ class Profile {
     this.location,
     this.education,
     this.cvText,
+    this.phone,
+    this.portfolioUrl,
+    this.aboutMe,
+    this.jobTitle,
   });
 
   /// Inicial del nombre para el avatar.
@@ -30,6 +38,10 @@ class Profile {
     String? location,
     String? education,
     String? cvText,
+    String? phone,
+    String? portfolioUrl,
+    String? aboutMe,
+    String? jobTitle,
   }) =>
       Profile(
         id: id,
@@ -40,5 +52,9 @@ class Profile {
         location: location ?? this.location,
         education: education ?? this.education,
         cvText: cvText ?? this.cvText,
+        phone: phone ?? this.phone,
+        portfolioUrl: portfolioUrl ?? this.portfolioUrl,
+        aboutMe: aboutMe ?? this.aboutMe,
+        jobTitle: jobTitle ?? this.jobTitle,
       );
 }

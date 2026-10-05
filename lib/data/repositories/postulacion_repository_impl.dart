@@ -10,14 +10,13 @@ class PostulacionRepositoryImpl implements PostulacionRepository {
 
   @override
   Future<Postulacion> postularse({
-    required String candidatoId,
+    required String candidatoId,  // Ya no se envía al backend; el JWT lo resuelve
     required String vacanteId,
   }) async {
     final raw = await _api.post(
       '/postulaciones',
       {
-        'candidato_id': candidatoId,
-        'vacante_id': vacanteId,
+        'vacante_id': vacanteId,  // candidato_id se extrae del JWT en el backend
       },
       auth: true,
     );

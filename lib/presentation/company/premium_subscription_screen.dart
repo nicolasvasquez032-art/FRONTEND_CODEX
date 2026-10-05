@@ -35,13 +35,14 @@ class _PremiumSubscriptionScreenState extends State<PremiumSubscriptionScreen> {
       
       if (response != null && response['init_point'] != null) {
         final url = Uri.parse(response['init_point']);
-        if (await canLaunchUrl(url)) {
-          await launchUrl(url, mode: LaunchMode.externalApplication);
-          // Si quisieras, aquí podrías esperar a que el usuario vuelva a la app
-          // y revisar en el servidor si su cuenta ya es PRO.
-        } else {
+        // canLaunchUrl can give false negatives on newer Android versions or web.
+        // It's better to just try launching it directly.
+        final launched = await launchUrl(url, mode: LaunchMode.externalApplication);
+        if (!launched) {
           throw Exception("No se pudo abrir la pasarela de pagos.");
         }
+        // Si quisieras, aquí podrías esperar a que el usuario vuelva a la app
+        // y revisar en el servidor si su cuenta ya es PRO.
       } else {
         throw Exception("Error de respuesta del servidor.");
       }

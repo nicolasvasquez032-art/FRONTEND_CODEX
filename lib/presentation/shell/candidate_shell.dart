@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:animate_do/animate_do.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_strings.dart';
 import '../shared/providers/auth_provider.dart';
@@ -16,7 +17,7 @@ import '../explore/explore_screen.dart';
 import '../applications/applications_screen.dart';
 import '../profile/profile_screen.dart';
 import '../profile/notifications_screen.dart';
-import '../chat/chat_screen.dart';
+import '../chat/chat_list_screen.dart';
 
 class CandidateShell extends StatefulWidget {
   const CandidateShell({super.key});
@@ -67,6 +68,7 @@ class _CandidateShellState extends State<CandidateShell> {
     ];
 
     return Scaffold(
+      backgroundColor: const Color(0xFFEDF2FA),
       extendBody: true,
       extendBodyBehindAppBar: true,
       appBar: _tab == 3 ? null : AppBar(
@@ -126,11 +128,7 @@ class _CandidateShellState extends State<CandidateShell> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => const ChatScreen(
-                    roomId: '00000000-0000-0000-0000-000000000000', // Sala de prueba
-                    otherUserName: 'Google LLC (Prueba)',
-                    otherUserRole: 'Empresa',
-                  ),
+                  builder: (_) => const ChatListScreen(),
                 ),
               );
             },
@@ -177,9 +175,73 @@ class _CandidateShellState extends State<CandidateShell> {
           }
           return false;
         },
-        child: _PremiumIndexedStack(
-          index: _tab,
-          children: pages,
+        child: Stack(
+          children: [
+            // Background Glows animados globales
+            // 1. Orbe Superior Izquierdo (Azul eléctrico)
+            Positioned(
+              top: -150,
+              left: -150,
+              child: Pulse(
+                infinite: true,
+                duration: const Duration(seconds: 8),
+                child: Container(
+                  width: 500,
+                  height: 500,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: kBlue.withValues(alpha: 0.15), // Mucho más sutil
+                  ),
+                ),
+              ),
+            ),
+            // 2. Orbe Medio Derecho (Navy)
+            Positioned(
+              top: MediaQuery.of(context).size.height * 0.3,
+              right: -200,
+              child: Pulse(
+                infinite: true,
+                duration: const Duration(seconds: 12),
+                child: Container(
+                  width: 550,
+                  height: 550,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: kNavy.withValues(alpha: 0.08), // Mucho más sutil
+                  ),
+                ),
+              ),
+            ),
+            // 3. Orbe Inferior Izquierdo (Celeste)
+            Positioned(
+              bottom: -150,
+              left: -150,
+              child: Pulse(
+                infinite: true,
+                duration: const Duration(seconds: 10),
+                child: Container(
+                  width: 450,
+                  height: 450,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: const Color(0xFF38BDF8).withValues(alpha: 0.1), // Mucho más sutil
+                  ),
+                ),
+              ),
+            ),
+            // Cristal difuminado general (más blanco para aclarar)
+            Positioned.fill(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 100, sigmaY: 100),
+                child: Container(color: Colors.white.withValues(alpha: 0.45)), // Más blanco
+              ),
+            ),
+            // Contenido de la app
+            _PremiumIndexedStack(
+              index: _tab,
+              children: pages,
+            ),
+          ],
         ),
       ),
       bottomNavigationBar: AnimatedSlide(

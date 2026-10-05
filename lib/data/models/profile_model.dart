@@ -12,6 +12,10 @@ class ProfileModel extends Profile {
     super.location,
     super.education,
     super.cvText,
+    super.phone,
+    super.portfolioUrl,
+    super.aboutMe,
+    super.jobTitle,
   });
 
   factory ProfileModel.fromJson(Map<String, dynamic> json) => ProfileModel(
@@ -25,6 +29,10 @@ class ProfileModel extends Profile {
         location: json['location'] as String?,
         education: json['education'] as String?,
         cvText: json['cv_text'] as String?,
+        phone: json['phone'] as String?,
+        portfolioUrl: json['portfolio_url'] as String?,
+        aboutMe: json['about_me'] as String?,
+        jobTitle: json['job_title'] as String?,
       );
 
   Map<String, dynamic> toUpdateJson() => {
@@ -33,5 +41,9 @@ class ProfileModel extends Profile {
         'experience_years': experienceYears,
         if (location != null) 'location': location,
         if (education != null) 'education': education,
+        if (phone != null) 'phone': phone,
+        if (portfolioUrl != null) 'portfolio_url': portfolioUrl,
+        if (aboutMe != null) 'about_me': aboutMe,
+        if (jobTitle != null) 'job_title': jobTitle,
       };
 }

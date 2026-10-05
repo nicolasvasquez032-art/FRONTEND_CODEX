@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:animate_do/animate_do.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/storage/secure_storage.dart';
 import '../shared/providers/chat_provider.dart';
 import '../shared/providers/auth_provider.dart';
 
@@ -29,12 +30,17 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void initState() {
     super.initState();
-    // Connect to WebSocket using current user's ID
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    // Connect to WebSocket using current user's ID + JWT token for authentication
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       final auth = context.read<AuthProvider>();
       final chat = context.read<ChatProvider>();
       if (auth.session != null) {
-        chat.connect(auth.session!.userId);
+        // Obtener el token guardado en SecureStorage
+        final storage = SecureStorage();
+        final token = await storage.getToken() ?? '';
+        if (token.isNotEmpty) {
+          chat.connect(auth.session!.userId, token);
+        }
       }
     });
   }

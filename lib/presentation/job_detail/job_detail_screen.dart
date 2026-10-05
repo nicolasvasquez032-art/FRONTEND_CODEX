@@ -241,58 +241,83 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
                       ],
 
                       // Mini Map
-                      if (vacante.latitud != null && vacante.longitud != null && vacante.ubicacion.toLowerCase() != 'remoto') ...[
-                        const Text(
-                          'Ubicación',
-                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: kNavy),
-                        ),
-                        const SizedBox(height: 10),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
-                          child: SizedBox(
-                            height: 150,
-                            width: double.infinity,
-                            child: Stack(
+                      if (vacante.ubicacion.toLowerCase() != 'remoto') ...[
+                        Builder(
+                          builder: (context) {
+                            LatLng getCoordinates() {
+                              if (vacante.latitud != null && vacante.longitud != null) {
+                                return LatLng(vacante.latitud!, vacante.longitud!);
+                              }
+                              final loc = vacante.ubicacion.toLowerCase();
+                              if (loc.contains('fusagasugá') || loc.contains('fusagasuga')) return const LatLng(4.33646, -74.36378);
+                              if (loc.contains('bogotá') || loc.contains('bogota')) return const LatLng(4.60971, -74.08175);
+                              if (loc.contains('medellín') || loc.contains('medellin')) return const LatLng(6.2442, -75.5812);
+                              if (loc.contains('cali')) return const LatLng(3.4516, -76.5320);
+                              if (loc.contains('barranquilla')) return const LatLng(10.9639, -74.7964);
+                              // Fallback default: Centro de Colombia (Bogotá)
+                              return const LatLng(4.60971, -74.08175);
+                            }
+
+                            final mapCenter = getCoordinates();
+
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                FlutterMap(
-                                  options: MapOptions(
-                                    initialCenter: LatLng(vacante.latitud!, vacante.longitud!),
-                                    initialZoom: 14.0,
-                                    interactionOptions: const InteractionOptions(flags: InteractiveFlag.none),
-                                  ),
-                                  children: [
-                                    TileLayer(
-                                      urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                                      userAgentPackageName: 'co.talentmatch.talentmatch',
-                                    ),
-                                    MarkerLayer(
-                                      markers: [
-                                        Marker(
-                                          point: LatLng(vacante.latitud!, vacante.longitud!),
-                                          child: const Icon(Icons.location_on, color: kBlue, size: 40),
+                                const Text(
+                                  'Ubicación',
+                                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: kNavy),
+                                ),
+                                const SizedBox(height: 10),
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(16),
+                                  child: SizedBox(
+                                    height: 150,
+                                    width: double.infinity,
+                                    child: Stack(
+                                      children: [
+                                        FlutterMap(
+                                          options: MapOptions(
+                                            initialCenter: mapCenter,
+                                            initialZoom: 14.0,
+                                            interactionOptions: const InteractionOptions(flags: InteractiveFlag.none),
+                                          ),
+                                          children: [
+                                            TileLayer(
+                                              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                              userAgentPackageName: 'co.talentmatch.talentmatch',
+                                            ),
+                                            MarkerLayer(
+                                              markers: [
+                                                Marker(
+                                                  point: mapCenter,
+                                                  child: const Icon(Icons.location_on, color: kBlue, size: 40),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                        Positioned.fill(
+                                          child: Material(
+                                            color: Colors.transparent,
+                                            child: InkWell(
+                                              onTap: () {
+                                                Navigator.push(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                    builder: (_) => MapScreen(focusedVacante: vacante),
+                                                  ),
+                                                );
+                                              },
+                                            ),
+                                          ),
                                         ),
                                       ],
-                                    ),
-                                  ],
-                                ),
-                                Positioned.fill(
-                                  child: Material(
-                                    color: Colors.transparent,
-                                    child: InkWell(
-                                      onTap: () {
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (_) => MapScreen(focusedVacante: vacante),
-                                          ),
-                                        );
-                                      },
                                     ),
                                   ),
                                 ),
                               ],
-                            ),
-                          ),
+                            );
+                          },
                         ),
                         const SizedBox(height: 20),
                       ],
