@@ -33,7 +33,7 @@ class _PremiumSubscriptionScreenState extends State<PremiumSubscriptionScreen> {
 
       final response = await ApiClient(SecureStorage()).post('/pagos/crear-preferencia-pro', body);
       
-      if (response != null && response['init_point'] != null) {
+      if (response['init_point'] != null) {
         final url = Uri.parse(response['init_point']);
         // canLaunchUrl can give false negatives on newer Android versions or web.
         // It's better to just try launching it directly.
@@ -47,6 +47,7 @@ class _PremiumSubscriptionScreenState extends State<PremiumSubscriptionScreen> {
         throw Exception("Error de respuesta del servidor.");
       }
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Error al iniciar pago: $e"), backgroundColor: Colors.red),
       );

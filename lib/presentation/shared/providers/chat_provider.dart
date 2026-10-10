@@ -33,7 +33,7 @@ class Message {
 
 class ChatProvider extends ChangeNotifier {
   WebSocketChannel? _channel;
-  List<Message> _messages = [];
+  final List<Message> _messages = [];
   bool _isConnected = false;
 
   List<Message> get messages => _messages;

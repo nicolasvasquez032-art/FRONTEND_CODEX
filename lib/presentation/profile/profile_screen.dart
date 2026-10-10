@@ -6,8 +6,6 @@ import 'package:shimmer/shimmer.dart';
 import 'package:animate_do/animate_do.dart';
 
 import '../../core/constants/app_colors.dart';
-import '../../core/constants/app_strings.dart';
-import '../../core/theme/theme_ext.dart';
 import '../shared/providers/auth_provider.dart';
 import '../shared/providers/perfil_provider.dart';
 import '../shared/providers/postulaciones_provider.dart';
@@ -43,8 +41,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (pp.profile != null) {
       if (pp.profile!.skills.isNotEmpty) completeness += 30;
       if (pp.profile!.location?.isNotEmpty == true ||
-          pp.profile!.education?.isNotEmpty == true)
+          pp.profile!.education?.isNotEmpty == true) {
         completeness += 20;
+      }
       if (pp.profile!.experienceYears > 0) completeness += 10;
       if (pp.profile!.cvText?.isNotEmpty == true) completeness += 20;
     }

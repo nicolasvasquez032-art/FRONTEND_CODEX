@@ -41,7 +41,7 @@ class CandidatoDetailScreen extends StatelessWidget {
                       candidato['imagen'],
                       fit: BoxFit.cover,
                       alignment: Alignment.topCenter,
-                      errorBuilder: (context, _, __) => Container(
+                      errorBuilder: (context, _, _) => Container(
                         color: kBlue,
                         alignment: Alignment.center,
                         child: Text(

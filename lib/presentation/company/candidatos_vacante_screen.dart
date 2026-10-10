@@ -205,8 +205,8 @@ class _CandidatoCard extends StatelessWidget {
           context,
           PageRouteBuilder(
             transitionDuration: const Duration(milliseconds: 600),
-            pageBuilder: (_, __, ___) => CandidatoDetailScreen(candidato: candidato),
-            transitionsBuilder: (_, animation, __, child) => FadeTransition(opacity: animation, child: child),
+            pageBuilder: (_, _, _) => CandidatoDetailScreen(candidato: candidato),
+            transitionsBuilder: (_, animation, _, child) => FadeTransition(opacity: animation, child: child),
           )
         );
       },

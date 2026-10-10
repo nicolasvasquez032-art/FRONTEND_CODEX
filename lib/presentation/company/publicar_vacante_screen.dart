@@ -284,7 +284,7 @@ class _PublicarVacanteScreenState extends State<PublicarVacanteScreen> {
         const Text('Categoría', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: kMuted)),
         const SizedBox(height: 6),
         DropdownButtonFormField<String>(
-          value: _categoriaSeleccionada,
+          initialValue: _categoriaSeleccionada,
           icon: const Icon(Icons.keyboard_arrow_down, color: kMuted),
           decoration: InputDecoration(
             prefixIcon: const Icon(Icons.category_outlined, color: kMuted, size: 20),
@@ -313,7 +313,7 @@ class _PublicarVacanteScreenState extends State<PublicarVacanteScreen> {
         const Text('Moneda', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: kMuted)),
         const SizedBox(height: 6),
         DropdownButtonFormField<String>(
-          value: _monedaSeleccionada,
+          initialValue: _monedaSeleccionada,
           icon: const Icon(Icons.keyboard_arrow_down, color: kMuted),
           decoration: InputDecoration(
             prefixIcon: const Icon(Icons.monetization_on_outlined, color: kMuted, size: 20),

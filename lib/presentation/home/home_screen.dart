@@ -2,7 +2,6 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
-import 'package:lottie/lottie.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_strings.dart';
 import '../../core/theme/theme_ext.dart';
@@ -208,7 +207,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   ),
                                   borderRadius: BorderRadius.circular(14),
                                   boxShadow: [
-                                    BoxShadow(color: kBlue.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4)),
+                                    BoxShadow(color: kBlue.withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 4)),
                                   ],
                                 ),
                                 child: const Icon(Icons.tune_rounded, color: Colors.white, size: 20),
@@ -586,7 +585,7 @@ class _CompanyMark extends StatelessWidget {
         ),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
-          BoxShadow(color: kBlue.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 6)),
+          BoxShadow(color: kBlue.withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 6)),
         ],
       ),
       child: Text(
@@ -741,7 +740,7 @@ class _FeatureCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: kBlue.withOpacity(0.1),
+                color: kBlue.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(icon, color: kBlue, size: 20),

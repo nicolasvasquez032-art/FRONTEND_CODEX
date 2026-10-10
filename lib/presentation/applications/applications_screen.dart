@@ -347,8 +347,9 @@ class _TimelineTracker extends StatelessWidget {
 
   Widget _buildNode({required String label, required bool isActive, required bool isDone, required bool isError}) {
     Color color = kLine;
-    if (isError) color = const Color(0xFFEF4444);
-    else if (isActive) color = kBlue;
+    if (isError) {
+      color = const Color(0xFFEF4444);
+    } else if (isActive) color = kBlue;
 
     return Column(
       children: [

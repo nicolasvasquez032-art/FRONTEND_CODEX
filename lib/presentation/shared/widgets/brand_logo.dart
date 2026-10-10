@@ -15,7 +15,7 @@ class BrandLogo extends StatelessWidget {
           borderRadius: BorderRadius.circular(size * 0.29),
           boxShadow: [
             BoxShadow(
-              color: kNavy.withOpacity(0.08),
+              color: kNavy.withValues(alpha: 0.08),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),

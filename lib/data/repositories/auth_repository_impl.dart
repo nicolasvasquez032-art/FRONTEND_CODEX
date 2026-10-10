@@ -3,7 +3,6 @@ import '../../core/network/api_client.dart';
 import '../../core/storage/secure_storage.dart';
 import '../../domain/entities/user_session.dart';
 import '../../domain/repositories/auth_repository.dart';
-import '../models/profile_model.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
   final ApiClient _api;

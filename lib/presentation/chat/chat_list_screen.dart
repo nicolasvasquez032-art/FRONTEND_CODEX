@@ -1,9 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
-import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
-import '../shared/providers/auth_provider.dart';
 import 'chat_screen.dart';
 
 class ChatListScreen extends StatefulWidget {

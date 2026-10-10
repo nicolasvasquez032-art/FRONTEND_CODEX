@@ -112,7 +112,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               height: 300,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: kBlue.withOpacity(0.15),
+                color: kBlue.withValues(alpha: 0.15),
               ),
             ),
           ),
@@ -124,7 +124,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               height: 250,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: kPurple.withOpacity(0.15),
+                color: kPurple.withValues(alpha: 0.15),
               ),
             ),
           ),
@@ -159,7 +159,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       child: Center(
                         child: Container(
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.5),
+                            color: Colors.white.withValues(alpha: 0.5),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(color: Colors.white, width: 1.5),
                           ),
@@ -191,12 +191,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     child: Container(
                       padding: const EdgeInsets.all(24),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.6),
+                        color: Colors.white.withValues(alpha: 0.6),
                         borderRadius: BorderRadius.circular(24),
                         border: Border.all(color: Colors.white, width: 1.5),
                         boxShadow: [
                           BoxShadow(
-                            color: kNavy.withOpacity(0.03),
+                            color: kNavy.withValues(alpha: 0.03),
                             blurRadius: 30,
                             offset: const Offset(0, 15),
                           ),
@@ -240,12 +240,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             // ── Divisor O ──
                             Row(
                               children: [
-                                Expanded(child: Divider(color: kNavy.withOpacity(0.1))),
+                                Expanded(child: Divider(color: kNavy.withValues(alpha: 0.1))),
                                 const Padding(
                                   padding: EdgeInsets.symmetric(horizontal: 16),
                                   child: Text('O registrarse con', style: TextStyle(color: kMuted, fontSize: 12)),
                                 ),
-                                Expanded(child: Divider(color: kNavy.withOpacity(0.1))),
+                                Expanded(child: Divider(color: kNavy.withValues(alpha: 0.1))),
                               ],
                             ),
                             const SizedBox(height: 24),
@@ -260,8 +260,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     },
                                     style: OutlinedButton.styleFrom(
                                       padding: const EdgeInsets.symmetric(vertical: 14),
-                                      backgroundColor: Colors.white.withOpacity(0.8),
-                                      side: BorderSide(color: kNavy.withOpacity(0.1)),
+                                      backgroundColor: Colors.white.withValues(alpha: 0.8),
+                                      side: BorderSide(color: kNavy.withValues(alpha: 0.1)),
                                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                                     ),
                                     icon: FaIcon(FontAwesomeIcons.google, color: const Color(0xFFDB4437), size: 18),
@@ -276,8 +276,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     },
                                     style: OutlinedButton.styleFrom(
                                       padding: const EdgeInsets.symmetric(vertical: 14),
-                                      backgroundColor: Colors.white.withOpacity(0.8),
-                                      side: BorderSide(color: kNavy.withOpacity(0.1)),
+                                      backgroundColor: Colors.white.withValues(alpha: 0.8),
+                                      side: BorderSide(color: kNavy.withValues(alpha: 0.1)),
                                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                                     ),
                                     icon: FaIcon(FontAwesomeIcons.linkedin, color: const Color(0xFF0077B5), size: 18),
@@ -653,14 +653,14 @@ class _LabeledField extends StatelessWidget {
               prefixIcon: Icon(icon, color: kMuted, size: 20),
               suffixIcon: suffix,
               filled: true,
-              fillColor: Colors.white.withOpacity(0.9),
+              fillColor: Colors.white.withValues(alpha: 0.9),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide.none,
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: kNavy.withOpacity(0.05)),
+                borderSide: BorderSide(color: kNavy.withValues(alpha: 0.05)),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),

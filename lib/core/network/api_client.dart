@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../storage/secure_storage.dart';
 
@@ -72,7 +73,7 @@ class ApiClient {
   }
 
   // ──────────────────────────────────────────────
-  // GET
+  // GET (CON CACHÉ OFFLINE-FIRST)
   // ──────────────────────────────────────────────
 
   Future<Map<String, dynamic>> get(
@@ -82,10 +83,24 @@ class ApiClient {
   }) async {
     final uri = Uri.parse('$kBaseUrl$path')
         .replace(queryParameters: queryParams);
-    final res = await http
-        .get(uri, headers: await _headers(auth: auth))
-        .timeout(const Duration(seconds: 15));
-    return _decode(res);
+    try {
+      final res = await http
+          .get(uri, headers: await _headers(auth: auth))
+          .timeout(const Duration(seconds: 15));
+      
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('cache_$uri', res.body);
+      }
+      return _decode(res);
+    } catch (e) {
+      final prefs = await SharedPreferences.getInstance();
+      final cachedBody = prefs.getString('cache_$uri');
+      if (cachedBody != null) {
+        return jsonDecode(cachedBody) as Map<String, dynamic>;
+      }
+      throw ApiException(503, 'Sin conexión y sin datos en caché.');
+    }
   }
 
   Future<List<dynamic>> getList(
@@ -95,10 +110,24 @@ class ApiClient {
   }) async {
     final uri = Uri.parse('$kBaseUrl$path')
         .replace(queryParameters: queryParams);
-    final res = await http
-        .get(uri, headers: await _headers(auth: auth))
-        .timeout(const Duration(seconds: 15));
-    return _decodeList(res);
+    try {
+      final res = await http
+          .get(uri, headers: await _headers(auth: auth))
+          .timeout(const Duration(seconds: 15));
+          
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('cache_$uri', res.body);
+      }
+      return _decodeList(res);
+    } catch (e) {
+      final prefs = await SharedPreferences.getInstance();
+      final cachedBody = prefs.getString('cache_$uri');
+      if (cachedBody != null) {
+        return jsonDecode(cachedBody) as List<dynamic>;
+      }
+      throw ApiException(503, 'Sin conexión y sin datos en caché.');
+    }
   }
 
   // ──────────────────────────────────────────────
