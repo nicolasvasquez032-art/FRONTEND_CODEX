@@ -5,10 +5,11 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:animate_do/animate_do.dart';
 import '../../core/constants/app_colors.dart';
-import '../../core/constants/app_strings.dart';
+import '../../l10n/app_localizations.dart';
 import '../shared/providers/auth_provider.dart';
 import '../shared/providers/notificaciones_provider.dart';
 import '../shared/widgets/brand_logo.dart';
+import '../shared/widgets/language_switch_button.dart';
 
 // Las pantallas de contenido se importarán aquí en Sprints F-2 a F-6.
 // Por ahora usamos placeholders visuales idénticos al wireframe.
@@ -59,6 +60,7 @@ class _CandidateShellState extends State<CandidateShell> {
     final auth    = context.watch<AuthProvider>();
     final session = auth.session;
     final initial = session != null && session.userId.isNotEmpty ? 'T' : 'T';
+    final l10n    = AppLocalizations.of(context);
 
     final pages = [
       HomeScreen(key: const ValueKey(0), onExplore: () => _goTo(1)),
@@ -133,7 +135,9 @@ class _CandidateShellState extends State<CandidateShell> {
               );
             },
           ),
-          const SizedBox(width: 8),
+          // Selector de idioma rápido
+          const LanguageSwitchButton(),
+          const SizedBox(width: 4),
           // Avatar del usuario
           Padding(
             padding: const EdgeInsets.only(right: 16),
@@ -143,11 +147,11 @@ class _CandidateShellState extends State<CandidateShell> {
                 final ok = await showDialog<bool>(
                   context: context,
                   builder: (_) => AlertDialog(
-                    title: const Text('Cerrar sesión'),
-                    content: const Text('¿Deseas cerrar sesión?'),
+                    title: Text(l10n.profileLogout),
+                    content: Text(l10n.profileLogoutConfirm),
                     actions: [
-                      TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
-                      TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Sí, salir')),
+                      TextButton(onPressed: () => Navigator.pop(context, false), child: Text(l10n.commonCancel)),
+                      TextButton(onPressed: () => Navigator.pop(context, true), child: Text(l10n.commonConfirm)),
                     ],
                   ),
                 );
@@ -279,26 +283,26 @@ class _CandidateShellState extends State<CandidateShell> {
                   labelBehavior: NavigationDestinationLabelBehavior.alwaysHide,
                   selectedIndex: _tab,
                   onDestinationSelected: _goTo,
-                  destinations: const [
+                  destinations: [
                     NavigationDestination(
-                      icon: Icon(Icons.home_outlined),
-                      selectedIcon: Icon(Icons.home, color: kBlue),
-                      label: AppStrings.navHome,
+                      icon: const Icon(Icons.home_outlined),
+                      selectedIcon: const Icon(Icons.home, color: kBlue),
+                      label: l10n.navHome,
                     ),
                     NavigationDestination(
-                      icon: Icon(Icons.search),
-                      selectedIcon: Icon(Icons.search, color: kBlue),
-                      label: AppStrings.navExplore,
+                      icon: const Icon(Icons.search),
+                      selectedIcon: const Icon(Icons.search, color: kBlue),
+                      label: l10n.navExplore,
                     ),
                     NavigationDestination(
-                      icon: Icon(Icons.fact_check_outlined),
-                      selectedIcon: Icon(Icons.fact_check, color: kBlue),
-                      label: AppStrings.navApplications,
+                      icon: const Icon(Icons.fact_check_outlined),
+                      selectedIcon: const Icon(Icons.fact_check, color: kBlue),
+                      label: l10n.navApplications,
                     ),
                     NavigationDestination(
-                      icon: Icon(Icons.person_outline),
-                      selectedIcon: Icon(Icons.person, color: kBlue),
-                      label: AppStrings.navProfile,
+                      icon: const Icon(Icons.person_outline),
+                      selectedIcon: const Icon(Icons.person, color: kBlue),
+                      label: l10n.navProfile,
                     ),
                   ],
                 ),

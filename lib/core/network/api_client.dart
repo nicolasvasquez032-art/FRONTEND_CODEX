@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:ui' as ui;
 
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -34,8 +35,26 @@ class ApiClient {
   // Métodos base
   // ──────────────────────────────────────────────
 
+  /// Obtiene el código de idioma activo ('es' o 'en')
+  Future<String> _getLanguageCode() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final code = prefs.getString('selected_language_code');
+      if (code != null && code.isNotEmpty) return code;
+    } catch (_) {}
+    try {
+      final systemCode = ui.PlatformDispatcher.instance.locale.languageCode.toLowerCase();
+      if (systemCode.startsWith('en')) return 'en';
+    } catch (_) {}
+    return 'es';
+  }
+
   Future<Map<String, String>> _headers({bool auth = true}) async {
-    final headers = <String, String>{'Content-Type': 'application/json'};
+    final lang = await _getLanguageCode();
+    final headers = <String, String>{
+      'Content-Type': 'application/json',
+      'Accept-Language': lang,
+    };
     if (auth) {
       final token = await _storage.getToken();
       if (token != null) headers['Authorization'] = 'Bearer $token';
@@ -61,6 +80,25 @@ class ApiClient {
     throw ApiException(res.statusCode, body);
   }
 
+  static const Map<String, String> _errorTranslations = {
+    'Credenciales inválidas': 'Invalid credentials',
+    'Credenciales incorrectas': 'Incorrect credentials',
+    'El correo ya está registrado': 'Email is already registered',
+    'Email ya registrado': 'Email is already registered',
+    'Usuario no encontrado': 'User not found',
+    'Perfil no encontrado': 'Profile not found',
+    'Acceso denegado': 'Access denied',
+    'No autorizado': 'Unauthorized',
+    'No autorizado para ver estas notificaciones': 'Not authorized to view these notifications',
+    'Vacante no encontrada': 'Job vacancy not found',
+    'No se encontró la vacante': 'Job vacancy not found',
+    'Ya te has postulado a esta vacante': 'You have already applied to this job vacancy',
+    'Ya estás postulado a esta vacante': 'You have already applied to this job vacancy',
+    'Postulación no encontrada': 'Application not found',
+    'Token expirado o inválido': 'Expired or invalid token',
+    'Formato de archivo inválido': 'Invalid file format',
+  };
+
   void _handleError(int code, String body) {
     String message;
     try {
@@ -69,6 +107,15 @@ class ApiClient {
     } catch (_) {
       message = body;
     }
+
+    // Traducción de errores del servidor si la preferencia del usuario es inglés
+    try {
+      final isEn = ui.PlatformDispatcher.instance.locale.languageCode.toLowerCase().startsWith('en');
+      if (isEn && _errorTranslations.containsKey(message)) {
+        message = _errorTranslations[message]!;
+      }
+    } catch (_) {}
+
     throw ApiException(code, message);
   }
 
@@ -208,8 +255,10 @@ class ApiClient {
     String mimeType,
   ) async {
     final token = await _storage.getToken();
+    final lang = await _getLanguageCode();
     final uri = Uri.parse('$kBaseUrl$path');
     final request = http.MultipartRequest('POST', uri);
+    request.headers['Accept-Language'] = lang;
     if (token != null) request.headers['Authorization'] = 'Bearer $token';
     request.files.add(
       http.MultipartFile.fromBytes('file', fileBytes, filename: fileName),

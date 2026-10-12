@@ -6,6 +6,8 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../core/constants/app_colors.dart';
 import '../shared/providers/auth_provider.dart';
 import '../shared/widgets/brand_logo.dart';
+import '../shared/widgets/language_switch_button.dart';
+import '../../l10n/app_localizations.dart';
 import 'register_screen.dart';
 import 'forgot_password_screen.dart';
 
@@ -56,8 +58,23 @@ class _LoginScreenState extends State<LoginScreen>
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
+    final l10n = AppLocalizations.of(context);
+
     return Scaffold(
       backgroundColor: const Color(0xFFF4F7FC),
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        automaticallyImplyLeading: false,
+        actions: const [
+          Padding(
+            padding: EdgeInsets.only(right: 16),
+            child: LanguageSwitchButton(),
+          ),
+        ],
+      ),
       body: Stack(
         children: [
           // Background Glows
@@ -140,10 +157,10 @@ class _LoginScreenState extends State<LoginScreen>
                     FadeInUp(
                       duration: const Duration(milliseconds: 600),
                       delay: const Duration(milliseconds: 200),
-                      child: const Text(
-                        'Empleo inteligente para tu futuro',
+                      child: Text(
+                        l10n.appSlogan,
                         textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 14, color: kMuted, fontWeight: FontWeight.w500),
+                        style: const TextStyle(fontSize: 14, color: kMuted, fontWeight: FontWeight.w500),
                       ),
                     ),
                     const SizedBox(height: 40),
@@ -171,9 +188,9 @@ class _LoginScreenState extends State<LoginScreen>
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
-                                'Iniciar sesión',
-                                style: TextStyle(
+                              Text(
+                                l10n.loginTitle,
+                                style: const TextStyle(
                                   fontSize: 22,
                                   fontWeight: FontWeight.w800,
                                   color: kNavy,
@@ -182,21 +199,21 @@ class _LoginScreenState extends State<LoginScreen>
                               const SizedBox(height: 24),
                               _Field(
                                 controller: _emailCtrl,
-                                label: 'Correo electrónico',
-                                hint: 'tu@correo.com',
+                                label: l10n.loginEmailLabel,
+                                hint: l10n.loginEmailHint,
                                 icon: Icons.email_outlined,
                                 keyboardType: TextInputType.emailAddress,
                                 validator: (v) {
-                                  if (v == null || v.isEmpty) return 'Campo obligatorio';
-                                  if (!v.contains('@')) return 'Correo inválido';
+                                  if (v == null || v.isEmpty) return l10n.requiredField;
+                                  if (!v.contains('@')) return l10n.loginInvalidEmail;
                                   return null;
                                 },
                               ),
                               const SizedBox(height: 16),
                               _Field(
                                 controller: _passwordCtrl,
-                                label: 'Contraseña',
-                                hint: '••••••••',
+                                label: l10n.loginPasswordLabel,
+                                hint: l10n.loginPasswordHint,
                                 icon: Icons.lock_outline,
                                 obscure: _obscure,
                                 suffix: IconButton(
@@ -207,8 +224,8 @@ class _LoginScreenState extends State<LoginScreen>
                                   onPressed: () => setState(() => _obscure = !_obscure),
                                 ),
                                 validator: (v) {
-                                  if (v == null || v.isEmpty) return 'Campo obligatorio';
-                                  if (v.length < 8) return 'Mínimo 8 caracteres';
+                                  if (v == null || v.isEmpty) return l10n.requiredField;
+                                  if (v.length < 8) return l10n.loginPasswordMinLength;
                                   return null;
                                 },
                               ),
@@ -222,9 +239,9 @@ class _LoginScreenState extends State<LoginScreen>
                                     context,
                                     MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
                                   ),
-                                  child: const Text(
-                                    '¿Olvidaste tu contraseña?',
-                                    style: TextStyle(color: kBlue, fontSize: 13, fontWeight: FontWeight.w700),
+                                  child: Text(
+                                    l10n.loginForgotPassword,
+                                    style: const TextStyle(color: kBlue, fontSize: 13, fontWeight: FontWeight.w700),
                                   ),
                                 ),
                               ),
@@ -232,7 +249,7 @@ class _LoginScreenState extends State<LoginScreen>
 
                               // ── Botón ──
                               _GradientButton(
-                                text: 'Iniciar sesión',
+                                text: l10n.loginButton,
                                 loading: auth.loading,
                                 onPressed: _submit,
                               ),
@@ -242,9 +259,9 @@ class _LoginScreenState extends State<LoginScreen>
                               Row(
                                 children: [
                                   Expanded(child: Divider(color: kNavy.withValues(alpha: 0.1))),
-                                  const Padding(
-                                    padding: EdgeInsets.symmetric(horizontal: 16),
-                                    child: Text('O continuar con', style: TextStyle(color: kMuted, fontSize: 12)),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                                    child: Text(l10n.loginOrContinueWith, style: const TextStyle(color: kMuted, fontSize: 12)),
                                   ),
                                   Expanded(child: Divider(color: kNavy.withValues(alpha: 0.1))),
                                 ],
@@ -303,15 +320,15 @@ class _LoginScreenState extends State<LoginScreen>
                           alignment: WrapAlignment.center,
                           crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
-                            const Text('¿No tienes cuenta?', style: TextStyle(color: kMuted, fontSize: 14)),
+                            Text(l10n.loginNoAccount, style: const TextStyle(color: kMuted, fontSize: 14)),
                             TextButton(
                               onPressed: () => Navigator.push(
                                 context,
                                 MaterialPageRoute(builder: (_) => const RegisterScreen()),
                               ),
-                              child: const Text(
-                                'Crear cuenta',
-                                style: TextStyle(color: kBlue, fontWeight: FontWeight.w800, fontSize: 14),
+                              child: Text(
+                                l10n.loginCreateAccount,
+                                style: const TextStyle(color: kBlue, fontWeight: FontWeight.w800, fontSize: 14),
                               ),
                             ),
                           ],

@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:animate_do/animate_do.dart';
 import '../../core/constants/app_colors.dart';
+import '../../l10n/app_localizations.dart';
 import '../shared/providers/auth_provider.dart';
 import '../shared/widgets/brand_logo.dart';
+import '../shared/widgets/language_switch_button.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -23,11 +25,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     super.dispose();
   }
 
-  Future<void> _submit() async {
+  Future<void> _submit(AppLocalizations l10n) async {
     final email = _emailCtrl.text.trim();
     if (email.isEmpty || !email.contains('@')) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ingresa un correo válido.')),
+        SnackBar(content: Text(l10n.forgotPasswordEnterValidEmail)),
       );
       return;
     }
@@ -40,6 +42,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
+    final l10n = AppLocalizations.of(context);
+
     return Scaffold(
       backgroundColor: const Color(0xFFF4F7FC),
       extendBodyBehindAppBar: true,
@@ -49,6 +53,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         elevation: 0,
         centerTitle: true,
         title: const BrandFull(iconSize: 24),
+        actions: const [
+          Padding(
+            padding: EdgeInsets.only(right: 12),
+            child: LanguageSwitchButton(),
+          ),
+        ],
       ),
       body: Stack(
         children: [
@@ -102,7 +112,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                         ),
                       ],
                     ),
-                    child: _sent ? _buildSuccess() : _buildForm(auth),
+                    child: _sent ? _buildSuccess(l10n) : _buildForm(auth, l10n),
                   ),
                 ),
               ),
@@ -113,7 +123,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     );
   }
 
-  Widget _buildForm(AuthProvider auth) => Column(
+  Widget _buildForm(AuthProvider auth, AppLocalizations l10n) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Center(
@@ -128,28 +138,28 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             ),
           ),
           const SizedBox(height: 24),
-          const Text(
-            'Recuperar contraseña',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: kNavy),
+          Text(
+            l10n.forgotPasswordTitle,
+            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: kNavy),
           ),
           const SizedBox(height: 8),
-          const Text(
-            'Ingresa tu correo y te enviaremos un enlace para restablecer tu contraseña.',
-            style: TextStyle(fontSize: 13, color: kMuted, height: 1.5),
+          Text(
+            l10n.forgotPasswordSubtitle,
+            style: const TextStyle(fontSize: 13, color: kMuted, height: 1.5),
           ),
           const SizedBox(height: 32),
 
-          // ── Campo correo ──
-          const Text(
-            'Correo electrónico',
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: kNavy),
+          // Campo correo
+          Text(
+            l10n.loginEmailLabel,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: kNavy),
           ),
           const SizedBox(height: 6),
           TextField(
             controller: _emailCtrl,
             keyboardType: TextInputType.emailAddress,
             decoration: InputDecoration(
-              hintText: 'tu@correo.com',
+              hintText: l10n.loginEmailHint,
               prefixIcon: const Icon(Icons.email_outlined, color: kMuted, size: 20),
               filled: true,
               fillColor: Colors.white.withValues(alpha: 0.9),
@@ -170,7 +180,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           ),
           const SizedBox(height: 24),
 
-          // ── Botón ──
+          // Botón
           SizedBox(
             width: double.infinity,
             height: 52,
@@ -189,17 +199,17 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   shadowColor: Colors.transparent,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
                 ),
-                onPressed: auth.loading ? null : _submit,
+                onPressed: auth.loading ? null : () => _submit(l10n),
                 child: auth.loading
                     ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: kBlue))
-                    : const Text('Enviar enlace', style: TextStyle(color: kWhite, fontSize: 15, fontWeight: FontWeight.w700)),
+                    : Text(l10n.forgotPasswordButton, style: const TextStyle(color: kWhite, fontSize: 15, fontWeight: FontWeight.w700)),
               ),
             ),
           ),
         ],
       );
 
-  Widget _buildSuccess() => Column(
+  Widget _buildSuccess(AppLocalizations l10n) => Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
@@ -212,15 +222,15 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             child: const Icon(Icons.mark_email_read_outlined, color: kMatchText, size: 40),
           ),
           const SizedBox(height: 24),
-          const Text(
-            '¡Listo!',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: kNavy),
+          Text(
+            l10n.forgotPasswordSuccessTitle,
+            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: kNavy),
           ),
           const SizedBox(height: 10),
-          const Text(
-            'Si el correo está registrado, recibirás un enlace de recuperación en los próximos minutos.',
+          Text(
+            l10n.forgotPasswordSuccessDesc,
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 13, color: kMuted, height: 1.6),
+            style: const TextStyle(fontSize: 13, color: kMuted, height: 1.6),
           ),
           const SizedBox(height: 32),
           SizedBox(
@@ -233,7 +243,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 backgroundColor: Colors.white.withValues(alpha: 0.5),
               ),
-              child: const Text('Volver al inicio de sesión', style: TextStyle(color: kNavy, fontWeight: FontWeight.bold)),
+              child: Text(l10n.forgotPasswordBackToLogin, style: const TextStyle(color: kNavy, fontWeight: FontWeight.bold)),
             ),
           ),
         ],

@@ -20,12 +20,17 @@ import 'presentation/shared/providers/recomendaciones_provider.dart';
 import 'presentation/shared/providers/vacantes_provider.dart';
 import 'presentation/shared/providers/notificaciones_provider.dart';
 import 'presentation/shared/providers/chat_provider.dart';
+import 'presentation/shared/providers/locale_provider.dart';
+import 'l10n/app_localizations.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'presentation/shell/candidate_shell.dart';
 import 'presentation/shell/company_shell.dart';
 import 'presentation/onboarding/onboarding_screen.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await initializeDateFormatting('es', null);
+  await initializeDateFormatting('en', null);
   runApp(const TalentMatchApp());
 }
 
@@ -62,13 +67,23 @@ class TalentMatchApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => NotificacionesProvider(notificacionRepo)),
         // Chat
         ChangeNotifierProvider(create: (_) => ChatProvider()),
+        // Internacionalización / Idioma
+        ChangeNotifierProvider(create: (_) => LocaleProvider()),
       ],
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        title: 'TalentMatch',
-        theme: AppTheme.theme,
-        themeMode: ThemeMode.light,
-        home: const _AppRouter(),
+      child: Consumer<LocaleProvider>(
+        builder: (context, localeProvider, child) {
+          return MaterialApp(
+            debugShowCheckedModeBanner: false,
+            title: 'TalentMatch',
+            theme: AppTheme.theme,
+            themeMode: ThemeMode.light,
+            locale: localeProvider.locale,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: child,
+          );
+        },
+        child: const _AppRouter(),
       ),
     );
   }

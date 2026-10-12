@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../domain/entities/vacante.dart';
 import '../job_detail/job_detail_screen.dart';
+import '../shared/providers/locale_provider.dart';
 import '../shared/providers/vacantes_provider.dart';
 
 class MapScreen extends StatefulWidget {
@@ -60,6 +61,7 @@ class _MapScreenState extends State<MapScreen> {
   @override
   Widget build(BuildContext context) {
     final vp = context.watch<VacantesProvider>();
+    final isEs = context.watch<LocaleProvider>().isSpanish;
     
     // Filtrar remoto y resolver coordenadas para todas las demás
     final vacantesEnMapa = vp.filtered
@@ -80,8 +82,8 @@ class _MapScreenState extends State<MapScreen> {
         backgroundColor: Colors.white,
         elevation: 1,
         iconTheme: const IconThemeData(color: kNavy),
-        title: const Text('Mapa de Vacantes',
-            style: TextStyle(color: kNavy, fontWeight: FontWeight.w800)),
+        title: Text(isEs ? 'Mapa de Vacantes' : 'Job Map',
+            style: const TextStyle(color: kNavy, fontWeight: FontWeight.w800)),
       ),
       body: FlutterMap(
         mapController: _mapController,
@@ -104,7 +106,7 @@ class _MapScreenState extends State<MapScreen> {
                 height: isFocused ? 50 : 40,
                 child: GestureDetector(
                   onTap: () {
-                    _showJobPreview(context, vacante);
+                    _showJobPreview(context, vacante, isEs);
                   },
                   child: Icon(
                     Icons.location_on,
@@ -120,7 +122,8 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
-  void _showJobPreview(BuildContext context, Vacante vacante) {
+  void _showJobPreview(BuildContext context, Vacante vacante, [bool? isEs]) {
+    final isSpanish = isEs ?? (context.mounted ? context.read<LocaleProvider>().isSpanish : true);
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -134,7 +137,7 @@ class _MapScreenState extends State<MapScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                vacante.titulo,
+                vacante.tituloLocalized(isSpanish),
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -143,12 +146,12 @@ class _MapScreenState extends State<MapScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                vacante.ubicacion,
+                vacante.ubicacionLocalized(isSpanish),
                 style: const TextStyle(color: kMuted, fontSize: 14),
               ),
               const SizedBox(height: 8),
               Text(
-                vacante.salarioDisplay,
+                vacante.salarioDisplayLocalized(isSpanish),
                 style: const TextStyle(
                   color: Color(0xFF22C55E),
                   fontWeight: FontWeight.bold,
@@ -173,7 +176,7 @@ class _MapScreenState extends State<MapScreen> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: const Text('Ver Detalles'),
+                  child: Text(isSpanish ? 'Ver Detalles' : 'View Details'),
                 ),
               ),
             ],

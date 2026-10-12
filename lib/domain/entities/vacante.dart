@@ -1,3 +1,6 @@
+import '../../core/utils/format_helper.dart';
+import '../../core/utils/job_translation_helper.dart';
+
 /// Estado de la vacante — espeja el backend enum VacanteEstado.
 enum VacanteEstado { activa, pausada, cerrada }
 
@@ -33,22 +36,47 @@ class Vacante {
     this.longitud,
   });
 
-  /// Descripción del rango salarial formateada.
-  String get salarioDisplay {
-    if (salarioMin == null && salarioMax == null) return 'Salario no indicado';
-    if (salarioMin != null && salarioMax != null) {
-      return '\$${salarioMin!.toStringAsFixed(0)} – \$${salarioMax!.toStringAsFixed(0)}';
-    }
-    if (salarioMin != null) return 'Desde \$${salarioMin!.toStringAsFixed(0)}';
-    return 'Hasta \$${salarioMax!.toStringAsFixed(0)}';
+  /// Descripción del rango salarial formateada de forma adaptativa (intl).
+  /// En español: $ 4.500 – $ 7.000 COP
+  /// En inglés:  $4,500 – $7,000 USD
+  String salarioDisplayLocalized(bool isSpanish) {
+    return FormatHelper.formatSalaryRange(
+      min: salarioMin,
+      max: salarioMax,
+      isSpanish: isSpanish,
+      contextText: descripcion,
+    );
   }
 
-  /// Tiempo relativo desde la creación.
-  String get tiempoRelativo {
-    final diff = DateTime.now().difference(creadoEn);
-    if (diff.inMinutes < 60) return 'Hace ${diff.inMinutes} min';
-    if (diff.inHours < 24) return 'Hace ${diff.inHours} h';
-    if (diff.inDays == 1) return 'Ayer';
-    return 'Hace ${diff.inDays} días';
+  String get salarioDisplay => salarioDisplayLocalized(true);
+
+  /// Tiempo relativo y fecha adaptativa desde la creación (intl).
+  /// En español: 12 de oct. / Hace 3 días
+  /// En inglés:  Oct 12 / 3d ago
+  String tiempoRelativoLocalized(bool isSpanish) {
+    return FormatHelper.formatRelativeTime(creadoEn, isSpanish: isSpanish);
   }
+
+  /// Fecha de publicación formateada (corta o completa).
+  String fechaPublicacionLocalized(bool isSpanish, {bool full = false}) {
+    return FormatHelper.formatDate(creadoEn, isSpanish: isSpanish, full: full);
+  }
+
+  String get tiempoRelativo => tiempoRelativoLocalized(true);
+
+  // ── Localización dinámica de contenido ─────────────────────────
+  String tituloLocalized(bool isSpanish) =>
+      JobTranslationHelper.translateTitle(titulo, isSpanish);
+
+  String? categoriaLocalized(bool isSpanish) =>
+      JobTranslationHelper.translateCategory(categoria, isSpanish);
+
+  String descripcionLocalized(bool isSpanish) =>
+      JobTranslationHelper.translateDescription(descripcion, isSpanish);
+
+  List<String> requisitosLocalized(bool isSpanish) =>
+      JobTranslationHelper.translateRequirements(requisitos, isSpanish);
+
+  String ubicacionLocalized(bool isSpanish) =>
+      JobTranslationHelper.translateLocation(ubicacion, isSpanish);
 }

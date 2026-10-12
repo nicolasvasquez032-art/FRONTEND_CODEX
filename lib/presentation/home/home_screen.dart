@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_strings.dart';
 import '../../core/theme/theme_ext.dart';
+import '../../l10n/app_localizations.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:animate_do/animate_do.dart';
 import '../shared/widgets/bouncing_card.dart';
@@ -14,6 +15,7 @@ import '../job_detail/job_detail_screen.dart';
 import '../shared/providers/auth_provider.dart';
 import '../shared/providers/postulaciones_provider.dart';
 import '../shared/providers/recomendaciones_provider.dart';
+import '../shared/providers/locale_provider.dart';
 import '../shared/providers/vacantes_provider.dart';
 import '../shared/widgets/ai_explanation_tile.dart';
 
@@ -112,6 +114,8 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final vProvider = context.watch<VacantesProvider>();
     final rProvider = context.watch<RecomendacionesProvider>();
+    final l10n      = AppLocalizations.of(context);
+    final isEs      = context.watch<LocaleProvider>().isSpanish;
     final topPadding = MediaQuery.paddingOf(context).top + 15;
     final bottomPadding = MediaQuery.paddingOf(context).bottom + 100;
 
@@ -137,8 +141,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           Icon(Icons.auto_awesome, size: 16, color: kBlue),
                           const SizedBox(width: 6),
                           Text(
-                            'Recomendaciones para ti',
-                            style: TextStyle(
+                            l10n.homeRecommendationsBadge,
+                            style: const TextStyle(
                               color: kBlue,
                               fontSize: 13,
                               fontWeight: FontWeight.w700,
@@ -156,12 +160,12 @@ class _HomeScreenState extends State<HomeScreen> {
                         text: TextSpan(
                           children: [
                             TextSpan(
-                              text: 'Encuentra Tu\n',
+                              text: l10n.homeFindYour,
                               style: TextStyle(fontSize: 28, fontWeight: FontWeight.w600, color: context.text, height: 1.2),
                             ),
-                            const TextSpan(
-                              text: 'Trabajo Ideal',
-                              style: TextStyle(fontSize: 34, fontWeight: FontWeight.w900, color: kBlue, height: 1.1),
+                            TextSpan(
+                              text: l10n.homeIdealJob,
+                              style: const TextStyle(fontSize: 34, fontWeight: FontWeight.w900, color: kBlue, height: 1.1),
                             ),
                           ],
                         ),
@@ -195,7 +199,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               const Icon(Icons.search, color: kMuted, size: 22),
                               const SizedBox(width: 12),
                               Expanded(
-                                child: Text(AppStrings.searchHint, style: const TextStyle(color: kMuted, fontSize: 14, fontWeight: FontWeight.w500)),
+                                child: Text(l10n.homeSearchHint, style: const TextStyle(color: kMuted, fontSize: 14, fontWeight: FontWeight.w500)),
                               ),
                               Container(
                                 width: 44, height: 44,
@@ -224,25 +228,25 @@ class _HomeScreenState extends State<HomeScreen> {
                     // ── Sección principal: IA o fallback ─────────────────
                     if (rProvider.status == RecomendacionesStatus.loading ||
                         vProvider.status == VacantesStatus.loading)
-                      ..._buildLoading()
+                      ..._buildLoading(isEs)
                     else if (rProvider.hasData)
-                      ..._buildRecomendaciones(rProvider)
+                      ..._buildRecomendaciones(rProvider, isEs)
                     else if (rProvider.isFallback)
-                      ..._buildFallback(vProvider)
+                      ..._buildFallback(vProvider, isEs)
                     else if (vProvider.status == VacantesStatus.error)
                       ...[
-                        _sectionHead(AppStrings.recommended, AppStrings.seeAll, widget.onExplore),
-                        _ErrorCard(vProvider.error ?? 'Error al cargar vacantes', onRetry: _cargar),
+                        _sectionHead(isEs ? AppStrings.recommended : 'Recommended for you', isEs ? AppStrings.seeAll : 'See all →', widget.onExplore),
+                        _ErrorCard(vProvider.error ?? (isEs ? 'Error al cargar vacantes' : 'Error loading jobs'), onRetry: _cargar),
                       ]
                     else
-                      ..._buildFallback(vProvider),
+                      ..._buildFallback(vProvider, isEs),
 
                     // ── Banner IA ─────────────────────────────────────────
                     const SizedBox(height: 8),
                     FadeInUp(
                       delay: const Duration(milliseconds: 300),
                       duration: const Duration(milliseconds: 600),
-                      child: _AiBanner(isMlActive: rProvider.hasData),
+                      child: _AiBanner(isMlActive: rProvider.hasData, isSpanish: isEs),
                     ),
                     const SizedBox(height: 4),
 
@@ -250,15 +254,15 @@ class _HomeScreenState extends State<HomeScreen> {
                     FadeInUp(
                       delay: const Duration(milliseconds: 400),
                       duration: const Duration(milliseconds: 600),
-                      child: _sectionHead(AppStrings.features, null, null),
+                      child: _sectionHead(isEs ? AppStrings.features : 'Features', null, null),
                     ),
                     FadeInUp(
                       delay: const Duration(milliseconds: 500),
                       duration: const Duration(milliseconds: 600),
-                      child: const Row(children: [
-                        Expanded(child: _FeatureCard(Icons.notifications_none, AppStrings.alertsTitle, AppStrings.alertsDesc)),
-                        SizedBox(width: 10),
-                        Expanded(child: _FeatureCard(Icons.location_on_outlined, AppStrings.localTitle, AppStrings.localDesc)),
+                      child: Row(children: [
+                        Expanded(child: _FeatureCard(Icons.notifications_none, isEs ? AppStrings.alertsTitle : 'Job Alerts', isEs ? AppStrings.alertsDesc : 'Get notifications on matched opportunities.')),
+                        const SizedBox(width: 10),
+                        Expanded(child: _FeatureCard(Icons.location_on_outlined, isEs ? AppStrings.localTitle : 'Local Focus', isEs ? AppStrings.localDesc : 'Relevant vacancies in your area.')),
                       ]),
                     ),
                   ]),
@@ -273,8 +277,8 @@ class _HomeScreenState extends State<HomeScreen> {
   // Secciones
   // ────────────────────────────────────────────────
 
-  List<Widget> _buildLoading() => [
-    _sectionHead(AppStrings.recommended, null, null),
+  List<Widget> _buildLoading(bool isEs) => [
+    _sectionHead(isEs ? AppStrings.recommended : 'Recommended for you', null, null),
     ...List.generate(3, (index) => Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Shimmer.fromColors(
@@ -292,11 +296,11 @@ class _HomeScreenState extends State<HomeScreen> {
   ];
 
   /// Lista de recomendaciones IA con badge de compatibilidad
-  List<Widget> _buildRecomendaciones(RecomendacionesProvider rProvider) {
+  List<Widget> _buildRecomendaciones(RecomendacionesProvider rProvider, bool isEs) {
     return [
-      _sectionHead('Recomendadas para ti ✦', AppStrings.seeAll, widget.onExplore),
+      _sectionHead(isEs ? 'Recomendadas para ti ✦' : 'Recommended for you ✦', isEs ? AppStrings.seeAll : 'See all →', widget.onExplore),
       // Banner pequeño de estado IA
-      _IaStatusChip(),
+      _IaStatusChip(isSpanish: isEs),
       const SizedBox(height: 10),
       ...rProvider.top4.asMap().entries.map(
         (entry) {
@@ -319,9 +323,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   /// Fallback: muestra las vacantes generales sin score IA
-  List<Widget> _buildFallback(VacantesProvider vProvider) {
+  List<Widget> _buildFallback(VacantesProvider vProvider, bool isEs) {
     return [
-      _sectionHead(AppStrings.recommended, AppStrings.seeAll, widget.onExplore),
+      _sectionHead(isEs ? AppStrings.recommended : 'Recommended for you', isEs ? AppStrings.seeAll : 'See all →', widget.onExplore),
       if (vProvider.vacantes.isEmpty)
         const _EmptyCard()
       else
@@ -334,7 +338,7 @@ class _HomeScreenState extends State<HomeScreen> {
               duration: const Duration(milliseconds: 500),
               child: Padding(
                 padding: const EdgeInsets.only(bottom: 12),
-                child: _JobCard(vacante: v),
+                child: _JobCard(vacante: v, isSpanish: isEs),
               ),
             );
           },
@@ -412,6 +416,9 @@ Vacante _recomendacionToVacanteMin(Recomendacion r) => Vacante(
 // ────────────────────────────────────────────────
 
 class _IaStatusChip extends StatelessWidget {
+  final bool isSpanish;
+  const _IaStatusChip({this.isSpanish = true});
+
   @override
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -419,14 +426,16 @@ class _IaStatusChip extends StatelessWidget {
           color: kMatchBg,
           borderRadius: BorderRadius.circular(20),
         ),
-        child: const Row(
+        child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.auto_awesome, size: 13, color: kMatchText),
-            SizedBox(width: 5),
+            const Icon(Icons.auto_awesome, size: 13, color: kMatchText),
+            const SizedBox(width: 5),
             Text(
-              'Motor IA activo — resultados personalizados',
-              style: TextStyle(color: kMatchText, fontSize: 11, fontWeight: FontWeight.w600),
+              isSpanish
+                  ? 'Motor IA activo — resultados personalizados'
+                  : 'AI Engine active — personalized matches',
+              style: const TextStyle(color: kMatchText, fontSize: 11, fontWeight: FontWeight.w600),
             ),
           ],
         ),
@@ -439,7 +448,8 @@ class _IaStatusChip extends StatelessWidget {
 
 class _JobCard extends StatelessWidget {
   final Vacante vacante;
-  const _JobCard({required this.vacante});
+  final bool isSpanish;
+  const _JobCard({required this.vacante, this.isSpanish = true});
 
   @override
   Widget build(BuildContext context) {
@@ -489,7 +499,7 @@ class _JobCard extends StatelessWidget {
                         child: Material(
                           type: MaterialType.transparency,
                           child: Text(
-                            vacante.titulo,
+                            vacante.tituloLocalized(isSpanish),
                             style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: context.text, height: 1.2),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
@@ -503,7 +513,7 @@ class _JobCard extends StatelessWidget {
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
-                              'Empresa Confidencial', 
+                              isSpanish ? 'Empresa Confidencial' : 'Confidential Company', 
                               style: TextStyle(color: context.textMuted, fontSize: 12),
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -528,9 +538,9 @@ class _JobCard extends StatelessWidget {
               spacing: 8,
               runSpacing: 8,
               children: [
-                _JobTag(icon: Icons.location_on_outlined, text: vacante.ubicacion),
+                _JobTag(icon: Icons.location_on_outlined, text: vacante.ubicacionLocalized(isSpanish)),
                 if (vacante.categoria != null)
-                  _JobTag(icon: Icons.category_outlined, text: vacante.categoria!, isBlue: true),
+                  _JobTag(icon: Icons.category_outlined, text: vacante.categoriaLocalized(isSpanish) ?? vacante.categoria!, isBlue: true),
               ],
             ),
             const SizedBox(height: 18),
@@ -541,7 +551,7 @@ class _JobCard extends StatelessWidget {
                   children: [
                     Icon(Icons.schedule, size: 12, color: context.textMuted),
                     const SizedBox(width: 4),
-                    Text(vacante.tiempoRelativo, style: TextStyle(fontSize: 11, color: context.textMuted, fontWeight: FontWeight.w500)),
+                    Text(vacante.tiempoRelativoLocalized(isSpanish), style: TextStyle(fontSize: 11, color: context.textMuted, fontWeight: FontWeight.w500)),
                   ],
                 ),
                 Container(
@@ -551,7 +561,7 @@ class _JobCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    vacante.salarioDisplay,
+                    vacante.salarioDisplayLocalized(isSpanish),
                     style: const TextStyle(fontSize: 12, color: Color(0xFF16A34A), fontWeight: FontWeight.w800),
                   ),
                 ),
@@ -676,7 +686,8 @@ class _EmptyCard extends StatelessWidget {
 
 class _AiBanner extends StatelessWidget {
   final bool isMlActive;
-  const _AiBanner({required this.isMlActive});
+  final bool isSpanish;
+  const _AiBanner({required this.isMlActive, this.isSpanish = true});
 
   @override
   Widget build(BuildContext context) => Container(
@@ -686,8 +697,8 @@ class _AiBanner extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(children: [
-              Text(AppStrings.aiBadge,
-                  style: TextStyle(fontSize: 9, color: Color(0xFFD9E6FF), fontWeight: FontWeight.w800)),
+              Text(isSpanish ? AppStrings.aiBadge : '✦  ARTIFICIAL INTELLIGENCE',
+                  style: const TextStyle(fontSize: 9, color: Color(0xFFD9E6FF), fontWeight: FontWeight.w800)),
               const Spacer(),
               if (isMlActive)
                 Container(
@@ -696,19 +707,19 @@ class _AiBanner extends StatelessWidget {
                     color: kGreen.withValues(alpha: 0.25),
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                    Icon(Icons.circle, color: kGreen, size: 7),
-                    SizedBox(width: 4),
-                    Text('ACTIVO', style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.w800)),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    const Icon(Icons.circle, color: kGreen, size: 7),
+                    const SizedBox(width: 4),
+                    Text(isSpanish ? 'ACTIVO' : 'ACTIVE', style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.w800)),
                   ]),
                 ),
             ]),
             const SizedBox(height: 8),
-            Text(AppStrings.aiTitle,
-                style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w800)),
+            Text(isSpanish ? AppStrings.aiTitle : 'Smarter recommendations',
+                style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w800)),
             const SizedBox(height: 5),
-            Text(AppStrings.aiDesc,
-                style: TextStyle(color: Color(0xFFD9E6FF), fontSize: 12, height: 1.4)),
+            Text(isSpanish ? AppStrings.aiDesc : 'We analyze your profile and jobs to find semantic matches, not just keywords.',
+                style: const TextStyle(color: Color(0xFFD9E6FF), fontSize: 12, height: 1.4)),
           ],
         ),
       );

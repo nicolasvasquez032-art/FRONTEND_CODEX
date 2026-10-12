@@ -6,9 +6,12 @@ import 'package:shimmer/shimmer.dart';
 import 'package:animate_do/animate_do.dart';
 
 import '../../core/constants/app_colors.dart';
+import '../../l10n/app_localizations.dart';
 import '../shared/providers/auth_provider.dart';
+import '../shared/providers/locale_provider.dart';
 import '../shared/providers/perfil_provider.dart';
 import '../shared/providers/postulaciones_provider.dart';
+import '../shared/widgets/language_switch_button.dart';
 import 'cv_upload_widget.dart';
 import 'notifications_screen.dart';
 import 'edit_profile_screen.dart';
@@ -36,6 +39,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final session = context.watch<AuthProvider>().session;
     final pp = context.watch<PerfilProvider>();
     final pop = context.watch<PostulacionesProvider>();
+    final l10n = AppLocalizations.of(context);
+    final localeProvider = context.watch<LocaleProvider>();
+    final isEs = localeProvider.locale.languageCode == 'es';
 
     int completeness = 20;
     if (pp.profile != null) {
@@ -50,7 +56,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     final initial =
         pp.profile?.initial ?? (session?.userId.isNotEmpty == true ? 'T' : 'T');
-    final name = pp.profile?.fullName ?? 'Tu Perfil';
+    final name = pp.profile?.fullName ?? l10n.profileTitle;
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -140,7 +146,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               delay: const Duration(milliseconds: 200),
                               duration: const Duration(milliseconds: 500),
                               child: Text(
-                                'Candidato',
+                                l10n.profileCandidateRole,
                                 style: TextStyle(
                                   fontSize: 13,
                                   color: kNavy.withValues(alpha: 0.7),
@@ -155,6 +161,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
               actions: [
+                const LanguageSwitchButton(),
                 IconButton(
                   icon: const Icon(Icons.notifications_none, color: kNavy),
                   onPressed: () => Navigator.push(
@@ -164,6 +171,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
                 ),
+                const SizedBox(width: 8),
               ],
             ),
             SliverPadding(
@@ -178,7 +186,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceAround,
                         children: [
                           _StatItem(
-                            label: 'Completado',
+                            label: l10n.profileStatsCompleted,
                             value: completeness,
                             isPercent: true,
                           ),
@@ -188,7 +196,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             color: kNavy.withValues(alpha: 0.1),
                           ),
                           _StatItem(
-                            label: 'Postulaciones',
+                            label: l10n.profileStatsApplications,
                             value: pop.postulaciones.length,
                           ),
                           Container(
@@ -196,7 +204,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             height: 40,
                             color: kNavy.withValues(alpha: 0.1),
                           ),
-                          _StatItem(label: 'Vistas', value: 12),
+                          _StatItem(label: l10n.profileStatsViews, value: 12),
                         ],
                       ),
                     ),
@@ -234,8 +242,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           children: [
                             _ActionTile(
                               icon: Icons.person_outline,
-                              title: 'Datos Personales',
-                              subtitle: 'Información básica de contacto',
+                              title: l10n.profilePersonalData,
+                              subtitle: l10n.profilePersonalDataSubtitle,
                               onTap: () {
                                 Navigator.push(
                                   context,
@@ -250,8 +258,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             _Divider(),
                             _ActionTile(
                               icon: Icons.work_outline,
-                              title: 'Experiencia',
-                              subtitle: 'Añade tu historial laboral',
+                              title: l10n.profileExperience,
+                              subtitle: l10n.profileExperienceSubtitle,
                               onTap: () {
                                 Navigator.push(
                                   context,
@@ -266,8 +274,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             _Divider(),
                             _ActionTile(
                               icon: Icons.school_outlined,
-                              title: 'Educación',
-                              subtitle: 'Estudios y certificaciones',
+                              title: l10n.profileEducation,
+                              subtitle: l10n.profileEducationSubtitle,
                               onTap: () {
                                 Navigator.push(
                                   context,
@@ -282,8 +290,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             _Divider(),
                             _ActionTile(
                               icon: Icons.star_border,
-                              title: 'Habilidades',
-                              subtitle: 'Destaca tus conocimientos',
+                              title: l10n.profileSkills,
+                              subtitle: l10n.profileSkillsSubtitle,
                               onTap: () {
                                 Navigator.push(
                                   context,
@@ -308,26 +316,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         child: Column(
                           children: [
                             _ActionTile(
+                              icon: Icons.language,
+                              title: l10n.profileLanguage,
+                              subtitle: isEs ? l10n.profileLanguageSpanish : l10n.profileLanguageEnglish,
+                              onTap: () => _showLanguageDialog(context, localeProvider, l10n),
+                            ),
+                            _Divider(),
+                            _ActionTile(
                               icon: Icons.settings_outlined,
-                              title: 'Configuración',
+                              title: l10n.profileSettings,
                               onTap: () {},
                             ),
                             _Divider(),
                             _ActionTile(
                               icon: Icons.help_outline,
-                              title: 'Ayuda y Soporte',
+                              title: l10n.profileHelp,
                               onTap: () {},
                             ),
                             _Divider(),
                             _ActionTile(
                               icon: Icons.logout,
-                              title: 'Cerrar Sesión',
+                              title: l10n.profileLogout,
                               isDestructive: true,
                               onTap: () async {
                                 await context.read<AuthProvider>().logout();
-                                // _AppRouter reacciona a AuthStatus.unauthenticated.
-                                // No navegar manualmente aquí: hacerlo crea una segunda
-                                // LoginScreen sobre el router raíz y rompe el siguiente login.
                               },
                             ),
                           ],
@@ -342,6 +354,89 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
       ),
     );
+  }
+
+  void _showLanguageDialog(BuildContext context, LocaleProvider localeProvider, AppLocalizations l10n) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        final currentCode = localeProvider.locale.languageCode;
+        return Material(
+          color: Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 20),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Row(
+                children: [
+                  const Icon(Icons.language, color: kBlue, size: 24),
+                  const SizedBox(width: 10),
+                  Text(
+                    l10n.profileSelectLanguageTitle,
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: kNavy),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                leading: const Text('🇪🇸', style: TextStyle(fontSize: 26)),
+                title: Text(
+                  l10n.profileLanguageSpanish,
+                  style: TextStyle(
+                    fontWeight: currentCode == 'es' ? FontWeight.w800 : FontWeight.w500,
+                    color: currentCode == 'es' ? kBlue : kNavy,
+                  ),
+                ),
+                trailing: currentCode == 'es'
+                    ? const Icon(Icons.check_circle, color: kBlue)
+                    : const Icon(Icons.circle_outlined, color: Colors.grey),
+                onTap: () {
+                  localeProvider.setLocale(const Locale('es'));
+                  Navigator.pop(ctx);
+                },
+              ),
+              const Divider(height: 1),
+              ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                leading: const Text('🇺🇸', style: TextStyle(fontSize: 26)),
+                title: Text(
+                  l10n.profileLanguageEnglish,
+                  style: TextStyle(
+                    fontWeight: currentCode == 'en' ? FontWeight.w800 : FontWeight.w500,
+                    color: currentCode == 'en' ? kBlue : kNavy,
+                  ),
+                ),
+                trailing: currentCode == 'en'
+                    ? const Icon(Icons.check_circle, color: kBlue)
+                    : const Icon(Icons.circle_outlined, color: Colors.grey),
+                onTap: () {
+                  localeProvider.setLocale(const Locale('en'));
+                  Navigator.pop(ctx);
+                },
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        ),
+      );
+    },
+  );
   }
 }
 

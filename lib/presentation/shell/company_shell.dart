@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
+import '../../l10n/app_localizations.dart';
 import '../shared/providers/auth_provider.dart';
 import '../company/publicar_vacante_screen.dart';
 import '../company/mis_vacantes_screen.dart';
@@ -27,6 +28,7 @@ class _CompanyShellState extends State<CompanyShell> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       extendBody: true,
       backgroundColor: kBg,
@@ -74,21 +76,21 @@ class _CompanyShellState extends State<CompanyShell> {
                     }
                     setState(() => _currentIndex = idx);
                   },
-                  destinations: const [
+                  destinations: [
                     NavigationDestination(
-                      icon: Icon(Icons.business_center_outlined),
-                      selectedIcon: Icon(Icons.business_center, color: kBlue),
-                      label: 'Mis Vacantes',
+                      icon: const Icon(Icons.business_center_outlined),
+                      selectedIcon: const Icon(Icons.business_center, color: kBlue),
+                      label: l10n.navCompanyMyJobs,
                     ),
                     NavigationDestination(
-                      icon: Icon(Icons.add_circle_outline),
-                      selectedIcon: Icon(Icons.add_circle, color: kBlue),
-                      label: 'Publicar',
+                      icon: const Icon(Icons.add_circle_outline),
+                      selectedIcon: const Icon(Icons.add_circle, color: kBlue),
+                      label: l10n.navCompanyPublish,
                     ),
                     NavigationDestination(
-                      icon: Icon(Icons.person_outline),
-                      selectedIcon: Icon(Icons.person, color: kBlue),
-                      label: 'Mi Empresa',
+                      icon: const Icon(Icons.person_outline),
+                      selectedIcon: const Icon(Icons.person, color: kBlue),
+                      label: l10n.navCompanyProfile,
                     ),
                   ],
                 ),

@@ -3,8 +3,10 @@ import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:animate_do/animate_do.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/utils/format_helper.dart';
 import '../../domain/entities/notificacion.dart';
 import '../shared/providers/auth_provider.dart';
+import '../shared/providers/locale_provider.dart';
 import '../shared/providers/notificaciones_provider.dart';
 
 class NotificationsScreen extends StatefulWidget {
@@ -118,6 +120,7 @@ class _NotificationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isEs = context.watch<LocaleProvider>().isSpanish;
     final IconData icon;
     final Color color;
 
@@ -186,7 +189,7 @@ class _NotificationCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    _formatDate(notificacion.creadoEn),
+                    _formatDate(notificacion.creadoEn, isSpanish: isEs),
                     style: const TextStyle(color: kMuted, fontSize: 12),
                   ),
                 ],
@@ -207,19 +210,8 @@ class _NotificationCard extends StatelessWidget {
     );
   }
 
-  String _formatDate(DateTime date) {
-    final now = DateTime.now();
-    final diff = now.difference(date);
-
-    if (diff.inMinutes < 60) {
-      return 'Hace ${diff.inMinutes} min';
-    } else if (diff.inHours < 24) {
-      return 'Hace ${diff.inHours} h';
-    } else if (diff.inDays < 7) {
-      return 'Hace ${diff.inDays} d';
-    } else {
-      return '${date.day}/${date.month}/${date.year}';
-    }
+  String _formatDate(DateTime date, {bool isSpanish = true}) {
+    return FormatHelper.formatRelativeTime(date, isSpanish: isSpanish);
   }
 }
 

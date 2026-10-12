@@ -5,9 +5,11 @@ import 'package:provider/provider.dart';
 import 'package:animate_do/animate_do.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_strings.dart';
+import '../../l10n/app_localizations.dart';
 import '../../domain/entities/postulacion.dart';
 import '../../domain/entities/vacante.dart';
 import '../shared/providers/auth_provider.dart';
+import '../shared/providers/locale_provider.dart';
 import '../shared/providers/postulaciones_provider.dart';
 import '../shared/providers/vacantes_provider.dart';
 import '../shared/widgets/animated_empty_state.dart';
@@ -38,6 +40,8 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
   Widget build(BuildContext context) {
     final postsProvider = context.watch<PostulacionesProvider>();
     final vacProvider = context.watch<VacantesProvider>();
+    final l10n = AppLocalizations.of(context);
+    final isEs = context.watch<LocaleProvider>().isSpanish;
     final topPadding = MediaQuery.paddingOf(context).top + 15;
     final bottomPadding = MediaQuery.paddingOf(context).bottom + 100;
 
@@ -51,13 +55,13 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
             padding: EdgeInsets.fromLTRB(17, topPadding, 17, 16),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
-                const Row(
+                Row(
                   children: [
-                    Icon(Icons.timeline_outlined, size: 16, color: kBlue),
-                    SizedBox(width: 6),
+                    const Icon(Icons.timeline_outlined, size: 16, color: kBlue),
+                    const SizedBox(width: 6),
                     Text(
-                      AppStrings.applicationsSubtitle,
-                      style: TextStyle(
+                      isEs ? AppStrings.applicationsSubtitle : 'Tracking',
+                      style: const TextStyle(
                         color: kBlue,
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
@@ -68,15 +72,11 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
                 ),
                 const SizedBox(height: 12),
                 RichText(
-                  text: const TextSpan(
+                  text: TextSpan(
                     children: [
                       TextSpan(
-                        text: 'Mis\n',
-                        style: TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: kNavy, height: 1.2),
-                      ),
-                      TextSpan(
-                        text: 'Postulaciones',
-                        style: TextStyle(fontSize: 30, fontWeight: FontWeight.w900, color: kBlue, height: 1.1),
+                        text: '${l10n.applicationsTitle}\n',
+                        style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w900, color: kBlue, height: 1.1),
                       ),
                     ],
                   ),
@@ -86,13 +86,13 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
                 if (postsProvider.status == PostulacionesStatus.loading)
                   const _ShimmerApplicationsList()
                 else if (postsProvider.status == PostulacionesStatus.error)
-                  _ErrorCard(postsProvider.error ?? 'Error', onRetry: _cargar)
+                  _ErrorCard(postsProvider.error ?? (isEs ? 'Error' : 'Error'), onRetry: _cargar)
                 else if (postsProvider.postulaciones.isEmpty)
-                  _EmptyCard()
+                  _EmptyCard(l10n)
                 else ...[
                   // Contador
                   Text(
-                    '${postsProvider.postulaciones.length} postulación${postsProvider.postulaciones.length != 1 ? 'es' : ''}',
+                    '${postsProvider.postulaciones.length} ${isEs ? (postsProvider.postulaciones.length != 1 ? 'postulaciones' : 'postulación') : (postsProvider.postulaciones.length != 1 ? 'applications' : 'application')}',
                     style: const TextStyle(color: kMuted, fontSize: 12, fontWeight: FontWeight.w600),
                   ),
                 ],
@@ -114,6 +114,7 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
                         child: _PostulacionCard(
                           postulacion: p,
                           vacante: _findVacante(vacProvider, p.vacanteId),
+                          isSpanish: isEs,
                         ),
                       ),
                     );
@@ -144,8 +145,9 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
 class _PostulacionCard extends StatelessWidget {
   final Postulacion postulacion;
   final Vacante? vacante;
+  final bool isSpanish;
 
-  const _PostulacionCard({required this.postulacion, required this.vacante});
+  const _PostulacionCard({required this.postulacion, required this.vacante, this.isSpanish = true});
 
   @override
   Widget build(BuildContext context) => ClipRRect(
@@ -171,7 +173,7 @@ class _PostulacionCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    vacante?.titulo ?? 'Vacante',
+                    vacante?.tituloLocalized(isSpanish) ?? (isSpanish ? 'Vacante' : 'Job'),
                     style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: kNavy),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -203,17 +205,22 @@ class _PostulacionCard extends StatelessWidget {
                           context: context,
                           builder: (c) => AlertDialog(
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                            title: const Text('Cancelar postulación', style: TextStyle(fontWeight: FontWeight.w800)),
-                            content: const Text('¿Estás seguro de que deseas retirar tu postulación a esta vacante? No podrás deshacer esta acción.', style: TextStyle(color: kMuted, height: 1.4)),
+                            title: Text(isSpanish ? 'Cancelar postulación' : 'Cancel application', style: const TextStyle(fontWeight: FontWeight.w800)),
+                            content: Text(
+                              isSpanish
+                                  ? '¿Estás seguro de que deseas retirar tu postulación a esta vacante? No podrás deshacer esta acción.'
+                                  : 'Are you sure you want to withdraw your application? This action cannot be undone.',
+                              style: const TextStyle(color: kMuted, height: 1.4),
+                            ),
                             actions: [
                               TextButton(
                                 onPressed: () => Navigator.pop(c, false),
-                                child: const Text('Volver', style: TextStyle(color: kMuted, fontWeight: FontWeight.w600)),
+                                child: Text(isSpanish ? 'Volver' : 'Go back', style: const TextStyle(color: kMuted, fontWeight: FontWeight.w600)),
                               ),
                               ElevatedButton(
                                 style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEF4444), elevation: 0),
                                 onPressed: () => Navigator.pop(c, true),
-                                child: const Text('Sí, retirarme', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                                child: Text(isSpanish ? 'Sí, retirarme' : 'Yes, withdraw', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
                               ),
                             ],
                           ),
@@ -223,20 +230,20 @@ class _PostulacionCard extends StatelessWidget {
                           final ok = await prov.cancelar(postulacion.id);
                           if (!ok && context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text(prov.error ?? 'Error al cancelar', style: const TextStyle(color: Colors.white)), backgroundColor: Colors.red),
+                              SnackBar(content: Text(prov.error ?? (isSpanish ? 'Error al cancelar' : 'Error cancelling'), style: const TextStyle(color: Colors.white)), backgroundColor: Colors.red),
                             );
                           }
                         }
                       }
                     },
                     itemBuilder: (context) => [
-                      const PopupMenuItem(
+                      PopupMenuItem(
                         value: 'cancelar',
                         child: Row(
                           children: [
-                            Icon(Icons.delete_outline, color: Color(0xFFEF4444), size: 20),
-                            SizedBox(width: 8),
-                            Text('Retirar postulación', style: TextStyle(color: Color(0xFFEF4444), fontWeight: FontWeight.w600)),
+                            const Icon(Icons.delete_outline, color: Color(0xFFEF4444), size: 20),
+                            const SizedBox(width: 8),
+                            Text(isSpanish ? 'Retirar postulación' : 'Withdraw application', style: const TextStyle(color: Color(0xFFEF4444), fontWeight: FontWeight.w600)),
                           ],
                         ),
                       ),
@@ -252,7 +259,7 @@ class _PostulacionCard extends StatelessWidget {
             const SizedBox(height: 24),
 
             // ── Timeline Visual ──
-            _TimelineTracker(currentState: postulacion.estado),
+            _TimelineTracker(currentState: postulacion.estado, isSpanish: isSpanish),
 
             if (vacante != null) ...[
               const SizedBox(height: 24),
@@ -272,9 +279,9 @@ class _PostulacionCard extends StatelessWidget {
                     side: const BorderSide(color: kLine),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  child: const Text(
-                    'Ver detalles de la vacante',
-                    style: TextStyle(color: kBlue, fontSize: 13, fontWeight: FontWeight.w700),
+                  child: Text(
+                    isSpanish ? 'Ver detalles de la vacante' : 'View job details',
+                    style: const TextStyle(color: kBlue, fontSize: 13, fontWeight: FontWeight.w700),
                   ),
                 ),
               ),
@@ -287,9 +294,9 @@ class _PostulacionCard extends StatelessWidget {
 
   String _formatDate(DateTime d) {
     final diff = DateTime.now().difference(d);
-    if (diff.inDays == 0) return 'Postulado hoy';
-    if (diff.inDays == 1) return 'Postulado ayer';
-    return 'Postulado hace ${diff.inDays} días';
+    if (diff.inDays == 0) return isSpanish ? 'Postulado hoy' : 'Applied today';
+    if (diff.inDays == 1) return isSpanish ? 'Postulado ayer' : 'Applied yesterday';
+    return isSpanish ? 'Postulado hace ${diff.inDays} días' : 'Applied ${diff.inDays}d ago';
   }
 }
 
@@ -299,8 +306,9 @@ class _PostulacionCard extends StatelessWidget {
 
 class _TimelineTracker extends StatelessWidget {
   final PostulacionEstado currentState;
+  final bool isSpanish;
 
-  const _TimelineTracker({required this.currentState});
+  const _TimelineTracker({required this.currentState, this.isSpanish = true});
 
   @override
   Widget build(BuildContext context) {
@@ -314,14 +322,14 @@ class _TimelineTracker extends StatelessWidget {
     return Row(
       children: [
         _buildNode(
-          label: 'Enviada',
+          label: isSpanish ? 'Enviada' : 'Submitted',
           isActive: currentStep >= 0 || isRechazado, 
           isDone: currentStep > 0 || isRechazado,
           isError: false,
         ),
         _buildLine(isActive: currentStep > 0 || isRechazado),
         _buildNode(
-          label: 'En revisión',
+          label: isSpanish ? 'En revisión' : 'Under Review',
           isActive: currentStep >= 1 || isRechazado,
           isDone: currentStep > 1,
           isError: false,
@@ -329,14 +337,14 @@ class _TimelineTracker extends StatelessWidget {
         _buildLine(isActive: currentStep > 1 || (isRechazado && currentStep >= 1)),
         if (isRechazado)
           _buildNode(
-            label: 'Cerrada',
+            label: isSpanish ? 'Cerrada' : 'Closed',
             isActive: true,
             isDone: true,
             isError: true,
           )
         else
           _buildNode(
-            label: 'Aceptado',
+            label: isSpanish ? 'Aceptado' : 'Accepted',
             isActive: currentStep >= 2,
             isDone: currentStep == 2,
             isError: false,
@@ -392,10 +400,13 @@ class _TimelineTracker extends StatelessWidget {
 }
 
 class _EmptyCard extends StatelessWidget {
+  final AppLocalizations l10n;
+  const _EmptyCard(this.l10n);
+
   @override
-  Widget build(BuildContext context) => const AnimatedEmptyState(
+  Widget build(BuildContext context) => AnimatedEmptyState(
         icon: Icons.fact_check_outlined,
-        title: AppStrings.noApplications,
+        title: l10n.applicationsEmpty,
         subtitle: AppStrings.noApplicationsDesc,
       );
 }
