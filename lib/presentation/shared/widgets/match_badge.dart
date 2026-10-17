@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
+import '../providers/locale_provider.dart';
 
 /// Badge verde que muestra el porcentaje de compatibilidad IA.
 /// Ejemplo: "✦ 87% compatible contigo"
@@ -10,7 +12,10 @@ class MatchBadge extends StatefulWidget {
   /// Si [compact] es true muestra solo "✦ 87%", sin "compatible contigo".
   final bool compact;
 
-  const MatchBadge({super.key, required this.percent, this.compact = false});
+  /// Idioma (opcional, si es null toma el del LocaleProvider global)
+  final bool? isSpanish;
+
+  const MatchBadge({super.key, required this.percent, this.compact = false, this.isSpanish});
 
   @override
   State<MatchBadge> createState() => _MatchBadgeState();
@@ -49,6 +54,7 @@ class _MatchBadgeState extends State<MatchBadge> with SingleTickerProviderStateM
   @override
   Widget build(BuildContext context) {
     final isHighMatch = widget.percent >= 85;
+    final isEs = widget.isSpanish ?? (context.watch<LocaleProvider>().isSpanish);
 
     return TweenAnimationBuilder<double>(
       tween: Tween<double>(begin: 0, end: widget.percent.toDouble()),
@@ -56,7 +62,9 @@ class _MatchBadgeState extends State<MatchBadge> with SingleTickerProviderStateM
       curve: Curves.easeOutCubic,
       builder: (context, value, child) {
         final currentVal = value.toInt();
-        final label = widget.compact ? '✦ $currentVal%' : '✦ $currentVal% compatible contigo';
+        final label = widget.compact
+            ? '✦ $currentVal%'
+            : (isEs ? '✦ $currentVal% compatible contigo' : '✦ $currentVal% match for you');
 
         return AnimatedBuilder(
           animation: _glowAnimation,

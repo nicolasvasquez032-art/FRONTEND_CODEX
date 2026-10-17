@@ -3,8 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:animate_do/animate_do.dart';
 import '../../core/constants/app_colors.dart';
+import '../../l10n/app_localizations.dart';
 import '../shared/providers/auth_provider.dart';
+import '../shared/providers/locale_provider.dart';
 import '../shared/widgets/bouncy_tap.dart';
+import '../shared/widgets/language_switch_button.dart';
 import 'premium_subscription_screen.dart';
 
 class CompanyProfileScreen extends StatelessWidget {
@@ -13,6 +16,8 @@ class CompanyProfileScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
+    final l10n = AppLocalizations.of(context);
+    final localeProvider = context.watch<LocaleProvider>();
     
     return Scaffold(
       backgroundColor: kBg,
@@ -91,28 +96,34 @@ class CompanyProfileScreen extends StatelessWidget {
                                       ],
                                     ),
                                   ),
-                                  FadeInDown(
-                                    child: Pulse(
-                                      infinite: true,
-                                      duration: const Duration(seconds: 3),
-                                      child: ClipRRect(
-                                        borderRadius: BorderRadius.circular(30),
-                                        child: BackdropFilter(
-                                          filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-                                          child: Container(
-                                            width: 60,
-                                            height: 60,
-                                            decoration: BoxDecoration(
-                                              color: Colors.white.withValues(alpha: 0.1),
-                                              shape: BoxShape.circle,
-                                              border: Border.all(color: Colors.white.withValues(alpha: 0.4), width: 1.5),
-                                              boxShadow: [BoxShadow(color: Colors.cyanAccent.withValues(alpha: 0.2), blurRadius: 10, spreadRadius: 2)],
+                                  Row(
+                                    children: [
+                                      const LanguageSwitchButton(),
+                                      const SizedBox(width: 8),
+                                      FadeInDown(
+                                        child: Pulse(
+                                          infinite: true,
+                                          duration: const Duration(seconds: 3),
+                                          child: ClipRRect(
+                                            borderRadius: BorderRadius.circular(30),
+                                            child: BackdropFilter(
+                                              filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                                              child: Container(
+                                                width: 60,
+                                                height: 60,
+                                                decoration: BoxDecoration(
+                                                  color: Colors.white.withValues(alpha: 0.1),
+                                                  shape: BoxShape.circle,
+                                                  border: Border.all(color: Colors.white.withValues(alpha: 0.4), width: 1.5),
+                                                  boxShadow: [BoxShadow(color: Colors.cyanAccent.withValues(alpha: 0.2), blurRadius: 10, spreadRadius: 2)],
+                                                ),
+                                                child: const Icon(Icons.apartment, size: 28, color: Colors.white),
+                                              ),
                                             ),
-                                            child: const Icon(Icons.apartment, size: 28, color: Colors.white),
                                           ),
                                         ),
                                       ),
-                                    ),
+                                    ],
                                   ),
                                 ],
                               ),
@@ -269,6 +280,7 @@ class CompanyProfileScreen extends StatelessWidget {
                 (context, index) {
                   // Definimos las opciones de configuración
                   final List<Map<String, dynamic>> configOptions = [
+                    {'icon': Icons.language, 'title': l10n.profileLanguage, 'isPremium': false, 'onTap': () => _showLanguageDialog(context, localeProvider, l10n)},
                     {'icon': Icons.bar_chart, 'title': 'Reportes y Exportación', 'isPremium': false, 'onTap': () {}},
                     {'icon': Icons.payment, 'title': 'Planes y Facturación', 'isPremium': true, 'onTap': () {
                       Navigator.push(context, MaterialPageRoute(builder: (_) => const PremiumSubscriptionScreen()));
@@ -319,13 +331,96 @@ class CompanyProfileScreen extends StatelessWidget {
                   }
                   return null;
                 },
-                childCount: 5, // 4 opciones + 1 botón salir
+                childCount: 6, // 5 opciones + 1 botón salir
               ),
             ),
           ),
         ],
       ),
     );
+  }
+
+  void _showLanguageDialog(BuildContext context, LocaleProvider localeProvider, AppLocalizations l10n) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        final currentCode = localeProvider.locale.languageCode;
+        return Material(
+          color: Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 20),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Row(
+                children: [
+                  const Icon(Icons.language, color: kBlue, size: 24),
+                  const SizedBox(width: 10),
+                  Text(
+                    l10n.profileSelectLanguageTitle,
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: kNavy),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                leading: const Text('🇪🇸', style: TextStyle(fontSize: 26)),
+                title: Text(
+                  l10n.profileLanguageSpanish,
+                  style: TextStyle(
+                    fontWeight: currentCode == 'es' ? FontWeight.w800 : FontWeight.w500,
+                    color: currentCode == 'es' ? kBlue : kNavy,
+                  ),
+                ),
+                trailing: currentCode == 'es'
+                    ? const Icon(Icons.check_circle, color: kBlue)
+                    : const Icon(Icons.circle_outlined, color: Colors.grey),
+                onTap: () {
+                  localeProvider.setLocale(const Locale('es'));
+                  Navigator.pop(ctx);
+                },
+              ),
+              const Divider(height: 1),
+              ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                leading: const Text('🇺🇸', style: TextStyle(fontSize: 26)),
+                title: Text(
+                  l10n.profileLanguageEnglish,
+                  style: TextStyle(
+                    fontWeight: currentCode == 'en' ? FontWeight.w800 : FontWeight.w500,
+                    color: currentCode == 'en' ? kBlue : kNavy,
+                  ),
+                ),
+                trailing: currentCode == 'en'
+                    ? const Icon(Icons.check_circle, color: kBlue)
+                    : const Icon(Icons.circle_outlined, color: Colors.grey),
+                onTap: () {
+                  localeProvider.setLocale(const Locale('en'));
+                  Navigator.pop(ctx);
+                },
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        ),
+      );
+    },
+  );
   }
 
   // Widget para la dona analítica

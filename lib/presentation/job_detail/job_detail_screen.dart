@@ -11,6 +11,7 @@ import '../../core/constants/app_colors.dart';
 import '../../domain/entities/vacante.dart';
 import '../../domain/entities/recomendacion.dart';
 import '../shared/providers/auth_provider.dart';
+import '../shared/providers/locale_provider.dart';
 import '../shared/providers/postulaciones_provider.dart';
 import '../shared/widgets/match_badge.dart';
 import '../explore/map_screen.dart';
@@ -33,6 +34,7 @@ class JobDetailScreen extends StatefulWidget {
 
 class _JobDetailScreenState extends State<JobDetailScreen> {
   late ConfettiController _confettiController;
+  bool _showOriginalText = false;
 
   @override
   void initState() {
@@ -55,6 +57,23 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
     final postsProvider = context.watch<PostulacionesProvider>();
     final session = context.read<AuthProvider>().session;
     final yaPostulado = postsProvider.yaPostulado(vacante.id);
+    final isEs = context.watch<LocaleProvider>().isSpanish;
+
+    // Control de traducción en tiempo real (LinkedIn / Airbnb pattern)
+    final bool isActuallyTranslated = isEs ? _showOriginalText : !_showOriginalText;
+    final String activeDescription = isActuallyTranslated
+        ? vacante.descripcionLocalized(false)
+        : vacante.descripcion;
+    final List<String> activeRequisitos = isActuallyTranslated
+        ? vacante.requisitosLocalized(false)
+        : vacante.requisitos;
+
+    final String toggleButtonLabel;
+    if (isEs) {
+      toggleButtonLabel = _showOriginalText ? 'Ver original' : 'Traducir al inglés';
+    } else {
+      toggleButtonLabel = _showOriginalText ? 'Translate to English' : 'See original';
+    }
 
     return Stack(
       children: [
@@ -119,9 +138,9 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Text(
-                                      'Empresa Confidencial',
-                                      style: TextStyle(
+                                    Text(
+                                      isEs ? 'Empresa Confidencial' : 'Confidential Company',
+                                      style: const TextStyle(
                                         color: Colors.white,
                                         fontSize: 15,
                                         fontWeight: FontWeight.w700,
@@ -133,7 +152,7 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
                                         const Icon(Icons.location_on, color: Colors.white70, size: 12),
                                         const SizedBox(width: 4),
                                         Text(
-                                          vacante.ubicacion,
+                                          vacante.ubicacionLocalized(isEs),
                                           style: const TextStyle(color: Colors.white70, fontSize: 13),
                                         ),
                                       ],
@@ -152,7 +171,7 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               child: Text(
-                                vacante.categoria!,
+                                vacante.categoriaLocalized(isEs) ?? vacante.categoria!,
                                 style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800),
                               ),
                             ),
@@ -162,7 +181,7 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
                             child: Material(
                               type: MaterialType.transparency,
                               child: Text(
-                                vacante.titulo,
+                                vacante.tituloLocalized(isEs),
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 26,
@@ -198,9 +217,10 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
                         spacing: 8,
                         runSpacing: 8,
                         children: [
-                          _InfoChip(Icons.location_on_outlined, vacante.ubicacion),
-                          _InfoChip(Icons.access_time_outlined, vacante.tiempoRelativo),
-                          _InfoChip(Icons.attach_money_outlined, vacante.salarioDisplay, accent: true),
+                          _InfoChip(Icons.location_on_outlined, vacante.ubicacionLocalized(isEs)),
+                          _InfoChip(Icons.calendar_today_outlined, vacante.fechaPublicacionLocalized(isEs)),
+                          _InfoChip(Icons.access_time_outlined, vacante.tiempoRelativoLocalized(isEs)),
+                          _InfoChip(Icons.attach_money_outlined, vacante.salarioDisplayLocalized(isEs), accent: true),
                         ],
                       ),
                       const SizedBox(height: 20),
@@ -223,14 +243,17 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
                                   children: [
                                     const Icon(Icons.auto_awesome, color: kGreen, size: 18),
                                     const SizedBox(width: 8),
-                                    const Text('Análisis de Inteligencia Artificial', style: TextStyle(fontWeight: FontWeight.bold, color: kMatchText)),
+                                    Text(
+                                      isEs ? 'Análisis de Inteligencia Artificial' : 'Artificial Intelligence Analysis',
+                                      style: const TextStyle(fontWeight: FontWeight.bold, color: kMatchText),
+                                    ),
                                     const Spacer(),
-                                    MatchBadge(percent: recomendacionML!.scorePercent, compact: true),
+                                    MatchBadge(percent: recomendacionML.scorePercent, compact: true, isSpanish: isEs),
                                   ],
                                 ),
                                 const SizedBox(height: 10),
                                 Text(
-                                  recomendacionML!.explicacion,
+                                  recomendacionML.explicacionLocalized(isEs),
                                   style: const TextStyle(fontSize: 13, color: kMatchText, height: 1.5),
                                 ),
                               ],
@@ -263,9 +286,9 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
                             return Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
-                                  'Ubicación',
-                                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: kNavy),
+                                Text(
+                                  isEs ? 'Ubicación' : 'Location',
+                                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: kNavy),
                                 ),
                                 const SizedBox(height: 10),
                                 ClipRRect(
@@ -337,18 +360,73 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
                               child: const Icon(Icons.description_outlined, color: kBlue, size: 16),
                             ),
                             const SizedBox(width: 10),
-                            const Text(
-                              'Descripción del cargo',
-                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: kNavy),
+                            Expanded(
+                              child: Text(
+                                isEs ? 'Descripción del cargo' : 'Job Description',
+                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: kNavy),
+                              ),
+                            ),
+                            InkWell(
+                              onTap: () {
+                                HapticFeedback.selectionClick();
+                                setState(() => _showOriginalText = !_showOriginalText);
+                              },
+                              borderRadius: BorderRadius.circular(20),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                decoration: BoxDecoration(
+                                  color: isActuallyTranslated ? kBlue.withValues(alpha: 0.08) : Colors.grey.shade100,
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: isActuallyTranslated ? kBlue.withValues(alpha: 0.3) : Colors.grey.shade300,
+                                    width: 1,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.g_translate_rounded, 
+                                      size: 13, 
+                                      color: isActuallyTranslated ? kBlue : kMuted,
+                                    ),
+                                    const SizedBox(width: 5),
+                                    Text(
+                                      toggleButtonLabel,
+                                      style: TextStyle(
+                                        fontSize: 11, 
+                                        fontWeight: FontWeight.w700, 
+                                        color: isActuallyTranslated ? kBlue : kNavy,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ),
                           ],
                         ),
                       ),
-                      const SizedBox(height: 14),
-                      FadeIn(
-                        duration: const Duration(milliseconds: 800),
+                      const SizedBox(height: 12),
+                      if (isActuallyTranslated)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.auto_awesome, size: 12, color: kBlue),
+                              const SizedBox(width: 5),
+                              Text(
+                                isEs ? 'Traducido por TalentMatch IA' : 'Translated by TalentMatch AI',
+                                style: const TextStyle(fontSize: 11, color: kBlue, fontWeight: FontWeight.w600),
+                              ),
+                            ],
+                          ),
+                        ),
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 250),
                         child: Text(
-                          vacante.descripcion,
+                          activeDescription,
+                          key: ValueKey('desc_$isActuallyTranslated'),
                           style: const TextStyle(
                             color: Color(0xFF475569), 
                             fontSize: 14, 
@@ -373,9 +451,9 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
                               child: const Icon(Icons.star_outline_rounded, color: kBlue, size: 16),
                             ),
                             const SizedBox(width: 10),
-                            const Text(
-                              'Requisitos',
-                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: kNavy),
+                            Text(
+                              isEs ? 'Requisitos' : 'Requirements',
+                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: kNavy),
                             ),
                           ],
                         ),
@@ -383,7 +461,7 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
                         Wrap(
                           spacing: 10,
                           runSpacing: 10,
-                          children: vacante.requisitos.asMap().entries.map(
+                          children: activeRequisitos.asMap().entries.map(
                             (entry) => FadeInLeft(
                               delay: Duration(milliseconds: 200 + (50 * entry.key)),
                               child: Container(
@@ -431,6 +509,7 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
         vacante: vacante,
         yaPostulado: yaPostulado,
         candidatoId: session?.profileId ?? '',
+        isSpanish: isEs,
         onSuccess: () => _confettiController.play(),
       ),
     ),
@@ -457,19 +536,21 @@ class _PostularseBar extends StatelessWidget {
   final Vacante vacante;
   final bool yaPostulado;
   final String candidatoId;
+  final bool isSpanish;
   final VoidCallback onSuccess;
 
   const _PostularseBar({
     required this.vacante,
     required this.yaPostulado,
     required this.candidatoId,
+    this.isSpanish = true,
     required this.onSuccess,
   });
 
   Future<void> _postularse(BuildContext context) async {
     if (candidatoId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Completa tu perfil antes de postularte.')),
+        SnackBar(content: Text(isSpanish ? 'Completa tu perfil antes de postularte.' : 'Complete your profile before applying.')),
       );
       return;
     }
@@ -494,7 +575,7 @@ class _PostularseBar extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  '¡Te postulaste a "${vacante.titulo}"!',
+                  isSpanish ? '¡Te postulaste a "${vacante.titulo}"!' : 'Applied to "${vacante.tituloLocalized(false)}"!',
                   style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
                 ),
               ),
@@ -507,7 +588,7 @@ class _PostularseBar extends StatelessWidget {
         SnackBar(
           backgroundColor: Colors.red.shade700,
           content: Text(
-            provider.error ?? 'Ya estás postulado a esta vacante.',
+            provider.error ?? (isSpanish ? 'Ya estás postulado a esta vacante.' : 'Already applied to this job.'),
             style: const TextStyle(color: Colors.white),
           ),
         ),
@@ -558,6 +639,7 @@ class _PostularseBar extends StatelessWidget {
         height: 56,
         key: const ValueKey('apply'),
         child: SwipeToApplyButton(
+          isSpanish: isSpanish,
           onSwipe: () async => await _postularse(context),
         ),
       );
@@ -573,14 +655,14 @@ class _PostularseBar extends StatelessWidget {
             disabledBackgroundColor: const Color(0xFF22C55E),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           ),
-          child: const Row(
+          child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.check_circle, color: Colors.white, size: 18),
-              SizedBox(width: 10),
+              const Icon(Icons.check_circle, color: Colors.white, size: 18),
+              const SizedBox(width: 10),
               Text(
-                'Ya estás postulado',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white),
+                isSpanish ? 'Ya estás postulado' : 'Already applied',
+                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white),
               ),
             ],
           ),
@@ -629,8 +711,9 @@ class _InfoChip extends StatelessWidget {
 
 class SwipeToApplyButton extends StatefulWidget {
   final Future<void> Function() onSwipe;
+  final bool isSpanish;
 
-  const SwipeToApplyButton({super.key, required this.onSwipe});
+  const SwipeToApplyButton({super.key, required this.onSwipe, this.isSpanish = true});
 
   @override
   State<SwipeToApplyButton> createState() => _SwipeToApplyButtonState();
@@ -671,7 +754,9 @@ class _SwipeToApplyButtonState extends State<SwipeToApplyButton> {
                   baseColor: _dragPosition > 20 ? Colors.white.withValues(alpha: 0.8) : kBlue.withValues(alpha: 0.7),
                   highlightColor: _dragPosition > 20 ? Colors.white : kBlue,
                   child: Text(
-                    _isFinished ? 'Enviando...' : 'Desliza para postularte  ➔',
+                    _isFinished
+                        ? (widget.isSpanish ? 'Enviando...' : 'Submitting...')
+                        : (widget.isSpanish ? 'Desliza para postularte  ➔' : 'Swipe to apply  ➔'),
                     style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
                   ),
                 ),

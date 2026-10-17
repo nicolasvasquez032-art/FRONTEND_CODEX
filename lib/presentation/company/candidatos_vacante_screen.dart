@@ -1,8 +1,10 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
+import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../domain/entities/vacante.dart';
+import '../shared/providers/locale_provider.dart';
 import '../shared/widgets/match_badge.dart';
 import '../shared/widgets/bouncy_tap.dart';
 import '../shared/widgets/shimmer_cards.dart';
@@ -30,6 +32,7 @@ class _CandidatosVacanteScreenState extends State<CandidatosVacanteScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isEs = context.watch<LocaleProvider>().isSpanish;
     final List<Map<String, dynamic>> mockCandidatos = [
       {
         'nombre': 'Andrea Gómez',
@@ -99,12 +102,12 @@ class _CandidatosVacanteScreenState extends State<CandidatosVacanteScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             mainAxisAlignment: MainAxisAlignment.end,
                             children: [
-                              FadeInDown(child: const Text('Candidatos para:', style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.bold))),
+                              FadeInDown(child: Text(isEs ? 'Candidatos para:' : 'Candidates for:', style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.bold))),
                               const SizedBox(height: 4),
                               FadeInLeft(
                                 delay: const Duration(milliseconds: 200),
                                 child: Text(
-                                  widget.vacante.titulo,
+                                  widget.vacante.tituloLocalized(isEs),
                                   style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900, height: 1.1),
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
@@ -205,8 +208,8 @@ class _CandidatoCard extends StatelessWidget {
           context,
           PageRouteBuilder(
             transitionDuration: const Duration(milliseconds: 600),
-            pageBuilder: (_, __, ___) => CandidatoDetailScreen(candidato: candidato),
-            transitionsBuilder: (_, animation, __, child) => FadeTransition(opacity: animation, child: child),
+            pageBuilder: (_, _, _) => CandidatoDetailScreen(candidato: candidato),
+            transitionsBuilder: (_, animation, _, child) => FadeTransition(opacity: animation, child: child),
           )
         );
       },

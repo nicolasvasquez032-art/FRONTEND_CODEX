@@ -54,14 +54,14 @@ class VacanteRepositoryImpl implements VacanteRepository {
         'requisitos': requisitos,
         'ubicacion': ubicacion,
         'categoria': categoria,
-        if (salarioMin != null) 'salario_min': salarioMin,
-        if (salarioMax != null) 'salario_max': salarioMax,
-        if (latitud != null) 'latitud': latitud,
-        if (longitud != null) 'longitud': longitud,
+        'salario_min': ?salarioMin,
+        'salario_max': ?salarioMax,
+        'latitud': ?latitud,
+        'longitud': ?longitud,
       },
       auth: true,
     );
-    return VacanteModel.fromJson(response as Map<String, dynamic>).toEntity();
+    return VacanteModel.fromJson(response).toEntity();
   }
 
   @override

@@ -128,7 +128,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                               shape: BoxShape.circle,
                               boxShadow: [
                                 BoxShadow(
-                                  color: (page['color'] as Color).withOpacity(0.15),
+                                  color: (page['color'] as Color).withValues(alpha: 0.15),
                                   blurRadius: 40,
                                   spreadRadius: 20,
                                 ),
@@ -138,7 +138,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                               child: BackdropFilter(
                                 filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
                                 child: Container(
-                                  color: Colors.white.withOpacity(0.35),
+                                  color: Colors.white.withValues(alpha: 0.35),
                                   padding: const EdgeInsets.all(20),
                                   alignment: Alignment.center,
                                   child: Lottie.asset(
@@ -177,7 +177,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           page['description'] as String,
                           style: TextStyle(
                             fontSize: 17,
-                            color: kNavy.withOpacity(0.6),
+                            color: kNavy.withValues(alpha: 0.6),
                             height: 1.6,
                             letterSpacing: 0.2,
                             fontWeight: FontWeight.w500,
@@ -230,7 +230,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       borderRadius: BorderRadius.circular(30),
                       boxShadow: [
                         BoxShadow(
-                          color: kBlue.withOpacity(0.3),
+                          color: kBlue.withValues(alpha: 0.3),
                           blurRadius: 12,
                           offset: const Offset(0, 4),
                         ),

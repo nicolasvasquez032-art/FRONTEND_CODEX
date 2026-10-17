@@ -40,6 +40,11 @@ dependencies:
   smooth_page_indicator: ^3.0.0
   font_awesome_flutter: ^11.0.0
   web_socket_channel: ^3.0.3
+  flutter_secure_storage: ^11.2.0
+  flutter_localizations:
+    sdk: flutter
+  intl: ^0.20.3
+  sentry_flutter: ^8.14.2
 
 dev_dependencies:
   flutter_test:
@@ -54,6 +59,7 @@ flutter_launcher_icons:
 
 flutter:
   uses-material-design: true
+  generate: true
   assets:
     - assets/images/logo.png
     - assets/lottie/

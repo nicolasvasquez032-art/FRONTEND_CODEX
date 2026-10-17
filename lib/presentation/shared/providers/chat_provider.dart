@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:talentmatch/core/network/api_client.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 class Message {
@@ -33,7 +34,7 @@ class Message {
 
 class ChatProvider extends ChangeNotifier {
   WebSocketChannel? _channel;
-  List<Message> _messages = [];
+  final List<Message> _messages = [];
   bool _isConnected = false;
 
   List<Message> get messages => _messages;
@@ -47,9 +48,9 @@ class ChatProvider extends ChangeNotifier {
   void connect(String userId, String token) {
     if (_isConnected) return;
 
-    // IP para AWS EC2 Production — token JWT como query param para autenticación
+    // WebSocket derivado dinámicamente de kBaseUrl — compatible con --dart-define
     final wsUrl = Uri.parse(
-      'ws://18.191.162.235:8000/chat/ws/$userId?token=${Uri.encodeComponent(token)}',
+      '$kWsBaseUrl/chat/ws/$userId?token=${Uri.encodeComponent(token)}',
     );
 
     try {

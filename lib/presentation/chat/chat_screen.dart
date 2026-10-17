@@ -101,7 +101,7 @@ class _ChatScreenState extends State<ChatScreen> {
             Navigator.pop(context);
           },
         ),
-        backgroundColor: Colors.white.withOpacity(0.7),
+        backgroundColor: Colors.white.withValues(alpha: 0.7),
         elevation: 0,
         centerTitle: true,
         flexibleSpace: ClipRect(
@@ -137,7 +137,7 @@ class _ChatScreenState extends State<ChatScreen> {
               height: 300,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: kBlue.withOpacity(0.15),
+                color: kBlue.withValues(alpha: 0.15),
               ),
             ),
           ),
@@ -149,7 +149,7 @@ class _ChatScreenState extends State<ChatScreen> {
               height: 250,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: kPurple.withOpacity(0.15),
+                color: kPurple.withValues(alpha: 0.15),
               ),
             ),
           ),
@@ -167,7 +167,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           child: FadeInUp(
                             child: Text(
                               'Envía el primer mensaje...',
-                              style: TextStyle(color: kNavy.withOpacity(0.5), fontSize: 15),
+                              style: TextStyle(color: kNavy.withValues(alpha: 0.5), fontSize: 15),
                             ),
                           ),
                         )
@@ -195,8 +195,8 @@ class _ChatScreenState extends State<ChatScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.7),
-                    border: Border(top: BorderSide(color: Colors.white.withOpacity(0.5))),
+                    color: Colors.white.withValues(alpha: 0.7),
+                    border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.5))),
                   ),
                   child: Row(
                     children: [
@@ -208,7 +208,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           decoration: InputDecoration(
                             hintText: 'Escribe un mensaje...',
                             filled: true,
-                            fillColor: Colors.white.withOpacity(0.8),
+                            fillColor: Colors.white.withValues(alpha: 0.8),
                             contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(30),
@@ -216,7 +216,7 @@ class _ChatScreenState extends State<ChatScreen> {
                             ),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(30),
-                              borderSide: BorderSide(color: kNavy.withOpacity(0.05)),
+                              borderSide: BorderSide(color: kNavy.withValues(alpha: 0.05)),
                             ),
                           ),
                         ),
@@ -267,7 +267,7 @@ class _MessageBubble extends StatelessWidget {
         ),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: isMe ? kBlue : Colors.white.withOpacity(0.8),
+          color: isMe ? kBlue : Colors.white.withValues(alpha: 0.8),
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(16),
             topRight: const Radius.circular(16),
@@ -276,7 +276,7 @@ class _MessageBubble extends StatelessWidget {
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.03),
+              color: Colors.black.withValues(alpha: 0.03),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -298,7 +298,7 @@ class _MessageBubble extends StatelessWidget {
             Text(
               time,
               style: TextStyle(
-                color: isMe ? Colors.white.withOpacity(0.7) : kMuted,
+                color: isMe ? Colors.white.withValues(alpha: 0.7) : kMuted,
                 fontSize: 10,
               ),
             ),

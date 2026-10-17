@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../domain/entities/recomendacion.dart';
+import '../providers/locale_provider.dart';
 import 'bouncing_card.dart';
 import 'match_badge.dart';
 
@@ -20,6 +22,10 @@ class AiExplanationTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isEs = context.watch<LocaleProvider>().isSpanish;
+    final displayTitle = recomendacion.tituloLocalized(isEs);
+    final displayExplanation = recomendacion.explicacionLocalized(isEs);
+
     return BouncingCard(
       onTap: onTap,
       child: AnimatedContainer(
@@ -44,7 +50,7 @@ class AiExplanationTile extends StatelessWidget {
             // ── Fila superior: logo empresa + título + chevron ──
             Row(
               children: [
-                _CompanyAvatar(recomendacion.titulo),
+                _CompanyAvatar(displayTitle),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
@@ -55,7 +61,7 @@ class AiExplanationTile extends StatelessWidget {
                         child: Material(
                           type: MaterialType.transparency,
                           child: Text(
-                            recomendacion.titulo,
+                            displayTitle,
                             style: const TextStyle(
                               fontWeight: FontWeight.w800,
                               fontSize: 14,
@@ -67,7 +73,7 @@ class AiExplanationTile extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 4),
-                      MatchBadge(percent: recomendacion.scorePercent),
+                      MatchBadge(percent: recomendacion.scorePercent, isSpanish: isEs),
                     ],
                   ),
                 ),
@@ -115,7 +121,7 @@ class AiExplanationTile extends StatelessWidget {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      recomendacion.explicacion,
+                      displayExplanation,
                       style: const TextStyle(
                         fontSize: 12.5,
                         color: kNavy,

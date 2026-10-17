@@ -10,6 +10,7 @@ import 'package:animate_do/animate_do.dart';
 import '../shared/widgets/bouncy_tap.dart';
 import '../shared/widgets/shimmer_cards.dart';
 import 'package:liquid_pull_to_refresh/liquid_pull_to_refresh.dart';
+import '../shared/providers/locale_provider.dart';
 
 class MisVacantesScreen extends StatefulWidget {
   const MisVacantesScreen({super.key});
@@ -252,7 +253,7 @@ class _MisVacantesScreenState extends State<MisVacantesScreen> {
       physics: const NeverScrollableScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: 16),
       itemCount: vacantes.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      separatorBuilder: (_, _) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
         final v = vacantes[index];
         return FadeInUp(
@@ -291,20 +292,6 @@ class _VacanteCardState extends State<_VacanteCard> with SingleTickerProviderSta
   void dispose() {
     _animController.dispose();
     super.dispose();
-  }
-
-  String _formatCurrency(double value) {
-    final intValue = value.toInt();
-    return intValue.toString().replaceAllMapped(
-      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-      (Match m) => '${m[1]}.'
-    );
-  }
-
-  String get _monedaDisplay {
-    final reg = RegExp(r'\*Salario expresado en ([A-Z]{3})\*');
-    final match = reg.firstMatch(widget.vacante.descripcion);
-    return match != null ? match.group(1)! : 'COP';
   }
 
   String get _descripcionLimpia {
@@ -349,6 +336,7 @@ class _VacanteCardState extends State<_VacanteCard> with SingleTickerProviderSta
 
   @override
   Widget build(BuildContext context) {
+    final isEs = context.watch<LocaleProvider>().isSpanish;
     final bool isActiva = widget.vacante.estado == VacanteEstado.activa;
     
     return AnimatedBuilder(
@@ -398,14 +386,14 @@ class _VacanteCardState extends State<_VacanteCard> with SingleTickerProviderSta
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        widget.vacante.titulo,
+                        widget.vacante.tituloLocalized(isEs),
                         style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: kNavy, height: 1.2),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        widget.vacante.categoria ?? 'Sin categoría',
+                        widget.vacante.categoriaLocalized(isEs) ?? (isEs ? 'Sin categoría' : 'Uncategorized'),
                         style: const TextStyle(fontSize: 12, color: kBlue, fontWeight: FontWeight.w600),
                       ),
                     ],
@@ -486,16 +474,12 @@ class _VacanteCardState extends State<_VacanteCard> with SingleTickerProviderSta
                 ),
               ),
               const Spacer(),
-              if (widget.vacante.salarioMin != null) ...[
-                const Icon(Icons.monetization_on, size: 16, color: kBlue),
-                const SizedBox(width: 4),
-                Text(
-                  '${_formatCurrency(widget.vacante.salarioMin!)} $_monedaDisplay',
-                  style: const TextStyle(fontSize: 14, color: kNavy, fontWeight: FontWeight.w800),
-                ),
-              ] else ...[
-                 const Text('Salario a convenir', style: TextStyle(fontSize: 12, color: kMuted, fontWeight: FontWeight.w600)),
-              ]
+              const Icon(Icons.monetization_on_outlined, size: 16, color: kBlue),
+              const SizedBox(width: 4),
+              Text(
+                widget.vacante.salarioDisplayLocalized(isEs),
+                style: const TextStyle(fontSize: 13, color: kNavy, fontWeight: FontWeight.w800),
+              ),
             ],
           ),
           const SizedBox(height: 16),

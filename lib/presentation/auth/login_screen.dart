@@ -6,6 +6,8 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../core/constants/app_colors.dart';
 import '../shared/providers/auth_provider.dart';
 import '../shared/widgets/brand_logo.dart';
+import '../shared/widgets/language_switch_button.dart';
+import '../../l10n/app_localizations.dart';
 import 'register_screen.dart';
 import 'forgot_password_screen.dart';
 
@@ -56,8 +58,23 @@ class _LoginScreenState extends State<LoginScreen>
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
+    final l10n = AppLocalizations.of(context);
+
     return Scaffold(
       backgroundColor: const Color(0xFFF4F7FC),
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        automaticallyImplyLeading: false,
+        actions: const [
+          Padding(
+            padding: EdgeInsets.only(right: 16),
+            child: LanguageSwitchButton(),
+          ),
+        ],
+      ),
       body: Stack(
         children: [
           // Background Glows
@@ -69,7 +86,7 @@ class _LoginScreenState extends State<LoginScreen>
               height: 300,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: kBlue.withOpacity(0.15),
+                color: kBlue.withValues(alpha: 0.15),
               ),
             ),
           ),
@@ -81,7 +98,7 @@ class _LoginScreenState extends State<LoginScreen>
               height: 250,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: kPurple.withOpacity(0.15),
+                color: kPurple.withValues(alpha: 0.15),
               ),
             ),
           ),
@@ -111,7 +128,7 @@ class _LoginScreenState extends State<LoginScreen>
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
-                                color: kNavy.withOpacity(0.05),
+                                color: kNavy.withValues(alpha: 0.05),
                                 blurRadius: 20,
                                 offset: const Offset(0, 10),
                               ),
@@ -140,10 +157,10 @@ class _LoginScreenState extends State<LoginScreen>
                     FadeInUp(
                       duration: const Duration(milliseconds: 600),
                       delay: const Duration(milliseconds: 200),
-                      child: const Text(
-                        'Empleo inteligente para tu futuro',
+                      child: Text(
+                        l10n.appSlogan,
                         textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 14, color: kMuted, fontWeight: FontWeight.w500),
+                        style: const TextStyle(fontSize: 14, color: kMuted, fontWeight: FontWeight.w500),
                       ),
                     ),
                     const SizedBox(height: 40),
@@ -155,12 +172,12 @@ class _LoginScreenState extends State<LoginScreen>
                       child: Container(
                         padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.6),
+                          color: Colors.white.withValues(alpha: 0.6),
                           borderRadius: BorderRadius.circular(24),
                           border: Border.all(color: Colors.white, width: 1.5),
                           boxShadow: [
                             BoxShadow(
-                              color: kNavy.withOpacity(0.03),
+                              color: kNavy.withValues(alpha: 0.03),
                               blurRadius: 30,
                               offset: const Offset(0, 15),
                             ),
@@ -171,32 +188,63 @@ class _LoginScreenState extends State<LoginScreen>
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
-                                'Iniciar sesión',
-                                style: TextStyle(
+                              Text(
+                                l10n.loginTitle,
+                                style: const TextStyle(
                                   fontSize: 22,
                                   fontWeight: FontWeight.w800,
                                   color: kNavy,
                                 ),
                               ),
                               const SizedBox(height: 24),
+                              if (auth.error != null) ...[
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                  margin: const EdgeInsets.only(bottom: 20),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.shade50,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: Colors.red.shade200),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.info_outline, color: Colors.red.shade700, size: 20),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Text(
+                                          auth.error!,
+                                          style: TextStyle(
+                                            color: Colors.red.shade900,
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                      GestureDetector(
+                                        onTap: () => auth.clearError(),
+                                        child: Icon(Icons.close, color: Colors.red.shade400, size: 18),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                               _Field(
                                 controller: _emailCtrl,
-                                label: 'Correo electrónico',
-                                hint: 'tu@correo.com',
+                                label: l10n.loginEmailLabel,
+                                hint: l10n.loginEmailHint,
                                 icon: Icons.email_outlined,
                                 keyboardType: TextInputType.emailAddress,
                                 validator: (v) {
-                                  if (v == null || v.isEmpty) return 'Campo obligatorio';
-                                  if (!v.contains('@')) return 'Correo inválido';
+                                  if (v == null || v.isEmpty) return l10n.requiredField;
+                                  if (!v.contains('@')) return l10n.loginInvalidEmail;
                                   return null;
                                 },
                               ),
                               const SizedBox(height: 16),
                               _Field(
                                 controller: _passwordCtrl,
-                                label: 'Contraseña',
-                                hint: '••••••••',
+                                label: l10n.loginPasswordLabel,
+                                hint: l10n.loginPasswordHint,
                                 icon: Icons.lock_outline,
                                 obscure: _obscure,
                                 suffix: IconButton(
@@ -207,8 +255,8 @@ class _LoginScreenState extends State<LoginScreen>
                                   onPressed: () => setState(() => _obscure = !_obscure),
                                 ),
                                 validator: (v) {
-                                  if (v == null || v.isEmpty) return 'Campo obligatorio';
-                                  if (v.length < 8) return 'Mínimo 8 caracteres';
+                                  if (v == null || v.isEmpty) return l10n.requiredField;
+                                  if (v.length < 8) return l10n.loginPasswordMinLength;
                                   return null;
                                 },
                               ),
@@ -222,9 +270,9 @@ class _LoginScreenState extends State<LoginScreen>
                                     context,
                                     MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
                                   ),
-                                  child: const Text(
-                                    '¿Olvidaste tu contraseña?',
-                                    style: TextStyle(color: kBlue, fontSize: 13, fontWeight: FontWeight.w700),
+                                  child: Text(
+                                    l10n.loginForgotPassword,
+                                    style: const TextStyle(color: kBlue, fontSize: 13, fontWeight: FontWeight.w700),
                                   ),
                                 ),
                               ),
@@ -232,7 +280,7 @@ class _LoginScreenState extends State<LoginScreen>
 
                               // ── Botón ──
                               _GradientButton(
-                                text: 'Iniciar sesión',
+                                text: l10n.loginButton,
                                 loading: auth.loading,
                                 onPressed: _submit,
                               ),
@@ -241,12 +289,12 @@ class _LoginScreenState extends State<LoginScreen>
                               // ── Divisor O ──
                               Row(
                                 children: [
-                                  Expanded(child: Divider(color: kNavy.withOpacity(0.1))),
-                                  const Padding(
-                                    padding: EdgeInsets.symmetric(horizontal: 16),
-                                    child: Text('O continuar con', style: TextStyle(color: kMuted, fontSize: 12)),
+                                  Expanded(child: Divider(color: kNavy.withValues(alpha: 0.1))),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                                    child: Text(l10n.loginOrContinueWith, style: const TextStyle(color: kMuted, fontSize: 12)),
                                   ),
-                                  Expanded(child: Divider(color: kNavy.withOpacity(0.1))),
+                                  Expanded(child: Divider(color: kNavy.withValues(alpha: 0.1))),
                                 ],
                               ),
                               const SizedBox(height: 24),
@@ -261,8 +309,8 @@ class _LoginScreenState extends State<LoginScreen>
                                       },
                                       style: OutlinedButton.styleFrom(
                                         padding: const EdgeInsets.symmetric(vertical: 14),
-                                        backgroundColor: Colors.white.withOpacity(0.8),
-                                        side: BorderSide(color: kNavy.withOpacity(0.1)),
+                                        backgroundColor: Colors.white.withValues(alpha: 0.8),
+                                        side: BorderSide(color: kNavy.withValues(alpha: 0.1)),
                                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                                       ),
                                       icon: FaIcon(FontAwesomeIcons.google, color: const Color(0xFFDB4437), size: 18),
@@ -277,8 +325,8 @@ class _LoginScreenState extends State<LoginScreen>
                                       },
                                       style: OutlinedButton.styleFrom(
                                         padding: const EdgeInsets.symmetric(vertical: 14),
-                                        backgroundColor: Colors.white.withOpacity(0.8),
-                                        side: BorderSide(color: kNavy.withOpacity(0.1)),
+                                        backgroundColor: Colors.white.withValues(alpha: 0.8),
+                                        side: BorderSide(color: kNavy.withValues(alpha: 0.1)),
                                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                                       ),
                                       icon: FaIcon(FontAwesomeIcons.linkedin, color: const Color(0xFF0077B5), size: 18),
@@ -303,15 +351,15 @@ class _LoginScreenState extends State<LoginScreen>
                           alignment: WrapAlignment.center,
                           crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
-                            const Text('¿No tienes cuenta?', style: TextStyle(color: kMuted, fontSize: 14)),
+                            Text(l10n.loginNoAccount, style: const TextStyle(color: kMuted, fontSize: 14)),
                             TextButton(
                               onPressed: () => Navigator.push(
                                 context,
                                 MaterialPageRoute(builder: (_) => const RegisterScreen()),
                               ),
-                              child: const Text(
-                                'Crear cuenta',
-                                style: TextStyle(color: kBlue, fontWeight: FontWeight.w800, fontSize: 14),
+                              child: Text(
+                                l10n.loginCreateAccount,
+                                style: const TextStyle(color: kBlue, fontWeight: FontWeight.w800, fontSize: 14),
                               ),
                             ),
                           ],
@@ -377,14 +425,14 @@ class _Field extends StatelessWidget {
               prefixIcon: Icon(icon, color: kMuted, size: 20),
               suffixIcon: suffix,
               filled: true,
-              fillColor: Colors.white.withOpacity(0.9),
+              fillColor: Colors.white.withValues(alpha: 0.9),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide.none,
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: kNavy.withOpacity(0.05)),
+                borderSide: BorderSide(color: kNavy.withValues(alpha: 0.05)),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),

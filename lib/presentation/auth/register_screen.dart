@@ -4,9 +4,11 @@ import 'package:provider/provider.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../core/constants/app_colors.dart';
+import '../../l10n/app_localizations.dart';
 import '../shared/providers/auth_provider.dart';
 import '../shared/widgets/brand_logo.dart';
 import '../shared/widgets/colombia_location_picker.dart';
+import '../shared/widgets/language_switch_button.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -91,6 +93,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       backgroundColor: const Color(0xFFF4F7FC),
       extendBodyBehindAppBar: true,
@@ -100,6 +103,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
         elevation: 0,
         centerTitle: true,
         title: const BrandFull(iconSize: 24),
+        actions: const [
+          Padding(
+            padding: EdgeInsets.only(right: 12),
+            child: LanguageSwitchButton(),
+          ),
+        ],
       ),
       body: Stack(
         children: [
@@ -112,7 +121,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               height: 300,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: kBlue.withOpacity(0.15),
+                color: kBlue.withValues(alpha: 0.15),
               ),
             ),
           ),
@@ -124,7 +133,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               height: 250,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: kPurple.withOpacity(0.15),
+                color: kPurple.withValues(alpha: 0.15),
               ),
             ),
           ),
@@ -159,7 +168,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       child: Center(
                         child: Container(
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.5),
+                            color: Colors.white.withValues(alpha: 0.5),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(color: Colors.white, width: 1.5),
                           ),
@@ -168,12 +177,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               _RoleToggleBtn(
-                                title: 'Candidato',
+                                title: l10n.registerCandidateTab,
                                 active: !_isCompany,
                                 onTap: () => setState(() => _isCompany = false),
                               ),
                               _RoleToggleBtn(
-                                title: 'Empresa',
+                                title: l10n.registerCompanyTab,
                                 active: _isCompany,
                                 onTap: () => setState(() => _isCompany = true),
                               ),
@@ -191,12 +200,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     child: Container(
                       padding: const EdgeInsets.all(24),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.6),
+                        color: Colors.white.withValues(alpha: 0.6),
                         borderRadius: BorderRadius.circular(24),
                         border: Border.all(color: Colors.white, width: 1.5),
                         boxShadow: [
                           BoxShadow(
-                            color: kNavy.withOpacity(0.03),
+                            color: kNavy.withValues(alpha: 0.03),
                             blurRadius: 30,
                             offset: const Offset(0, 15),
                           ),
@@ -206,7 +215,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            _step == 0 ? 'Crear cuenta' : 'Tu perfil profesional',
+                            _step == 0 ? l10n.registerTitle : l10n.registerStepTitle,
                             style: const TextStyle(
                               fontSize: 22, fontWeight: FontWeight.w800, color: kNavy,
                             ),
@@ -214,8 +223,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           const SizedBox(height: 6),
                           Text(
                             _step == 0
-                                ? (_isCompany ? 'Registra tu empresa para publicar vacantes' : 'Primero, tus datos de acceso')
-                                : 'Cuéntanos sobre ti para mejores recomendaciones',
+                                ? (_isCompany ? l10n.registerCompanySubtitle : l10n.registerCandidateSubtitle)
+                                : l10n.registerProfileSubtitle,
                             style: const TextStyle(fontSize: 13, color: kMuted),
                           ),
                           const SizedBox(height: 28),
@@ -224,13 +233,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             key: _formKey,
                             child: AnimatedSwitcher(
                               duration: const Duration(milliseconds: 300),
-                              child: _step == 0 ? _buildStep0() : _buildStep1(),
+                              child: _step == 0 ? _buildStep0(l10n) : _buildStep1(l10n),
                             ),
                           ),
                           const SizedBox(height: 24),
 
                           _GradientButton(
-                            text: _step == 0 ? (_isCompany ? 'Registrar Empresa' : 'Continuar') : 'Crear cuenta',
+                            text: _step == 0 ? (_isCompany ? l10n.registerCompanyButton : l10n.registerContinue) : l10n.registerButton,
                             loading: auth.loading,
                             onPressed: (_step == 0 && !_isCompany) ? _nextStep : _submit,
                           ),
@@ -240,12 +249,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             // ── Divisor O ──
                             Row(
                               children: [
-                                Expanded(child: Divider(color: kNavy.withOpacity(0.1))),
-                                const Padding(
-                                  padding: EdgeInsets.symmetric(horizontal: 16),
-                                  child: Text('O registrarse con', style: TextStyle(color: kMuted, fontSize: 12)),
+                                Expanded(child: Divider(color: kNavy.withValues(alpha: 0.1))),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                                  child: Text(l10n.registerOrWith, style: const TextStyle(color: kMuted, fontSize: 12)),
                                 ),
-                                Expanded(child: Divider(color: kNavy.withOpacity(0.1))),
+                                Expanded(child: Divider(color: kNavy.withValues(alpha: 0.1))),
                               ],
                             ),
                             const SizedBox(height: 24),
@@ -260,8 +269,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     },
                                     style: OutlinedButton.styleFrom(
                                       padding: const EdgeInsets.symmetric(vertical: 14),
-                                      backgroundColor: Colors.white.withOpacity(0.8),
-                                      side: BorderSide(color: kNavy.withOpacity(0.1)),
+                                      backgroundColor: Colors.white.withValues(alpha: 0.8),
+                                      side: BorderSide(color: kNavy.withValues(alpha: 0.1)),
                                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                                     ),
                                     icon: FaIcon(FontAwesomeIcons.google, color: const Color(0xFFDB4437), size: 18),
@@ -276,8 +285,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     },
                                     style: OutlinedButton.styleFrom(
                                       padding: const EdgeInsets.symmetric(vertical: 14),
-                                      backgroundColor: Colors.white.withOpacity(0.8),
-                                      side: BorderSide(color: kNavy.withOpacity(0.1)),
+                                      backgroundColor: Colors.white.withValues(alpha: 0.8),
+                                      side: BorderSide(color: kNavy.withValues(alpha: 0.1)),
                                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                                     ),
                                     icon: FaIcon(FontAwesomeIcons.linkedin, color: const Color(0xFF0077B5), size: 18),
@@ -302,12 +311,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         alignment: WrapAlignment.center,
                         crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
-                          const Text('¿Ya tienes cuenta?', style: TextStyle(color: kMuted, fontSize: 14)),
+                          Text(l10n.registerAlreadyHaveAccount, style: const TextStyle(color: kMuted, fontSize: 14)),
                           TextButton(
                             onPressed: () => Navigator.pop(context),
-                            child: const Text(
-                              'Inicia sesión',
-                              style: TextStyle(color: kBlue, fontWeight: FontWeight.w800, fontSize: 14),
+                            child: Text(
+                              l10n.loginTitle,
+                              style: const TextStyle(color: kBlue, fontWeight: FontWeight.w800, fontSize: 14),
                             ),
                           ),
                         ],
@@ -324,28 +333,28 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  Widget _buildStep0() => Column(
+  Widget _buildStep0(AppLocalizations l10n) => Column(
         key: const ValueKey(0),
         children: [
           if (!_isCompany) ...[
             _LabeledField(
               controller: _fullNameCtrl,
-              label: 'Nombre completo',
-              hint: 'Ej. Andrés Gómez',
+              label: l10n.registerFullNameLabel,
+              hint: l10n.registerFullNameHint,
               icon: Icons.person_outline,
-              validator: (v) => (v == null || v.trim().length < 2) ? 'Mínimo 2 caracteres' : null,
+              validator: (v) => (v == null || v.trim().length < 2) ? l10n.loginPasswordMinLength : null,
             ),
             const SizedBox(height: 14),
           ],
           _LabeledField(
             controller: _emailCtrl,
-            label: 'Correo electrónico',
-            hint: 'tu@correo.com',
+            label: l10n.loginEmailLabel,
+            hint: l10n.loginEmailHint,
             icon: Icons.email_outlined,
             keyboardType: TextInputType.emailAddress,
             validator: (v) {
-              if (v == null || v.isEmpty) return 'Campo obligatorio';
-              if (!v.contains('@')) return 'Correo inválido';
+              if (v == null || v.isEmpty) return l10n.requiredField;
+              if (!v.contains('@')) return l10n.loginInvalidEmail;
               return null;
             },
           ),
@@ -392,8 +401,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
           const SizedBox(height: 14),
           _LabeledField(
             controller: _passwordCtrl,
-            label: 'Contraseña',
-            hint: '••••••••',
+            label: l10n.loginPasswordLabel,
+            hint: l10n.loginPasswordHint,
             icon: Icons.lock_outline,
             obscure: _obscure,
             suffix: IconButton(
@@ -404,8 +413,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
               onPressed: () => setState(() => _obscure = !_obscure),
             ),
             validator: (v) {
-              if (v == null || v.isEmpty) return 'Campo obligatorio';
-              if (v.length < 8) return 'Mínimo 8 caracteres';
+              if (v == null || v.isEmpty) return l10n.requiredField;
+              if (v.length < 8) return l10n.loginPasswordMinLength;
               return null;
             },
           ),
@@ -432,25 +441,25 @@ class _RegisterScreenState extends State<RegisterScreen> {
           const SizedBox(height: 14),
           _LabeledField(
             controller: _confirmPasswordCtrl,
-            label: 'Confirmar contraseña',
-            hint: '••••••••',
+            label: l10n.registerConfirmPasswordLabel,
+            hint: l10n.loginPasswordHint,
             icon: Icons.lock_outline,
             obscure: _obscure,
             validator: (v) {
-              if (v == null || v.isEmpty) return 'Campo obligatorio';
-              if (v != _passwordCtrl.text) return 'Las contraseñas no coinciden';
+              if (v == null || v.isEmpty) return l10n.requiredField;
+              if (v != _passwordCtrl.text) return l10n.registerPasswordsDoNotMatch;
               return null;
             },
           ),
         ],
       );
 
-  Widget _buildStep1() => Column(
+  Widget _buildStep1(AppLocalizations l10n) => Column(
         key: const ValueKey(1),
         children: [
           _LabeledField(
             controller: _locationCtrl,
-            label: 'Ubicación',
+            label: l10n.registerLocationLabel,
             hint: 'Selecciona tu ciudad',
             icon: Icons.location_on_outlined,
             readOnly: true,
@@ -464,14 +473,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
           const SizedBox(height: 14),
           _LabeledField(
             controller: _educationCtrl,
-            label: 'Nivel educativo',
+            label: l10n.registerEducationLabel,
             hint: 'Ej. Tecnólogo en Sistemas',
             icon: Icons.school_outlined,
           ),
           const SizedBox(height: 14),
           _LabeledField(
             controller: _expCtrl,
-            label: 'Años de experiencia',
+            label: l10n.registerExperienceYearsLabel,
             hint: '0',
             icon: Icons.work_outline,
             keyboardType: TextInputType.number,
@@ -484,7 +493,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           const SizedBox(height: 14),
           _LabeledField(
             controller: _skillsCtrl,
-            label: 'Habilidades (separadas por coma)',
+            label: l10n.registerSkillsLabel,
             hint: 'Ej. Python, SQL, Comunicación',
             icon: Icons.star_outline,
             maxLines: 2,
@@ -653,14 +662,14 @@ class _LabeledField extends StatelessWidget {
               prefixIcon: Icon(icon, color: kMuted, size: 20),
               suffixIcon: suffix,
               filled: true,
-              fillColor: Colors.white.withOpacity(0.9),
+              fillColor: Colors.white.withValues(alpha: 0.9),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide.none,
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: kNavy.withOpacity(0.05)),
+                borderSide: BorderSide(color: kNavy.withValues(alpha: 0.05)),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),

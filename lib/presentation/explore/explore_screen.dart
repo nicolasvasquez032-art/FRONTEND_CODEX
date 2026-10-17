@@ -9,6 +9,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_strings.dart';
 import '../../domain/entities/vacante.dart';
 import '../job_detail/job_detail_screen.dart';
+import '../shared/providers/locale_provider.dart';
 import '../shared/providers/vacantes_provider.dart';
 import '../shared/widgets/bouncing_card.dart';
 import '../shared/widgets/animated_empty_state.dart';
@@ -43,6 +44,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
   @override
   Widget build(BuildContext context) {
     final vp = context.watch<VacantesProvider>();
+    final isEs = context.watch<LocaleProvider>().isSpanish;
     final topPadding = MediaQuery.paddingOf(context).top + 15;
     final bottomPadding = MediaQuery.paddingOf(context).bottom + 100;
 
@@ -58,13 +60,13 @@ class _ExploreScreenState extends State<ExploreScreen> {
             padding: EdgeInsets.fromLTRB(17, topPadding, 17, 16),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
-                const Row(
+                Row(
                   children: [
-                    Icon(Icons.travel_explore, size: 16, color: kBlue),
-                    SizedBox(width: 6),
+                    const Icon(Icons.travel_explore, size: 16, color: kBlue),
+                    const SizedBox(width: 6),
                     Text(
-                      AppStrings.exploreSubtitle,
-                      style: TextStyle(
+                      isEs ? AppStrings.exploreSubtitle : 'Discover new opportunities',
+                      style: const TextStyle(
                         color: kBlue,
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
@@ -75,15 +77,15 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 ),
                 const SizedBox(height: 12),
                 RichText(
-                  text: const TextSpan(
+                  text: TextSpan(
                     children: [
                       TextSpan(
-                        text: 'Explorar\n',
-                        style: TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: kNavy, height: 1.2),
+                        text: isEs ? 'Explorar\n' : 'Explore\n',
+                        style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: kNavy, height: 1.2),
                       ),
                       TextSpan(
-                        text: 'Empleos',
-                        style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: kBlue, height: 1.1),
+                        text: isEs ? 'Empleos' : 'Jobs',
+                        style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: kBlue, height: 1.1),
                       ),
                     ],
                   ),
@@ -98,7 +100,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                         controller: _searchController,
                         onChanged: (v) => vp.setQuery(v),
                         decoration: InputDecoration(
-                          hintText: AppStrings.searchJobHint,
+                          hintText: isEs ? AppStrings.searchJobHint : 'Search jobs, roles, or skills...',
                           prefixIcon: const Icon(Icons.search, color: kMuted),
                           suffixIcon: _searchController.text.isNotEmpty
                               ? IconButton(
@@ -114,7 +116,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     ),
                     const SizedBox(width: 12),
                     GestureDetector(
-                      onTap: () => _showFilterBottomSheet(context, vp),
+                      onTap: () => _showFilterBottomSheet(context, vp, isEs),
                       child: Container(
                         width: 54,
                         height: 54,
@@ -137,12 +139,14 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 if (vp.status == VacantesStatus.loading)
                   const _ShimmerList()
                 else if (vp.status == VacantesStatus.error)
-                  _ErrorState(vp.error ?? 'Error al cargar', onRetry: () => vp.cargar())
+                  _ErrorState(vp.error ?? (isEs ? 'Error al cargar' : 'Error loading'), onRetry: () => vp.cargar(), isSpanish: isEs)
                 else if (vp.filtered.isEmpty)
-                  const _EmptyState()
+                  _EmptyState(isSpanish: isEs)
                 else ...[
                   Text(
-                    '${vp.filtered.length} vacante${vp.filtered.length != 1 ? 's' : ''} encontrada${vp.filtered.length != 1 ? 's' : ''}',
+                    isEs
+                        ? '${vp.filtered.length} vacante${vp.filtered.length != 1 ? 's' : ''} encontrada${vp.filtered.length != 1 ? 's' : ''}'
+                        : '${vp.filtered.length} ${vp.filtered.length != 1 ? 'jobs found' : 'job found'}',
                     style: const TextStyle(color: kMuted, fontSize: 12, fontWeight: FontWeight.w600),
                   ),
                 ],
@@ -161,7 +165,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                       duration: const Duration(milliseconds: 500),
                       child: Padding(
                         padding: const EdgeInsets.only(bottom: 12),
-                        child: _ExploreCard(vacante: v),
+                        child: _ExploreCard(vacante: v, isSpanish: isEs),
                       ),
                     );
                   },
@@ -187,7 +191,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
             elevation: 0,
             backgroundColor: Colors.transparent, // Fondo manejado por el Container
             icon: const Icon(Icons.map_outlined, color: Colors.white),
-            label: const Text('Ver Mapa', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            label: Text(isEs ? 'Ver Mapa' : 'View Map', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           ),
         ),
       ),
@@ -201,7 +205,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
 class _ExploreCard extends StatelessWidget {
   final Vacante vacante;
-  const _ExploreCard({required this.vacante});
+  final bool isSpanish;
+  const _ExploreCard({required this.vacante, this.isSpanish = true});
 
   @override
   Widget build(BuildContext context) {
@@ -251,7 +256,7 @@ class _ExploreCard extends StatelessWidget {
                         child: Material(
                           type: MaterialType.transparency,
                           child: Text(
-                            vacante.titulo,
+                            vacante.tituloLocalized(isSpanish),
                             style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: kNavy, height: 1.2),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
@@ -263,9 +268,9 @@ class _ExploreCard extends StatelessWidget {
                           const Icon(Icons.business_center_outlined, size: 12, color: kMuted),
                           const SizedBox(width: 4),
                           Expanded(
-                            child: const Text(
-                              'Empresa Confidencial', 
-                              style: TextStyle(color: kMuted, fontSize: 12),
+                            child: Text(
+                              isSpanish ? 'Empresa Confidencial' : 'Confidential Company', 
+                              style: const TextStyle(color: kMuted, fontSize: 12),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
@@ -289,9 +294,9 @@ class _ExploreCard extends StatelessWidget {
               spacing: 8,
               runSpacing: 8,
               children: [
-                _PremiumTag(icon: Icons.location_on_outlined, text: vacante.ubicacion),
+                _PremiumTag(icon: Icons.location_on_outlined, text: vacante.ubicacionLocalized(isSpanish)),
                 if (vacante.categoria != null)
-                  _PremiumTag(icon: Icons.category_outlined, text: vacante.categoria!, isBlue: true),
+                  _PremiumTag(icon: Icons.category_outlined, text: vacante.categoriaLocalized(isSpanish) ?? vacante.categoria!, isBlue: true),
               ],
             ),
             const SizedBox(height: 18),
@@ -302,7 +307,7 @@ class _ExploreCard extends StatelessWidget {
                   children: [
                     const Icon(Icons.schedule, size: 12, color: kMuted),
                     const SizedBox(width: 4),
-                    Text(vacante.tiempoRelativo, style: const TextStyle(fontSize: 11, color: kMuted, fontWeight: FontWeight.w500)),
+                    Text(vacante.tiempoRelativoLocalized(isSpanish), style: const TextStyle(fontSize: 11, color: kMuted, fontWeight: FontWeight.w500)),
                   ],
                 ),
                 Container(
@@ -312,7 +317,7 @@ class _ExploreCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    vacante.salarioDisplay,
+                    vacante.salarioDisplayLocalized(isSpanish),
                     style: const TextStyle(fontSize: 12, color: Color(0xFF16A34A), fontWeight: FontWeight.w800),
                   ),
                 ),
@@ -393,7 +398,8 @@ class _PremiumTag extends StatelessWidget {
 class _ErrorState extends StatelessWidget {
   final String msg;
   final VoidCallback onRetry;
-  const _ErrorState(this.msg, {required this.onRetry});
+  final bool isSpanish;
+  const _ErrorState(this.msg, {required this.onRetry, this.isSpanish = true});
 
   @override
   Widget build(BuildContext context) => Padding(
@@ -403,23 +409,26 @@ class _ErrorState extends StatelessWidget {
           const SizedBox(height: 12),
           Text(msg, textAlign: TextAlign.center, style: const TextStyle(color: kMuted, fontSize: 13)),
           const SizedBox(height: 14),
-          TextButton(onPressed: onRetry, child: const Text('Reintentar')),
+          TextButton(onPressed: onRetry, child: Text(isSpanish ? 'Reintentar' : 'Retry')),
         ]),
       );
 }
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState();
+  final bool isSpanish;
+  const _EmptyState({this.isSpanish = true});
 
   @override
-  Widget build(BuildContext context) => const AnimatedEmptyState(
+  Widget build(BuildContext context) => AnimatedEmptyState(
         icon: Icons.search_off_rounded,
-        title: AppStrings.noResults,
-        subtitle: 'Intenta ajustar tus filtros o buscar con otros\ntérminos para encontrar más vacantes.',
+        title: isSpanish ? AppStrings.noResults : 'No jobs found',
+        subtitle: isSpanish
+            ? 'Intenta ajustar tus filtros o buscar con otros\ntérminos para encontrar más vacantes.'
+            : 'Try adjusting your filters or search terms\nto find more jobs.',
       );
 }
 
-  void _showFilterBottomSheet(BuildContext context, VacantesProvider vp) {
+  void _showFilterBottomSheet(BuildContext context, VacantesProvider vp, bool isEs) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -448,7 +457,7 @@ class _EmptyState extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 20),
-                const Text('Especialidad', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: kNavy)),
+                Text(isEs ? 'Especialidad' : 'Specialty', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: kNavy)),
                 const SizedBox(height: 16),
                 Wrap(
                   spacing: 10, runSpacing: 10,
@@ -462,7 +471,7 @@ class _EmptyState extends StatelessWidget {
                   )).toList(),
                 ),
                 const SizedBox(height: 28),
-                const Text('Salario Mínimo', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: kNavy)),
+                Text(isEs ? 'Salario Mínimo' : 'Minimum Salary', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: kNavy)),
                 const SizedBox(height: 16),
                 Wrap(
                   spacing: 10, runSpacing: 10,
@@ -488,7 +497,7 @@ class _EmptyState extends StatelessWidget {
                       elevation: 0,
                     ),
                     icon: const Icon(Icons.refresh),
-                    label: const Text('Limpiar todos los filtros', style: TextStyle(fontWeight: FontWeight.w700)),
+                    label: Text(isEs ? 'Limpiar todos los filtros' : 'Clear all filters', style: const TextStyle(fontWeight: FontWeight.w700)),
                   ),
                 ),
               ],

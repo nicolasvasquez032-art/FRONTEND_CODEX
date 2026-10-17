@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 
 import 'core/constants/app_colors.dart';
 import 'core/network/api_client.dart';
@@ -20,13 +22,34 @@ import 'presentation/shared/providers/recomendaciones_provider.dart';
 import 'presentation/shared/providers/vacantes_provider.dart';
 import 'presentation/shared/providers/notificaciones_provider.dart';
 import 'presentation/shared/providers/chat_provider.dart';
+import 'presentation/shared/providers/locale_provider.dart';
+import 'l10n/app_localizations.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'presentation/shell/candidate_shell.dart';
 import 'presentation/shell/company_shell.dart';
 import 'presentation/onboarding/onboarding_screen.dart';
 
-void main() {
+/// DSN de Sentry configurable en tiempo de compilación:
+/// `flutter build apk --dart-define=SENTRY_DSN=https://xxx@sentry.io/yyy`
+const String kSentryDsn = String.fromEnvironment('SENTRY_DSN', defaultValue: '');
+
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const TalentMatchApp());
+  await initializeDateFormatting('es', null);
+  await initializeDateFormatting('en', null);
+
+  if (kSentryDsn.isNotEmpty) {
+    await SentryFlutter.init(
+      (options) {
+        options.dsn = kSentryDsn;
+        options.tracesSampleRate = 1.0;
+        options.environment = kDebugMode ? 'development' : 'production';
+      },
+      appRunner: () => runApp(const TalentMatchApp()),
+    );
+  } else {
+    runApp(const TalentMatchApp());
+  }
 }
 
 class TalentMatchApp extends StatelessWidget {
@@ -35,14 +58,20 @@ class TalentMatchApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // ── Composición de dependencias ──────────────────────────────────────
-    final storage          = SecureStorage();
-    final apiClient        = ApiClient(storage);
-    final authRepo         = AuthRepositoryImpl(apiClient, storage);
-    final vacanteRepo      = VacanteRepositoryImpl(apiClient);
-    final postulacionRepo  = PostulacionRepositoryImpl(apiClient);
-    final perfilRepo       = PerfilRepositoryImpl(apiClient);
+    final storage           = SecureStorage();
+    final apiClient         = ApiClient(storage);
+    final authRepo          = AuthRepositoryImpl(apiClient, storage);
+    final authProvider      = AuthProvider(authRepo);
+    final vacanteRepo       = VacanteRepositoryImpl(apiClient);
+    final postulacionRepo   = PostulacionRepositoryImpl(apiClient);
+    final perfilRepo        = PerfilRepositoryImpl(apiClient);
     final recomendacionRepo = RecomendacionRepositoryImpl(apiClient);
-    final notificacionRepo = NotificacionRepositoryImpl(apiClient);
+    final notificacionRepo  = NotificacionRepositoryImpl(apiClient);
+
+    // Conectar interceptor global de sesión expirada (401 definitivo)
+    ApiClient.onSessionExpired = (message) {
+      authProvider.handleSessionExpired(message);
+    };
 
     // Inicializar FCM
     final fcmService = FcmService(notificacionRepo);
@@ -50,7 +79,7 @@ class TalentMatchApp extends StatelessWidget {
 
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => AuthProvider(authRepo)),
+        ChangeNotifierProvider.value(value: authProvider),
         // Sprint F-2: Vacantes y Postulaciones
         ChangeNotifierProvider(create: (_) => VacantesProvider(vacanteRepo)),
         ChangeNotifierProvider(create: (_) => PostulacionesProvider(postulacionRepo)),
@@ -62,13 +91,24 @@ class TalentMatchApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => NotificacionesProvider(notificacionRepo)),
         // Chat
         ChangeNotifierProvider(create: (_) => ChatProvider()),
+        // Internacionalización / Idioma
+        ChangeNotifierProvider(create: (_) => LocaleProvider()),
       ],
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        title: 'TalentMatch',
-        theme: AppTheme.theme,
-        themeMode: ThemeMode.light,
-        home: const _AppRouter(),
+      child: Consumer<LocaleProvider>(
+        builder: (context, localeProvider, child) {
+          return MaterialApp(
+            debugShowCheckedModeBanner: false,
+            title: 'TalentMatch',
+            theme: AppTheme.theme,
+            themeMode: ThemeMode.light,
+            locale: localeProvider.locale,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            navigatorObservers: [SentryNavigatorObserver()],
+            home: child,
+          );
+        },
+        child: const _AppRouter(),
       ),
     );
   }

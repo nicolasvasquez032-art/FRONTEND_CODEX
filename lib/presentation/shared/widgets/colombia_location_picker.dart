@@ -123,7 +123,7 @@ class _LocationPickerSheetState extends State<_LocationPickerSheet> {
           Expanded(
             child: ListView.separated(
               itemCount: items.length,
-              separatorBuilder: (_, __) => const Divider(height: 1, color: kLine),
+              separatorBuilder: (_, _) => const Divider(height: 1, color: kLine),
               itemBuilder: (context, index) {
                 final item = items[index];
                 return ListTile(

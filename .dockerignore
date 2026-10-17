@@ -1,0 +1,26 @@
+# ==============================================================================
+# .dockerignore - Frontend Flutter (TalentMatch)
+# ==============================================================================
+
+# Herramientas y artefactos de compilación local
+.dart_tool/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# Control de versiones
+.git/
+.gitignore
+
+# Plataformas nativas móviles/escritorio (no necesarias para contenedor web)
+android/
+ios/
+linux/
+macos/
+windows/
+
+# IDEs y logs
+.idea/
+.vscode/
+*.log
+*.iml

@@ -1,3 +1,5 @@
+import '../../core/utils/job_translation_helper.dart';
+
 /// Recomendación de vacante generada por el motor semántico ML.
 /// El [scoreSimilitud] viene como float 0.0–1.0 del backend.
 class Recomendacion {
@@ -19,5 +21,15 @@ class Recomendacion {
   int get scorePercent => (scoreSimilitud * 100).round();
 
   /// Texto de badge: "✦ 87% compatible contigo"
-  String get badgeText => '✦ $scorePercent% compatible contigo';
+  String get badgeText => badgeTextLocalized(true);
+
+  String badgeTextLocalized(bool isSpanish) =>
+      isSpanish ? '✦ $scorePercent% compatible contigo' : '✦ $scorePercent% match for you';
+
+  String tituloLocalized(bool isSpanish) =>
+      JobTranslationHelper.translateTitle(titulo, isSpanish);
+
+  String explicacionLocalized(bool isSpanish) =>
+      JobTranslationHelper.translateExplanation(explicacion, isSpanish);
 }
+
