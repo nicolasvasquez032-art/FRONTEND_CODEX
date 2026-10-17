@@ -172,6 +172,15 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Invocado por el interceptor global de ApiClient cuando el token expira o es revocado.
+  void handleSessionExpired([String message = 'Tu sesión ha expirado. Por favor, inicia sesión de nuevo.']) {
+    session = null;
+    status = AuthStatus.unauthenticated;
+    error = message;
+    loading = false;
+    notifyListeners();
+  }
+
   // ──────────────────────────────────────────────
   // Helpers
   // ──────────────────────────────────────────────

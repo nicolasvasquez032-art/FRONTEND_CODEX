@@ -26,6 +26,7 @@ class AuthRepositoryImpl implements AuthRepository {
       auth: false,
     );
     final token = tokenData['access_token'] as String;
+    final refreshToken = tokenData['refresh_token'] as String?;
 
     // 2. Guardar token temporalmente para poder llamar el endpoint de perfil
     await _storage.saveSession(
@@ -33,6 +34,7 @@ class AuthRepositoryImpl implements AuthRepository {
       userId: '',
       profileId: '',
       role: 'candidate',
+      refreshToken: refreshToken,
       isPremium: false,
     );
 
@@ -49,6 +51,7 @@ class AuthRepositoryImpl implements AuthRepository {
       userId: session.userId,
       profileId: session.profileId,
       role: session.role,
+      refreshToken: refreshToken,
       isPremium: session.isPremium,
     );
 
@@ -77,7 +80,7 @@ class AuthRepositoryImpl implements AuthRepository {
     String? education,
   }) async {
     // 1. Registrar
-    final profileData = await _api.post(
+    await _api.post(
       '/auth/registro/candidato',
       {
         'email': email,

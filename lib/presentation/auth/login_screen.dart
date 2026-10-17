@@ -197,6 +197,37 @@ class _LoginScreenState extends State<LoginScreen>
                                 ),
                               ),
                               const SizedBox(height: 24),
+                              if (auth.error != null) ...[
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                  margin: const EdgeInsets.only(bottom: 20),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.shade50,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: Colors.red.shade200),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.info_outline, color: Colors.red.shade700, size: 20),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Text(
+                                          auth.error!,
+                                          style: TextStyle(
+                                            color: Colors.red.shade900,
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                      GestureDetector(
+                                        onTap: () => auth.clearError(),
+                                        child: Icon(Icons.close, color: Colors.red.shade400, size: 18),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                               _Field(
                                 controller: _emailCtrl,
                                 label: l10n.loginEmailLabel,

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:ui' as ui;
 
 import 'package:http/http.dart' as http;
+import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../storage/secure_storage.dart';
@@ -17,6 +18,16 @@ const String kBaseUrl = String.fromEnvironment(
   defaultValue: 'http://18.191.162.235:8000',
 );
 
+/// Deriva la URL base de WebSockets a partir de [kBaseUrl].
+/// Si kBaseUrl utiliza http:// se transforma a ws://, y si usa https:// a wss://.
+String get kWsBaseUrl {
+  final uri = Uri.parse(kBaseUrl);
+  final wsScheme = uri.scheme == 'https' ? 'wss' : 'ws';
+  final host = uri.host;
+  final port = uri.hasPort ? ':${uri.port}' : '';
+  return '$wsScheme://$host$port';
+}
+
 class ApiException implements Exception {
   final int statusCode;
   final String message;
@@ -30,6 +41,9 @@ class ApiClient {
   final SecureStorage _storage;
 
   ApiClient(this._storage);
+
+  /// Callback global invocado cuando la sesión expira definitivamente (401 no renovable).
+  static void Function(String message)? onSessionExpired;
 
   // ──────────────────────────────────────────────
   // Métodos base
@@ -97,6 +111,7 @@ class ApiClient {
     'Postulación no encontrada': 'Application not found',
     'Token expirado o inválido': 'Expired or invalid token',
     'Formato de archivo inválido': 'Invalid file format',
+    'Demasiados intentos. Por favor, espera un momento antes de reintentar.': 'Too many requests. Please wait a moment before trying again.',
   };
 
   void _handleError(int code, String body) {
@@ -116,7 +131,83 @@ class ApiClient {
       }
     } catch (_) {}
 
+    // Reporte a Sentry si ocurre un error 500 no previsto en el servidor
+    if (code >= 500) {
+      try {
+        Sentry.captureMessage(
+          'API Server Error $code: $message',
+          level: SentryLevel.error,
+        );
+      } catch (_) {}
+    }
+
     throw ApiException(code, message);
+  }
+
+  /// Intenta renovar el token JWT de acceso usando el refresh token almacenado en SecureStorage.
+  Future<bool> _tryRefreshToken() async {
+    final refreshToken = await _storage.getRefreshToken();
+    if (refreshToken == null || refreshToken.isEmpty) return false;
+
+    try {
+      final uri = Uri.parse('$kBaseUrl/auth/refresh');
+      final res = await http.post(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'refresh_token': refreshToken}),
+      ).timeout(const Duration(seconds: 10));
+
+      if (res.statusCode == 200) {
+        final data = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+        final newAccess = data['access_token'] as String?;
+        final newRefresh = data['refresh_token'] as String?;
+        if (newAccess != null && newAccess.isNotEmpty) {
+          await _storage.saveToken(newAccess);
+          if (newRefresh != null && newRefresh.isNotEmpty) {
+            await _storage.saveRefreshToken(newRefresh);
+          }
+          return true;
+        }
+      }
+    } catch (e, stackTrace) {
+      try {
+        Sentry.captureException(e, stackTrace: stackTrace);
+      } catch (_) {}
+    }
+    return false;
+  }
+
+  /// Intercepta respuestas 401 en peticiones autenticadas:
+  /// 1. Intenta renovar la sesión silenciosamente mediante `_tryRefreshToken()`.
+  /// 2. Si tiene éxito, reintenta la petición original con el nuevo token.
+  /// 3. Si la renovación falla (o el reintento da 401 de nuevo), borra la sesión en SecureStorage,
+  ///    dispara el callback [onSessionExpired] y lanza una [ApiException] 401.
+  Future<http.Response> _handle401OrRetry(
+    http.Response res,
+    String path,
+    bool auth,
+    Future<http.Response> Function() retry,
+  ) async {
+    if (res.statusCode == 401 && auth && !path.startsWith('/auth/')) {
+      final refreshed = await _tryRefreshToken();
+      if (refreshed) {
+        final retryRes = await retry();
+        if (retryRes.statusCode == 401) {
+          await _onAuthFailure();
+        }
+        return retryRes;
+      } else {
+        await _onAuthFailure();
+      }
+    }
+    return res;
+  }
+
+  Future<void> _onAuthFailure() async {
+    await _storage.clearSession();
+    const message = 'Tu sesión ha expirado. Por favor, inicia sesión de nuevo.';
+    onSessionExpired?.call(message);
+    throw const ApiException(401, message);
   }
 
   // ──────────────────────────────────────────────
@@ -131,9 +222,18 @@ class ApiClient {
     final uri = Uri.parse('$kBaseUrl$path')
         .replace(queryParameters: queryParams);
     try {
-      final res = await http
+      var res = await http
           .get(uri, headers: await _headers(auth: auth))
           .timeout(const Duration(seconds: 15));
+
+      res = await _handle401OrRetry(
+        res,
+        path,
+        auth,
+        () async => http
+            .get(uri, headers: await _headers(auth: auth))
+            .timeout(const Duration(seconds: 15)),
+      );
       
       if (res.statusCode >= 200 && res.statusCode < 300) {
         final prefs = await SharedPreferences.getInstance();
@@ -141,12 +241,13 @@ class ApiClient {
       }
       return _decode(res);
     } catch (e) {
+      if (e is ApiException) rethrow;
       final prefs = await SharedPreferences.getInstance();
       final cachedBody = prefs.getString('cache_$uri');
       if (cachedBody != null) {
         return jsonDecode(cachedBody) as Map<String, dynamic>;
       }
-      throw ApiException(503, 'Sin conexión y sin datos en caché.');
+      throw const ApiException(503, 'Sin conexión y sin datos en caché.');
     }
   }
 
@@ -158,9 +259,18 @@ class ApiClient {
     final uri = Uri.parse('$kBaseUrl$path')
         .replace(queryParameters: queryParams);
     try {
-      final res = await http
+      var res = await http
           .get(uri, headers: await _headers(auth: auth))
           .timeout(const Duration(seconds: 15));
+
+      res = await _handle401OrRetry(
+        res,
+        path,
+        auth,
+        () async => http
+            .get(uri, headers: await _headers(auth: auth))
+            .timeout(const Duration(seconds: 15)),
+      );
           
       if (res.statusCode >= 200 && res.statusCode < 300) {
         final prefs = await SharedPreferences.getInstance();
@@ -168,12 +278,13 @@ class ApiClient {
       }
       return _decodeList(res);
     } catch (e) {
+      if (e is ApiException) rethrow;
       final prefs = await SharedPreferences.getInstance();
       final cachedBody = prefs.getString('cache_$uri');
       if (cachedBody != null) {
         return jsonDecode(cachedBody) as List<dynamic>;
       }
-      throw ApiException(503, 'Sin conexión y sin datos en caché.');
+      throw const ApiException(503, 'Sin conexión y sin datos en caché.');
     }
   }
 
@@ -187,13 +298,26 @@ class ApiClient {
     bool auth = true,
   }) async {
     final uri = Uri.parse('$kBaseUrl$path');
-    final res = await http
+    var res = await http
         .post(
           uri,
           headers: await _headers(auth: auth),
           body: jsonEncode(body),
         )
         .timeout(const Duration(seconds: 15));
+
+    res = await _handle401OrRetry(
+      res,
+      path,
+      auth,
+      () async => http
+          .post(
+            uri,
+            headers: await _headers(auth: auth),
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 15)),
+    );
     return _decode(res);
   }
 
@@ -206,9 +330,18 @@ class ApiClient {
     Map<String, dynamic> body,
   ) async {
     final uri = Uri.parse('$kBaseUrl$path');
-    final res = await http
+    var res = await http
         .put(uri, headers: await _headers(), body: jsonEncode(body))
         .timeout(const Duration(seconds: 15));
+
+    res = await _handle401OrRetry(
+      res,
+      path,
+      true,
+      () async => http
+          .put(uri, headers: await _headers(), body: jsonEncode(body))
+          .timeout(const Duration(seconds: 15)),
+    );
     return _decode(res);
   }
 
@@ -221,9 +354,18 @@ class ApiClient {
     Map<String, dynamic> body,
   ) async {
     final uri = Uri.parse('$kBaseUrl$path');
-    final res = await http
+    var res = await http
         .patch(uri, headers: await _headers(), body: jsonEncode(body))
         .timeout(const Duration(seconds: 15));
+
+    res = await _handle401OrRetry(
+      res,
+      path,
+      true,
+      () async => http
+          .patch(uri, headers: await _headers(), body: jsonEncode(body))
+          .timeout(const Duration(seconds: 15)),
+    );
     return _decode(res);
   }
 
@@ -233,9 +375,19 @@ class ApiClient {
 
   Future<void> delete(String path, {bool auth = true}) async {
     final uri = Uri.parse('$kBaseUrl$path');
-    final res = await http
+    var res = await http
         .delete(uri, headers: await _headers(auth: auth))
         .timeout(const Duration(seconds: 15));
+
+    res = await _handle401OrRetry(
+      res,
+      path,
+      auth,
+      () async => http
+          .delete(uri, headers: await _headers(auth: auth))
+          .timeout(const Duration(seconds: 15)),
+    );
+
     if (res.statusCode >= 200 && res.statusCode < 300) {
       return;
     }
@@ -264,7 +416,24 @@ class ApiClient {
       http.MultipartFile.fromBytes('file', fileBytes, filename: fileName),
     );
     final streamed = await request.send().timeout(const Duration(seconds: 30));
-    final res = await http.Response.fromStream(streamed);
+    var res = await http.Response.fromStream(streamed);
+
+    res = await _handle401OrRetry(
+      res,
+      path,
+      true,
+      () async {
+        final newToken = await _storage.getToken();
+        final retryRequest = http.MultipartRequest('POST', uri);
+        retryRequest.headers['Accept-Language'] = lang;
+        if (newToken != null) retryRequest.headers['Authorization'] = 'Bearer $newToken';
+        retryRequest.files.add(
+          http.MultipartFile.fromBytes('file', fileBytes, filename: fileName),
+        );
+        final retryStreamed = await retryRequest.send().timeout(const Duration(seconds: 30));
+        return http.Response.fromStream(retryStreamed);
+      },
+    );
     return _decode(res);
   }
 }
