@@ -9,6 +9,7 @@ import '../shared/providers/auth_provider.dart';
 import '../shared/widgets/brand_logo.dart';
 import '../shared/widgets/colombia_location_picker.dart';
 import '../shared/widgets/language_switch_button.dart';
+import '../../core/utils/validators.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -424,15 +425,61 @@ class _RegisterScreenState extends State<RegisterScreen> {
               valueListenable: _passwordCtrl,
               builder: (context, value, child) {
                 final pwd = value.text;
+                final eval = Validators.evaluatePassword(pwd);
+                final Color barColor = pwd.isEmpty
+                    ? Colors.grey.shade300
+                    : switch (eval.strength) {
+                        PasswordStrength.weak => Colors.redAccent,
+                        PasswordStrength.medium => Colors.orangeAccent,
+                        PasswordStrength.strong => const Color(0xFF10B981),
+                      };
+                final String strengthLabel = pwd.isEmpty
+                    ? ''
+                    : switch (eval.strength) {
+                        PasswordStrength.weak => 'Seguridad: Débil',
+                        PasswordStrength.medium => 'Seguridad: Media',
+                        PasswordStrength.strong => 'Seguridad: Fuerte',
+                      };
+
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    if (pwd.isNotEmpty) ...[
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            strengthLabel,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: barColor,
+                            ),
+                          ),
+                          Text(
+                            '${eval.metCount}/4 requisitos',
+                            style: const TextStyle(fontSize: 10, color: kMuted),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: eval.fraction,
+                          minHeight: 5,
+                          backgroundColor: Colors.black.withValues(alpha: 0.06),
+                          valueColor: AlwaysStoppedAnimation<Color>(barColor),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                    ],
                     const Text('La contraseña debe tener:', style: TextStyle(fontSize: 11, color: kNavy, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 4),
-                    _Requirement(text: 'Mínimo 8 caracteres', met: pwd.length >= 8),
-                    _Requirement(text: 'Una mayúscula y una minúscula', met: RegExp(r'[A-Z]').hasMatch(pwd) && RegExp(r'[a-z]').hasMatch(pwd)),
-                    _Requirement(text: 'Al menos un número', met: RegExp(r'[0-9]').hasMatch(pwd)),
-                    _Requirement(text: 'Un carácter especial', met: RegExp(r'[!@#\$%\^&\*(),.?":{}|<>\-_\+=;\[\]~`\\]').hasMatch(pwd)),
+                    _Requirement(text: 'Mínimo 8 caracteres', met: eval.hasMinLength),
+                    _Requirement(text: 'Una mayúscula y una minúscula', met: eval.hasUpperAndLower),
+                    _Requirement(text: 'Al menos un número', met: eval.hasNumber),
+                    _Requirement(text: 'Un carácter especial', met: eval.hasSpecialChar),
                   ],
                 );
               },
@@ -644,11 +691,14 @@ class _LabeledField extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: kNavy)),
-          const SizedBox(height: 6),
+  Widget build(BuildContext context) => Semantics(
+        label: label,
+        textField: true,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: kNavy)),
+            const SizedBox(height: 6),
           TextFormField(
             controller: controller,
             obscureText: obscure,
@@ -679,7 +729,8 @@ class _LabeledField extends StatelessWidget {
             ),
           ),
         ],
-      );
+      ),
+    );
 }
 
 class _GradientButton extends StatelessWidget {
@@ -689,9 +740,13 @@ class _GradientButton extends StatelessWidget {
   const _GradientButton({required this.text, required this.loading, required this.onPressed});
 
   @override
-  Widget build(BuildContext context) => SizedBox(
-        width: double.infinity,
-        height: 52,
+  Widget build(BuildContext context) => Semantics(
+        button: true,
+        label: text,
+        enabled: !loading,
+        child: SizedBox(
+          width: double.infinity,
+          height: 52,
         child: DecoratedBox(
           decoration: BoxDecoration(
             gradient: loading ? null : kButtonGradient,
@@ -711,7 +766,8 @@ class _GradientButton extends StatelessWidget {
                 : Text(text, style: const TextStyle(color: kWhite, fontSize: 15, fontWeight: FontWeight.w700)),
           ),
         ),
-      );
+      ),
+    );
 }
 
 class _Requirement extends StatelessWidget {
