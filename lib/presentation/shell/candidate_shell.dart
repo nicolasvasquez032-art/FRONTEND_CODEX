@@ -10,6 +10,7 @@ import '../shared/providers/auth_provider.dart';
 import '../shared/providers/notificaciones_provider.dart';
 import '../shared/widgets/brand_logo.dart';
 import '../shared/widgets/language_switch_button.dart';
+import '../shared/widgets/glass_background.dart';
 
 // Las pantallas de contenido se importarán aquí en Sprints F-2 a F-6.
 // Por ahora usamos placeholders visuales idénticos al wireframe.
@@ -80,9 +81,17 @@ class _CandidateShellState extends State<CandidateShell> {
         scrolledUnderElevation: 0,
         flexibleSpace: ClipRect(
           child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+            filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
             child: Container(
-              color: Colors.white.withValues(alpha: 0.65),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.75),
+                border: Border(
+                  bottom: BorderSide(
+                    color: Colors.white.withValues(alpha: 0.7),
+                    width: 1.0,
+                  ),
+                ),
+              ),
             ),
           ),
         ),
@@ -179,73 +188,11 @@ class _CandidateShellState extends State<CandidateShell> {
           }
           return false;
         },
-        child: Stack(
-          children: [
-            // Background Glows animados globales
-            // 1. Orbe Superior Izquierdo (Azul eléctrico)
-            Positioned(
-              top: -150,
-              left: -150,
-              child: Pulse(
-                infinite: true,
-                duration: const Duration(seconds: 8),
-                child: Container(
-                  width: 500,
-                  height: 500,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: kBlue.withValues(alpha: 0.15), // Mucho más sutil
-                  ),
-                ),
-              ),
-            ),
-            // 2. Orbe Medio Derecho (Navy)
-            Positioned(
-              top: MediaQuery.of(context).size.height * 0.3,
-              right: -200,
-              child: Pulse(
-                infinite: true,
-                duration: const Duration(seconds: 12),
-                child: Container(
-                  width: 550,
-                  height: 550,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: kNavy.withValues(alpha: 0.08), // Mucho más sutil
-                  ),
-                ),
-              ),
-            ),
-            // 3. Orbe Inferior Izquierdo (Celeste)
-            Positioned(
-              bottom: -150,
-              left: -150,
-              child: Pulse(
-                infinite: true,
-                duration: const Duration(seconds: 10),
-                child: Container(
-                  width: 450,
-                  height: 450,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: const Color(0xFF38BDF8).withValues(alpha: 0.1), // Mucho más sutil
-                  ),
-                ),
-              ),
-            ),
-            // Cristal difuminado general (más blanco para aclarar)
-            Positioned.fill(
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 100, sigmaY: 100),
-                child: Container(color: Colors.white.withValues(alpha: 0.45)), // Más blanco
-              ),
-            ),
-            // Contenido de la app
-            _PremiumIndexedStack(
-              index: _tab,
-              children: pages,
-            ),
-          ],
+        child: GlassBackground(
+          child: _PremiumIndexedStack(
+            index: _tab,
+            children: pages,
+          ),
         ),
       ),
       bottomNavigationBar: AnimatedSlide(
@@ -261,18 +208,30 @@ class _CandidateShellState extends State<CandidateShell> {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(30),
             child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
               child: Container(
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.65),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Colors.white.withValues(alpha: 0.85),
+                      Colors.white.withValues(alpha: 0.70),
+                    ],
+                  ),
                   borderRadius: BorderRadius.circular(30),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.5), width: 1.5),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.9), width: 1.5),
                   boxShadow: [
                     BoxShadow(
-                      color: kNavy.withValues(alpha: 0.1),
+                      color: kNavy.withValues(alpha: 0.08),
                       blurRadius: 20,
                       offset: const Offset(0, 10),
-                    )
+                    ),
+                    BoxShadow(
+                      color: Colors.white.withValues(alpha: 0.7),
+                      blurRadius: 1,
+                      offset: const Offset(-0.5, -0.5),
+                    ),
                   ],
                 ),
                 child: NavigationBar(

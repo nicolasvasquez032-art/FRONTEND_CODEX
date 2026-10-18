@@ -11,6 +11,7 @@ import '../shared/widgets/bouncy_tap.dart';
 import '../shared/widgets/shimmer_cards.dart';
 import 'package:liquid_pull_to_refresh/liquid_pull_to_refresh.dart';
 import '../shared/providers/locale_provider.dart';
+import '../shared/widgets/glass_card.dart';
 
 class MisVacantesScreen extends StatefulWidget {
   const MisVacantesScreen({super.key});
@@ -184,17 +185,13 @@ class _MisVacantesScreenState extends State<MisVacantesScreen> {
   }
 
   Widget _buildStatCard(String title, String value, IconData icon, Color color) {
-    return Container(
+    return GlassCard(
       width: 140,
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: kLine.withValues(alpha: 0.5)),
-        boxShadow: [
-          BoxShadow(color: color.withValues(alpha: 0.15), blurRadius: 20, offset: const Offset(0, 10)),
-        ],
-      ),
+      borderRadius: 24,
+      customShadows: [
+        BoxShadow(color: color.withValues(alpha: 0.12), blurRadius: 16, offset: const Offset(0, 8)),
+      ],
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -350,20 +347,9 @@ class _VacanteCardState extends State<_VacanteCard> with SingleTickerProviderSta
           ),
         );
       },
-      child: Container(
+      child: GlassCard(
         padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: kNavy.withValues(alpha: 0.06), 
-              blurRadius: 15, 
-              offset: const Offset(0, 8),
-            )
-          ],
-          border: Border.all(color: kLine.withValues(alpha: 0.5)),
-        ),
+        borderRadius: 20,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

@@ -180,11 +180,15 @@ class CandidatoDetailScreen extends StatelessWidget {
         child: ClipRRect(
           borderRadius: BorderRadius.circular(16),
           child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
             child: BouncyTap(
               onPressed: () => Navigator.pop(context),
               child: Container(
-                decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.white.withValues(alpha: 0.3))),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.35),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.4), width: 1.2),
+                ),
                 padding: const EdgeInsets.all(12),
                 child: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
               ),
@@ -197,8 +201,17 @@ class CandidatoDetailScreen extends StatelessWidget {
       bottomNavigationBar: Container(
         padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
         decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [BoxShadow(color: kNavy.withValues(alpha: 0.05), blurRadius: 20, offset: const Offset(0, -5))],
+          color: Colors.white.withValues(alpha: 0.9),
+          border: Border(
+            top: BorderSide(color: Colors.white.withValues(alpha: 0.8), width: 1.2),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: kNavy.withValues(alpha: 0.05),
+              blurRadius: 20,
+              offset: const Offset(0, -5),
+            ),
+          ],
         ),
         child: Row(
           children: [

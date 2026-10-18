@@ -18,6 +18,7 @@ import '../shared/providers/recomendaciones_provider.dart';
 import '../shared/providers/locale_provider.dart';
 import '../shared/providers/vacantes_provider.dart';
 import '../shared/widgets/ai_explanation_tile.dart';
+import '../shared/widgets/glass_card.dart';
 
 class HomeScreen extends StatefulWidget {
   final VoidCallback onExplore;
@@ -179,20 +180,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       duration: const Duration(milliseconds: 600),
                       child: GestureDetector(
                         onTap: widget.onExplore,
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(20),
-                          child: BackdropFilter(
-                            filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-                            child: Container(
-                              height: 58,
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.65),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: Colors.white.withValues(alpha: 0.8), width: 1.5),
-                                boxShadow: [
-                                  BoxShadow(color: kNavy.withValues(alpha: 0.05), blurRadius: 20, offset: const Offset(0, 8)),
-                                ],
-                              ),
+                        child: GlassCard(
+                          borderRadius: 20,
+                          height: 58,
                           padding: const EdgeInsets.only(left: 16, right: 8),
                           child: Row(
                             children: [
@@ -221,9 +211,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                     ),
-                  ),
-                ),
-                const SizedBox(height: 4),
+                    const SizedBox(height: 4),
 
                     // ── Sección principal: IA o fallback ─────────────────
                     if (rProvider.status == RecomendacionesStatus.loading ||
@@ -458,24 +446,9 @@ class _JobCard extends StatelessWidget {
         context,
         MaterialPageRoute(builder: (_) => JobDetailScreen(vacante: vacante, heroTagTitle: 'home_title_${vacante.id}')),
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-          child: Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.65),
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.8), width: 1.5),
-              boxShadow: [
-                BoxShadow(
-                  color: kNavy.withValues(alpha: 0.05),
-                  blurRadius: 20,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
+      child: GlassCard(
+        borderRadius: 24,
+        padding: const EdgeInsets.all(18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -570,9 +543,7 @@ class _JobCard extends StatelessWidget {
           ],
         ),
       ),
-    ),
-  ),
-);
+    );
   }
 }
 
@@ -731,20 +702,9 @@ class _FeatureCard extends StatelessWidget {
   const _FeatureCard(this.icon, this.title, this.text);
 
   @override
-  Widget build(BuildContext context) => ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.65),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.8), width: 1.5),
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(color: kNavy.withValues(alpha: 0.03), blurRadius: 15, offset: const Offset(0, 8)),
-              ]
-            ),
+  Widget build(BuildContext context) => GlassCard(
+        borderRadius: 20,
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -762,7 +722,5 @@ class _FeatureCard extends StatelessWidget {
             Text(text, style: const TextStyle(color: kMuted, fontSize: 11, height: 1.45)),
           ],
         ),
-      ),
-    ),
-  );
+      );
 }

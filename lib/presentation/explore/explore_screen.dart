@@ -13,6 +13,7 @@ import '../shared/providers/locale_provider.dart';
 import '../shared/providers/vacantes_provider.dart';
 import '../shared/widgets/bouncing_card.dart';
 import '../shared/widgets/animated_empty_state.dart';
+import '../shared/widgets/glass_card.dart';
 import 'map_screen.dart';
 
 class ExploreScreen extends StatefulWidget {
@@ -215,24 +216,9 @@ class _ExploreCard extends StatelessWidget {
         context,
         MaterialPageRoute(builder: (_) => JobDetailScreen(vacante: vacante, heroTagTitle: 'explore_title_${vacante.id}')),
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-          child: Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.65),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.8), width: 1.5),
-              boxShadow: [
-                BoxShadow(
-                  color: kNavy.withValues(alpha: 0.05),
-                  blurRadius: 20,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
+      child: GlassCard(
+        borderRadius: 20,
+        padding: const EdgeInsets.all(18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -326,9 +312,7 @@ class _ExploreCard extends StatelessWidget {
           ],
         ),
       ),
-    ),
-  ),
-);
+    );
   }
 }
 
@@ -434,7 +418,7 @@ class _EmptyState extends StatelessWidget {
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (ctx) => BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+        filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
         child: Container(
           decoration: BoxDecoration(
             color: Colors.white.withValues(alpha: 0.7),

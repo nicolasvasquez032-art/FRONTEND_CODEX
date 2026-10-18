@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../shared/providers/perfil_provider.dart';
+import '../shared/widgets/glass_card.dart';
+import '../shared/widgets/glass_background.dart';
 
 enum EditProfileSection { personal, experience, education, skills }
 
@@ -127,40 +129,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       ),
       body: Stack(
         children: [
-          Positioned(
-            top: -150, left: -150,
-            child: Container(width: 500, height: 500, decoration: BoxDecoration(shape: BoxShape.circle, color: kBlue.withValues(alpha: 0.15))),
-          ),
-          Positioned(
-            bottom: -150, right: -150,
-            child: Container(width: 500, height: 500, decoration: BoxDecoration(shape: BoxShape.circle, color: kNavy.withValues(alpha: 0.08))),
-          ),
-          Positioned.fill(
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 100, sigmaY: 100),
-              child: Container(color: Colors.white.withValues(alpha: 0.45)),
-            ),
-          ),
+          const GlassBackground(),
           
           SafeArea(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(24),
               physics: const BouncingScrollPhysics(),
-              child: ClipRRect(
+              child: GlassCard(
+                padding: const EdgeInsets.all(24),
                 borderRadius: BorderRadius.circular(24),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-                  child: Container(
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.65),
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.8), width: 1.5),
-                      boxShadow: [
-                        BoxShadow(color: kNavy.withValues(alpha: 0.05), blurRadius: 20, offset: const Offset(0, 8)),
-                      ],
-                    ),
-                    child: Form(
+                child: Form(
                       key: _formKey,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -232,11 +210,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   ),
                 ),
               ),
-            ),
+            ],
           ),
-        ],
-      ),
-    );
+        );
   }
 
   Widget _buildSectionTitle(String title) {

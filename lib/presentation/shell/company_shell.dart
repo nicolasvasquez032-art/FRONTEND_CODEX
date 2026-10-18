@@ -10,6 +10,8 @@ import '../company/company_profile_screen.dart';
 import '../company/premium_subscription_screen.dart';
 import '../shared/providers/vacantes_provider.dart';
 
+import '../shared/widgets/glass_background.dart';
+
 class CompanyShell extends StatefulWidget {
   const CompanyShell({super.key});
 
@@ -31,10 +33,12 @@ class _CompanyShellState extends State<CompanyShell> {
     final l10n = AppLocalizations.of(context);
     return Scaffold(
       extendBody: true,
-      backgroundColor: kBg,
-      body: _PremiumIndexedStack(
-        index: _currentIndex,
-        children: _pages,
+      backgroundColor: const Color(0xFFF2F5FA),
+      body: GlassBackground(
+        child: _PremiumIndexedStack(
+          index: _currentIndex,
+          children: _pages,
+        ),
       ),
       bottomNavigationBar: SafeArea(
         child: Padding(
@@ -42,18 +46,30 @@ class _CompanyShellState extends State<CompanyShell> {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(30),
             child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
               child: Container(
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.65),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Colors.white.withValues(alpha: 0.85),
+                      Colors.white.withValues(alpha: 0.70),
+                    ],
+                  ),
                   borderRadius: BorderRadius.circular(30),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.5), width: 1.5),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.9), width: 1.5),
                   boxShadow: [
                     BoxShadow(
-                      color: kNavy.withValues(alpha: 0.1),
+                      color: kNavy.withValues(alpha: 0.08),
                       blurRadius: 20,
                       offset: const Offset(0, 10),
-                    )
+                    ),
+                    BoxShadow(
+                      color: Colors.white.withValues(alpha: 0.7),
+                      blurRadius: 1,
+                      offset: const Offset(-0.5, -0.5),
+                    ),
                   ],
                 ),
                 child: NavigationBar(

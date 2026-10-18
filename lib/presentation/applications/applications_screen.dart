@@ -13,6 +13,7 @@ import '../shared/providers/locale_provider.dart';
 import '../shared/providers/postulaciones_provider.dart';
 import '../shared/providers/vacantes_provider.dart';
 import '../shared/widgets/animated_empty_state.dart';
+import '../shared/widgets/glass_card.dart';
 import '../job_detail/job_detail_screen.dart';
 import 'package:shimmer/shimmer.dart';
 
@@ -150,20 +151,9 @@ class _PostulacionCard extends StatelessWidget {
   const _PostulacionCard({required this.postulacion, required this.vacante, this.isSpanish = true});
 
   @override
-  Widget build(BuildContext context) => ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-          child: Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.65),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.8), width: 1.5),
-              boxShadow: [
-                BoxShadow(color: kNavy.withValues(alpha: 0.05), blurRadius: 20, offset: const Offset(0, 8)),
-              ],
-            ),
+  Widget build(BuildContext context) => GlassCard(
+        borderRadius: 20,
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -288,9 +278,7 @@ class _PostulacionCard extends StatelessWidget {
             ],
           ],
         ),
-      ),
-    ),
-  );
+      );
 
   String _formatDate(DateTime d) {
     final diff = DateTime.now().difference(d);

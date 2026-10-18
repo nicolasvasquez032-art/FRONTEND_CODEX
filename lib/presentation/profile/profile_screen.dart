@@ -15,6 +15,7 @@ import '../shared/widgets/language_switch_button.dart';
 import 'cv_upload_widget.dart';
 import 'notifications_screen.dart';
 import 'edit_profile_screen.dart';
+import '../shared/widgets/glass_card.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -85,7 +86,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               elevation: 0,
               flexibleSpace: ClipRRect(
                 child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                  filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
                   child: FlexibleSpaceBar(
                     stretchModes: const [StretchMode.zoomBackground],
                     background: Stack(
@@ -447,30 +448,10 @@ class _BentoContainer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(24),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-        child: Container(
-          padding: padding ?? const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.65),
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.8),
-              width: 1.5,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: kNavy.withValues(alpha: 0.05),
-                blurRadius: 20,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          child: child,
-        ),
-      ),
+    return GlassCard(
+      borderRadius: 24,
+      padding: padding ?? const EdgeInsets.all(20),
+      child: child,
     );
   }
 }

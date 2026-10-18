@@ -9,6 +9,8 @@ import '../shared/providers/auth_provider.dart';
 import '../shared/widgets/brand_logo.dart';
 import '../shared/widgets/colombia_location_picker.dart';
 import '../shared/widgets/language_switch_button.dart';
+import '../shared/widgets/glass_card.dart';
+import '../shared/widgets/glass_background.dart';
 import '../../core/utils/validators.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -113,35 +115,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       ),
       body: Stack(
         children: [
-          // Background Glows
-          Positioned(
-            top: -100,
-            left: -100,
-            child: Container(
-              width: 300,
-              height: 300,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: kBlue.withValues(alpha: 0.15),
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: -50,
-            right: -50,
-            child: Container(
-              width: 250,
-              height: 250,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: kPurple.withValues(alpha: 0.15),
-              ),
-            ),
-          ),
-          BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 40, sigmaY: 40),
-            child: Container(color: Colors.transparent),
-          ),
+          const GlassBackground(),
 
           // Main Content
           SafeArea(
@@ -198,20 +172,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   FadeInUp(
                     duration: const Duration(milliseconds: 600),
                     delay: const Duration(milliseconds: 200),
-                    child: Container(
+                    child: GlassCard(
                       padding: const EdgeInsets.all(24),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.6),
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: Colors.white, width: 1.5),
-                        boxShadow: [
-                          BoxShadow(
-                            color: kNavy.withValues(alpha: 0.03),
-                            blurRadius: 30,
-                            offset: const Offset(0, 15),
-                          ),
-                        ],
-                      ),
+                      borderRadius: BorderRadius.circular(24),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [

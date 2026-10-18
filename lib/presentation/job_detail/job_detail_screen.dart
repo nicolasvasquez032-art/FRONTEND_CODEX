@@ -14,6 +14,7 @@ import '../shared/providers/auth_provider.dart';
 import '../shared/providers/locale_provider.dart';
 import '../shared/providers/postulaciones_provider.dart';
 import '../shared/widgets/match_badge.dart';
+import '../shared/widgets/glass_card.dart';
 import '../explore/map_screen.dart';
 
 class JobDetailScreen extends StatefulWidget {
@@ -601,33 +602,16 @@ class _PostularseBar extends StatelessWidget {
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.only(left: 20, right: 20, bottom: 20),
-        child: ClipRRect(
+        child: GlassCard(
+          useBackdropFilter: true,
+          blurSigma: 8.0,
           borderRadius: BorderRadius.circular(24),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.8),
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.5), width: 1.5),
-                boxShadow: [
-                  BoxShadow(
-                    color: kNavy.withValues(alpha: 0.1),
-                    blurRadius: 20,
-                    offset: const Offset(0, 10),
-                  )
-                ],
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 300),
-                  child: yaPostulado
-                      ? _doneButton()
-                      : _applyButton(context),
-                ),
-              ),
-            ),
+          padding: const EdgeInsets.all(12),
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 300),
+            child: yaPostulado
+                ? _doneButton()
+                : _applyButton(context),
           ),
         ),
       ),
