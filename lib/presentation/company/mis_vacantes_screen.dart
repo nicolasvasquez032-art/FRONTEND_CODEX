@@ -11,6 +11,7 @@ import '../shared/widgets/bouncy_tap.dart';
 import '../shared/widgets/shimmer_cards.dart';
 import 'package:liquid_pull_to_refresh/liquid_pull_to_refresh.dart';
 import '../shared/providers/locale_provider.dart';
+import '../shared/widgets/glass_card.dart';
 
 class MisVacantesScreen extends StatefulWidget {
   const MisVacantesScreen({super.key});
@@ -46,27 +47,57 @@ class _MisVacantesScreenState extends State<MisVacantesScreen> {
         animSpeedFactor: 2.0,
         showChildOpacityTransition: false,
         onRefresh: () async => context.read<VacantesProvider>().cargar(),
-        child: ListView(
-          padding: const EdgeInsets.only(bottom: 100), // Padding para que el BottomNavBar no tape la última tarjeta
-          children: [
-            _buildDashboardHeader(misVacantes),
-            const SizedBox(height: 20),
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+          slivers: [
+            SliverToBoxAdapter(
+              child: _buildDashboardHeader(misVacantes),
+            ),
+            const SliverToBoxAdapter(
+              child: SizedBox(height: 16),
+            ),
             if (vacantesProvider.status == VacantesStatus.loading)
-              Padding(
+              SliverPadding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Column(
-                  children: List.generate(3, (index) => const VacanteShimmerCard()),
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) => const Padding(
+                      padding: EdgeInsets.only(bottom: 12),
+                      child: VacanteShimmerCard(),
+                    ),
+                    childCount: 3,
+                  ),
                 ),
               )
             else if (misVacantes.isEmpty)
-              _buildEmptyState()
+              SliverToBoxAdapter(
+                child: _buildEmptyState(),
+              )
             else ...[
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                child: Text('Tus Ofertas Recientes', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: kNavy)),
+              const SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  child: Text(
+                    'Tus Ofertas Recientes',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: kNavy),
+                  ),
+                ),
               ),
-              _buildList(misVacantes),
-            ]
+              SliverPadding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                sliver: SliverList.separated(
+                  itemCount: misVacantes.length,
+                  separatorBuilder: (context, index) => const SizedBox(height: 12),
+                  itemBuilder: (context, index) {
+                    final v = misVacantes[index];
+                    return _VacanteCard(key: ValueKey(v.id), vacante: v);
+                  },
+                ),
+              ),
+            ],
+            const SliverToBoxAdapter(
+              child: SizedBox(height: 100), // Padding para el BottomNavBar
+            ),
           ],
         ),
       ),
@@ -184,17 +215,13 @@ class _MisVacantesScreenState extends State<MisVacantesScreen> {
   }
 
   Widget _buildStatCard(String title, String value, IconData icon, Color color) {
-    return Container(
+    return GlassCard(
       width: 140,
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: kLine.withValues(alpha: 0.5)),
-        boxShadow: [
-          BoxShadow(color: color.withValues(alpha: 0.15), blurRadius: 20, offset: const Offset(0, 10)),
-        ],
-      ),
+      borderRadius: 24,
+      customShadows: [
+        BoxShadow(color: color.withValues(alpha: 0.12), blurRadius: 16, offset: const Offset(0, 8)),
+      ],
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -244,25 +271,6 @@ class _MisVacantesScreenState extends State<MisVacantesScreen> {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildList(List<Vacante> vacantes) {
-    return ListView.separated(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      itemCount: vacantes.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 12),
-      itemBuilder: (context, index) {
-        final v = vacantes[index];
-        return FadeInUp(
-          key: ValueKey('fade_${v.id}'),
-          duration: const Duration(milliseconds: 500),
-          delay: Duration(milliseconds: 100 * (index % 10)),
-          child: _VacanteCard(key: ValueKey(v.id), vacante: v),
-        );
-      },
     );
   }
 }
@@ -350,20 +358,9 @@ class _VacanteCardState extends State<_VacanteCard> with SingleTickerProviderSta
           ),
         );
       },
-      child: Container(
+      child: GlassCard(
         padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: kNavy.withValues(alpha: 0.06), 
-              blurRadius: 15, 
-              offset: const Offset(0, 8),
-            )
-          ],
-          border: Border.all(color: kLine.withValues(alpha: 0.5)),
-        ),
+        borderRadius: 20,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -454,7 +451,11 @@ class _VacanteCardState extends State<_VacanteCard> with SingleTickerProviderSta
             overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 16),
-          Row(
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 8,
             children: [
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -464,21 +465,28 @@ class _VacanteCardState extends State<_VacanteCard> with SingleTickerProviderSta
                   children: [
                     const Icon(Icons.location_on_outlined, size: 14, color: kNavy),
                     const SizedBox(width: 4),
-                    Text(
-                      widget.vacante.ubicacion,
-                      style: const TextStyle(fontSize: 11, color: kNavy, fontWeight: FontWeight.w600),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 160),
+                      child: Text(
+                        widget.vacante.ubicacion,
+                        style: const TextStyle(fontSize: 11, color: kNavy, fontWeight: FontWeight.w600),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                   ],
                 ),
               ),
-              const Spacer(),
-              const Icon(Icons.monetization_on_outlined, size: 16, color: kBlue),
-              const SizedBox(width: 4),
-              Text(
-                widget.vacante.salarioDisplayLocalized(isEs),
-                style: const TextStyle(fontSize: 13, color: kNavy, fontWeight: FontWeight.w800),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.monetization_on_outlined, size: 16, color: kBlue),
+                  const SizedBox(width: 4),
+                  Text(
+                    widget.vacante.salarioDisplayLocalized(isEs),
+                    style: const TextStyle(fontSize: 13, color: kNavy, fontWeight: FontWeight.w800),
+                  ),
+                ],
               ),
             ],
           ),

@@ -8,6 +8,7 @@ import '../shared/providers/auth_provider.dart';
 import '../shared/providers/locale_provider.dart';
 import '../shared/widgets/bouncy_tap.dart';
 import '../shared/widgets/language_switch_button.dart';
+import '../shared/widgets/glass_card.dart';
 import 'premium_subscription_screen.dart';
 
 class CompanyProfileScreen extends StatelessWidget {
@@ -101,26 +102,22 @@ class CompanyProfileScreen extends StatelessWidget {
                                       const LanguageSwitchButton(),
                                       const SizedBox(width: 8),
                                       FadeInDown(
-                                        child: Pulse(
-                                          infinite: true,
-                                          duration: const Duration(seconds: 3),
-                                          child: ClipRRect(
-                                            borderRadius: BorderRadius.circular(30),
-                                            child: BackdropFilter(
-                                              filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-                                              child: Container(
-                                                width: 60,
-                                                height: 60,
-                                                decoration: BoxDecoration(
-                                                  color: Colors.white.withValues(alpha: 0.1),
-                                                  shape: BoxShape.circle,
-                                                  border: Border.all(color: Colors.white.withValues(alpha: 0.4), width: 1.5),
-                                                  boxShadow: [BoxShadow(color: Colors.cyanAccent.withValues(alpha: 0.2), blurRadius: 10, spreadRadius: 2)],
-                                                ),
-                                                child: const Icon(Icons.apartment, size: 28, color: Colors.white),
+                                        child: Container(
+                                          width: 56,
+                                          height: 56,
+                                          decoration: BoxDecoration(
+                                            color: Colors.white.withValues(alpha: 0.18),
+                                            shape: BoxShape.circle,
+                                            border: Border.all(color: Colors.white.withValues(alpha: 0.8), width: 1.5),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: Colors.cyanAccent.withValues(alpha: 0.25),
+                                                blurRadius: 12,
+                                                spreadRadius: 1,
                                               ),
-                                            ),
+                                            ],
                                           ),
+                                          child: const Icon(Icons.apartment, size: 28, color: Colors.white),
                                         ),
                                       ),
                                     ],
@@ -192,64 +189,44 @@ class CompanyProfileScreen extends StatelessWidget {
                           ),
                         ),
                         // Tarjeta de Cristal
-                        ClipRRect(
+                        GlassCard(
                           borderRadius: BorderRadius.circular(28),
-                          child: BackdropFilter(
-                            filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    Colors.white.withValues(alpha: 0.7),
-                                    Colors.white.withValues(alpha: 0.4),
-                                  ],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ),
-                                borderRadius: BorderRadius.circular(28),
-                                border: Border.all(color: Colors.white.withValues(alpha: 0.6), width: 1.5),
-                                boxShadow: [
-                                  BoxShadow(color: kNavy.withValues(alpha: 0.05), blurRadius: 30, offset: const Offset(0, 15)),
-                                ],
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  const Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      const Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text('Rendimiento del mes', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: kNavy)),
-                                          SizedBox(height: 4),
-                                          Text('+15% vs mes anterior', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF10B981))),
-                                        ],
-                                      ),
-                                      Container(
-                                        padding: const EdgeInsets.all(10),
-                                        decoration: BoxDecoration(
-                                          color: Colors.white,
-                                          borderRadius: BorderRadius.circular(12),
-                                          boxShadow: [BoxShadow(color: kBlue.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4))],
-                                        ),
-                                        child: const Icon(Icons.show_chart, color: kBlue, size: 20),
-                                      ),
+                                      Text('Rendimiento del mes', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: kNavy)),
+                                      SizedBox(height: 4),
+                                      Text('+15% vs mes anterior', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF10B981))),
                                     ],
                                   ),
-                                  const SizedBox(height: 28),
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                                    children: [
-                                      _buildDonutChart('Contratos', '12', 0.85, kBlue, 600),
-                                      _buildDonutChart('Respuesta', '92%', 0.92, const Color(0xFF10B981), 700),
-                                      _buildDonutChart('Vistas', '4k', 0.65, Colors.orangeAccent, 800),
-                                    ],
+                                  Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(12),
+                                      boxShadow: [BoxShadow(color: kBlue.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4))],
+                                    ),
+                                    child: const Icon(Icons.show_chart, color: kBlue, size: 20),
                                   ),
                                 ],
                               ),
-                            ),
+                              const SizedBox(height: 28),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                children: [
+                                  _buildDonutChart('Contratos', '12', 0.85, kBlue, 600),
+                                  _buildDonutChart('Respuesta', '92%', 0.92, const Color(0xFF10B981), 700),
+                                  _buildDonutChart('Vistas', '4k', 0.65, Colors.orangeAccent, 800),
+                                ],
+                              ),
+                            ],
                           ),
                         ),
                       ],

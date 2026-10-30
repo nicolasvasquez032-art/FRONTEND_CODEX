@@ -8,6 +8,7 @@ import '../shared/providers/locale_provider.dart';
 import '../shared/widgets/match_badge.dart';
 import '../shared/widgets/bouncy_tap.dart';
 import '../shared/widgets/shimmer_cards.dart';
+import '../shared/widgets/glass_card.dart';
 import 'candidato_detail_screen.dart';
 
 class CandidatosVacanteScreen extends StatefulWidget {
@@ -163,14 +164,14 @@ class _CandidatosVacanteScreenState extends State<CandidatosVacanteScreen> {
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(16),
                 child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                  filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
                   child: BouncyTap(
                     onPressed: () => Navigator.pop(context),
                     child: Container(
                       decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.2),
+                        color: Colors.black.withValues(alpha: 0.25),
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.4), width: 1.2),
                       ),
                       padding: const EdgeInsets.all(12),
                       child: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
@@ -213,15 +214,9 @@ class _CandidatoCard extends StatelessWidget {
           )
         );
       },
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: kLine.withValues(alpha: 0.5)),
-          boxShadow: [
-            BoxShadow(color: kNavy.withValues(alpha: 0.04), blurRadius: 20, offset: const Offset(0, 10))
-          ]
-        ),
+      child: GlassCard(
+        padding: EdgeInsets.zero,
+        borderRadius: 24,
         child: Column(
           children: [
             Padding(

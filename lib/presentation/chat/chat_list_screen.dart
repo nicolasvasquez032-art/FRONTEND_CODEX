@@ -2,6 +2,8 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
 import '../../core/constants/app_colors.dart';
+import '../shared/widgets/glass_card.dart';
+import '../shared/widgets/glass_background.dart';
 import 'chat_screen.dart';
 
 class ChatListScreen extends StatefulWidget {
@@ -53,42 +55,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
       backgroundColor: const Color(0xFFF1F5F9), // Fondo base
       body: Stack(
         children: [
-          // ── Orbes de colores líquidos en el fondo ──
-          Positioned(
-            top: -50,
-            left: -100,
-            child: _AnimatedLiquidOrb(
-              color: const Color(0xFF3B82F6).withValues(alpha: 0.6), // Azul eléctrico
-              size: 350,
-              duration: const Duration(seconds: 10),
-            ),
-          ),
-          Positioned(
-            top: 250,
-            right: -120,
-            child: _AnimatedLiquidOrb(
-              color: const Color(0xFF8B5CF6).withValues(alpha: 0.5), // Morado profundo
-              size: 400,
-              duration: const Duration(seconds: 15),
-            ),
-          ),
-          Positioned(
-            bottom: -50,
-            left: 20,
-            child: _AnimatedLiquidOrb(
-              color: const Color(0xFF10B981).withValues(alpha: 0.4), // Verde esmeralda
-              size: 250,
-              duration: const Duration(seconds: 12),
-            ),
-          ),
-          
-          // Filtro para mezclar los orbes suavemente con el fondo
-          Positioned.fill(
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 80, sigmaY: 80), // Mezcla extrema tipo mesh gradient
-              child: Container(color: Colors.white.withValues(alpha: 0.2)),
-            ),
-          ),
+          const GlassBackground(),
           
           CustomScrollView(
             physics: const BouncingScrollPhysics(),
@@ -97,9 +64,15 @@ class _ChatListScreenState extends State<ChatListScreen> {
               SliverAppBar(
                 expandedHeight: 140,
                 pinned: true,
-                backgroundColor: Colors.transparent,
+                backgroundColor: Colors.white.withValues(alpha: 0.75),
                 elevation: 0,
                 scrolledUnderElevation: 0,
+                shape: Border(
+                  bottom: BorderSide(
+                    color: Colors.white.withValues(alpha: 0.85),
+                    width: 1.0,
+                  ),
+                ),
                 leadingWidth: 70,
                 leading: Padding(
                   padding: const EdgeInsets.only(left: 20, top: 8, bottom: 8),
@@ -107,9 +80,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
                     duration: const Duration(milliseconds: 500),
                     child: Container(
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.4),
+                        color: Colors.white.withValues(alpha: 0.8),
                         shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.8), width: 1),
+                        border: Border.all(color: Colors.white, width: 1.2),
                         boxShadow: [
                           BoxShadow(
                             color: kNavy.withValues(alpha: 0.05),
@@ -118,29 +91,24 @@ class _ChatListScreenState extends State<ChatListScreen> {
                           )
                         ],
                       ),
-                      child: ClipOval(
-                        child: BackdropFilter(
-                          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                          child: IconButton(
-                            icon: const Icon(Icons.arrow_back_ios_new, color: kNavy, size: 20),
-                            onPressed: () => Navigator.pop(context),
-                          ),
-                        ),
+                      child: IconButton(
+                        icon: const Icon(Icons.arrow_back_ios_new, color: kNavy, size: 20),
+                        onPressed: () => Navigator.pop(context),
                       ),
                     ),
                   ),
                 ),
                 flexibleSpace: ClipRect(
                   child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+                    filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
                     child: Container(
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
                           colors: [
-                            Colors.white.withValues(alpha: 0.8),
-                            Colors.white.withValues(alpha: 0.1),
+                            Colors.white.withValues(alpha: 0.85),
+                            Colors.white.withValues(alpha: 0.45),
                           ],
                         ),
                       ),
@@ -208,33 +176,16 @@ class _ChatListScreenState extends State<ChatListScreen> {
                   duration: const Duration(milliseconds: 500),
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
-                    child: Container(
-                      height: 54,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.5), // Altamente translúcido
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.6), width: 1.5),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.05),
-                            blurRadius: 20,
-                            offset: const Offset(0, 10),
-                          )
-                        ],
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(20),
-                        child: BackdropFilter(
-                          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                          child: TextField(
-                            decoration: InputDecoration(
-                              hintText: 'Buscar conversación...',
-                              hintStyle: const TextStyle(color: kMuted, fontSize: 15, fontWeight: FontWeight.w500),
-                              prefixIcon: const Icon(Icons.search, color: kMuted, size: 22),
-                              border: InputBorder.none,
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                            ),
-                          ),
+                    child: GlassCard(
+                      borderRadius: BorderRadius.circular(20),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: const TextField(
+                        decoration: InputDecoration(
+                          hintText: 'Buscar conversación...',
+                          hintStyle: TextStyle(color: kMuted, fontSize: 15, fontWeight: FontWeight.w500),
+                          prefixIcon: Icon(Icons.search, color: kMuted, size: 22),
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 16),
                         ),
                       ),
                     ),
@@ -279,58 +230,6 @@ class _ChatListScreenState extends State<ChatListScreen> {
   }
 }
 
-// ────────────────────────────────────────────────────────
-// Animación de orbes para el fondo líquido
-// ────────────────────────────────────────────────────────
-class _AnimatedLiquidOrb extends StatefulWidget {
-  final Color color;
-  final double size;
-  final Duration duration;
-
-  const _AnimatedLiquidOrb({required this.color, required this.size, required this.duration});
-
-  @override
-  State<_AnimatedLiquidOrb> createState() => _AnimatedLiquidOrbState();
-}
-
-class _AnimatedLiquidOrbState extends State<_AnimatedLiquidOrb> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(vsync: this, duration: widget.duration)..repeat(reverse: true);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        return Transform.translate(
-          offset: Offset(
-            20 * _controller.value, // Movimiento sutil en X
-            30 * (1 - _controller.value), // Movimiento sutil en Y
-          ),
-          child: Container(
-            width: widget.size,
-            height: widget.size,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: widget.color,
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
 
 
 class _ChatListItem extends StatelessWidget {
@@ -346,160 +245,139 @@ class _ChatListItem extends StatelessWidget {
     final String initial = (chat['name'] as String).substring(0, 1);
     final Color bgColor = chat['color'] ?? kBlue;
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.35), // Máxima transparencia de Liquid Glass
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      child: GlassCard(
+        padding: EdgeInsets.zero,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.8), width: 1.5),
-        boxShadow: [
-          BoxShadow(
-            color: kNavy.withValues(alpha: 0.05),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          )
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25), // Desenfoque de lente fuerte
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: onTap,
-              highlightColor: bgColor.withValues(alpha: 0.05),
-              splashColor: bgColor.withValues(alpha: 0.1),
-              child: Padding(
-                padding: const EdgeInsets.all(18),
-                child: Row(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Row(
+            children: [
+              // Avatar con indicador de estado
+              Stack(
+                children: [
+                  Container(
+                    width: 58,
+                    height: 58,
+                    decoration: BoxDecoration(
+                      color: bgColor.withValues(alpha: 0.12),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: bgColor.withValues(alpha: 0.2), width: 1),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      initial,
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w900,
+                        color: bgColor,
+                      ),
+                    ),
+                  ),
+                  if (isOnline)
+                    Positioned(
+                      bottom: 2,
+                      right: 2,
+                      child: Container(
+                        width: 14,
+                        height: 14,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF22C55E), // Verde vibrante
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2.5),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF22C55E).withValues(alpha: 0.4),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            )
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(width: 18),
+              
+              // Textos
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Avatar con indicador de estado
-                    Stack(
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Container(
-                          width: 58,
-                          height: 58,
-                          decoration: BoxDecoration(
-                            color: bgColor.withValues(alpha: 0.12),
-                            shape: BoxShape.circle,
-                            border: Border.all(color: bgColor.withValues(alpha: 0.2), width: 1),
-                          ),
-                          alignment: Alignment.center,
+                        Expanded(
                           child: Text(
-                            initial,
-                            style: TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.w900,
-                              color: bgColor,
+                            chat['name'],
+                            style: const TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w800,
+                              color: kNavy,
+                              letterSpacing: -0.3,
                             ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        if (isOnline)
-                          Positioned(
-                            bottom: 2,
-                            right: 2,
-                            child: Container(
-                              width: 14,
-                              height: 14,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF22C55E), // Verde vibrante
-                                shape: BoxShape.circle,
-                                border: Border.all(color: Colors.white, width: 2.5),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: const Color(0xFF22C55E).withValues(alpha: 0.4),
-                                    blurRadius: 4,
-                                    offset: const Offset(0, 2),
-                                  )
-                                ],
+                        Text(
+                          chat['time'],
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: unread > 0 ? kBlue : kMuted,
+                            fontWeight: unread > 0 ? FontWeight.w800 : FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            chat['lastMessage'],
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: unread > 0 ? kNavy : kMuted.withValues(alpha: 0.8),
+                              fontWeight: unread > 0 ? FontWeight.w700 : FontWeight.w500,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (unread > 0) ...[
+                          const SizedBox(width: 12),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: kBlue,
+                              borderRadius: BorderRadius.circular(10),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: kBlue.withValues(alpha: 0.4),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 3),
+                                )
+                              ],
+                            ),
+                            child: Text(
+                              unread > 9 ? '9+' : unread.toString(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w900,
                               ),
                             ),
                           ),
-                      ],
-                    ),
-                    const SizedBox(width: 18),
-                    
-                    // Textos
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  chat['name'],
-                                  style: const TextStyle(
-                                    fontSize: 17,
-                                    fontWeight: FontWeight.w800,
-                                    color: kNavy,
-                                    letterSpacing: -0.3,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              Text(
-                                chat['time'],
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: unread > 0 ? kBlue : kMuted,
-                                  fontWeight: unread > 0 ? FontWeight.w800 : FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 6),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  chat['lastMessage'],
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: unread > 0 ? kNavy : kMuted.withValues(alpha: 0.8),
-                                    fontWeight: unread > 0 ? FontWeight.w700 : FontWeight.w500,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              if (unread > 0) ...[
-                                const SizedBox(width: 12),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: kBlue,
-                                    borderRadius: BorderRadius.circular(10),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: kBlue.withValues(alpha: 0.4),
-                                        blurRadius: 6,
-                                        offset: const Offset(0, 3),
-                                      )
-                                    ],
-                                  ),
-                                  child: Text(
-                                    unread > 9 ? '9+' : unread.toString(),
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w900,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
                         ],
-                      ),
+                      ],
                     ),
                   ],
                 ),
               ),
-            ),
+            ],
           ),
         ),
       ),

@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
@@ -11,10 +9,10 @@ import '../shared/providers/auth_provider.dart';
 import '../shared/providers/locale_provider.dart';
 import '../shared/providers/perfil_provider.dart';
 import '../shared/providers/postulaciones_provider.dart';
-import '../shared/widgets/language_switch_button.dart';
 import 'cv_upload_widget.dart';
-import 'notifications_screen.dart';
 import 'edit_profile_screen.dart';
+import '../shared/widgets/glass_card.dart';
+import '../shared/widgets/talentmatch_top_header.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -59,55 +57,46 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final name = pp.profile?.fullName ?? l10n.profileTitle;
 
     return Scaffold(
-      extendBodyBehindAppBar: true,
       backgroundColor:
           Colors.transparent, // Background now handled by CandidateShell
-      body: RefreshIndicator(
-        onRefresh: () async {
-          final profileId = session?.profileId ?? '';
-          if (profileId.isNotEmpty) {
-            final pp = context.read<PerfilProvider>();
-            final pop = context.read<PostulacionesProvider>();
-            final userId = session?.userId ?? '';
-            await pp.cargar(profileId);
-            await pop.cargar(userId);
-          }
-        },
-        color: kBlue,
-        child: CustomScrollView(
-          physics: const BouncingScrollPhysics(),
-          slivers: [
-            SliverAppBar(
-              expandedHeight: 260,
-              pinned: true,
-              stretch: true,
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              flexibleSpace: ClipRRect(
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                  child: FlexibleSpaceBar(
-                    stretchModes: const [StretchMode.zoomBackground],
-                    background: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        Container(color: Colors.white.withValues(alpha: 0.3)),
-                        // Avatar
-                        Column(
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            const TalentMatchTopHeader(),
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: () async {
+                  final profileId = session?.profileId ?? '';
+                  if (profileId.isNotEmpty) {
+                    final pp = context.read<PerfilProvider>();
+                    final pop = context.read<PostulacionesProvider>();
+                    final userId = session?.userId ?? '';
+                    await pp.cargar(profileId);
+                    await pop.cargar(userId);
+                  }
+                },
+                color: kBlue,
+                child: CustomScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  slivers: [
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 8, bottom: 12),
+                        child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const SizedBox(height: 30),
                             FadeInDown(
                               duration: const Duration(milliseconds: 600),
                               child: Container(
-                                width: 90,
-                                height: 90,
+                                width: 88,
+                                height: 88,
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
-                                  color: Colors.white.withValues(alpha: 0.8),
+                                  color: Colors.white,
                                   border: Border.all(
                                     color: Colors.white,
-                                    width: 2,
+                                    width: 3,
                                   ),
                                   boxShadow: [
                                     BoxShadow(
@@ -121,7 +110,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 child: Text(
                                   initial,
                                   style: const TextStyle(
-                                    fontSize: 36,
+                                    fontSize: 34,
                                     fontWeight: FontWeight.w900,
                                     color: kBlue,
                                   ),
@@ -155,28 +144,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                           ],
                         ),
-                      ],
+                      ),
                     ),
-                  ),
-                ),
-              ),
-              actions: [
-                const LanguageSwitchButton(),
-                IconButton(
-                  icon: const Icon(Icons.notifications_none, color: kNavy),
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const NotificationsScreen(),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-              ],
-            ),
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
-              sliver: SliverList(
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(20, 8, 20, 110),
+                      sliver: SliverList(
                 delegate: SliverChildListDelegate([
                   FadeInUp(
                     delay: const Duration(milliseconds: 300),
@@ -350,6 +322,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ]),
               ),
             ),
+                  ],
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -447,30 +423,10 @@ class _BentoContainer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(24),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-        child: Container(
-          padding: padding ?? const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.65),
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.8),
-              width: 1.5,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: kNavy.withValues(alpha: 0.05),
-                blurRadius: 20,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          child: child,
-        ),
-      ),
+    return GlassCard(
+      borderRadius: 24,
+      padding: padding ?? const EdgeInsets.all(20),
+      child: child,
     );
   }
 }

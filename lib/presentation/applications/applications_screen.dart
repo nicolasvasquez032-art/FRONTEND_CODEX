@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
@@ -13,6 +12,8 @@ import '../shared/providers/locale_provider.dart';
 import '../shared/providers/postulaciones_provider.dart';
 import '../shared/providers/vacantes_provider.dart';
 import '../shared/widgets/animated_empty_state.dart';
+import '../shared/widgets/glass_card.dart';
+import '../shared/widgets/talentmatch_top_header.dart';
 import '../job_detail/job_detail_screen.dart';
 import 'package:shimmer/shimmer.dart';
 
@@ -42,30 +43,39 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
     final vacProvider = context.watch<VacantesProvider>();
     final l10n = AppLocalizations.of(context);
     final isEs = context.watch<LocaleProvider>().isSpanish;
-    final topPadding = MediaQuery.paddingOf(context).top + 15;
-    final bottomPadding = MediaQuery.paddingOf(context).bottom + 100;
+    final bottomPadding = MediaQuery.paddingOf(context).bottom + 110;
 
-    return CustomScrollView(
-      physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-        slivers: [
-          CupertinoSliverRefreshControl(
-            onRefresh: _cargar,
-          ),
-          SliverPadding(
-            padding: EdgeInsets.fromLTRB(17, topPadding, 17, 16),
-            sliver: SliverList(
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            const TalentMatchTopHeader(),
+            Expanded(
+              child: CustomScrollView(
+                physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+                slivers: [
+                  CupertinoSliverRefreshControl(
+                    onRefresh: _cargar,
+                  ),
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(17, 10, 17, 16),
+                    sliver: SliverList(
               delegate: SliverChildListDelegate([
                 Row(
                   children: [
                     const Icon(Icons.timeline_outlined, size: 16, color: kBlue),
                     const SizedBox(width: 6),
-                    Text(
-                      isEs ? AppStrings.applicationsSubtitle : 'Tracking',
-                      style: const TextStyle(
-                        color: kBlue,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.2,
+                    Expanded(
+                      child: Text(
+                        isEs ? AppStrings.applicationsSubtitle : 'Tracking',
+                        style: const TextStyle(
+                          color: kBlue,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.2,
+                        ),
                       ),
                     ),
                   ],
@@ -123,8 +133,13 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
                 ),
               ),
             ),
-        ],
-      );
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Vacante? _findVacante(VacantesProvider vp, String vacanteId) {
@@ -150,20 +165,9 @@ class _PostulacionCard extends StatelessWidget {
   const _PostulacionCard({required this.postulacion, required this.vacante, this.isSpanish = true});
 
   @override
-  Widget build(BuildContext context) => ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-          child: Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.65),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.8), width: 1.5),
-              boxShadow: [
-                BoxShadow(color: kNavy.withValues(alpha: 0.05), blurRadius: 20, offset: const Offset(0, 8)),
-              ],
-            ),
+  Widget build(BuildContext context) => GlassCard(
+        borderRadius: 20,
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -288,9 +292,7 @@ class _PostulacionCard extends StatelessWidget {
             ],
           ],
         ),
-      ),
-    ),
-  );
+      );
 
   String _formatDate(DateTime d) {
     final diff = DateTime.now().difference(d);

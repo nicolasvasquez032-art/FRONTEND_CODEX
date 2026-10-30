@@ -135,18 +135,29 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                               ],
                             ),
                             child: ClipOval(
-                              child: BackdropFilter(
-                                filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-                                child: Container(
-                                  color: Colors.white.withValues(alpha: 0.35),
-                                  padding: const EdgeInsets.all(20),
-                                  alignment: Alignment.center,
-                                  child: Lottie.asset(
-                                    page['lottie'] as String,
-                                    fit: BoxFit.contain,
-                                    errorBuilder: (context, error, stackTrace) =>
-                                        const Icon(Icons.error_outline, size: 50, color: kNavy),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: [
+                                      Colors.white.withValues(alpha: 0.85),
+                                      Colors.white.withValues(alpha: 0.55),
+                                    ],
                                   ),
+                                  border: Border.all(
+                                    color: Colors.white.withValues(alpha: 0.9),
+                                    width: 1.5,
+                                  ),
+                                ),
+                                padding: const EdgeInsets.all(20),
+                                alignment: Alignment.center,
+                                child: Lottie.asset(
+                                  page['lottie'] as String,
+                                  fit: BoxFit.contain,
+                                  errorBuilder: (context, error, stackTrace) =>
+                                      const Icon(Icons.error_outline, size: 50, color: kNavy),
                                 ),
                               ),
                             ),

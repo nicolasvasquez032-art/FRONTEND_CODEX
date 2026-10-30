@@ -21,7 +21,7 @@ class BrandLogo extends StatelessWidget {
             ),
           ],
         ),
-        padding: EdgeInsets.all(size * 0.15),
+        padding: EdgeInsets.all(size * 0.10),
         child: Image.asset(
           'assets/images/logo.png',
           fit: BoxFit.contain,
@@ -39,13 +39,35 @@ class BrandFull extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           BrandLogo(size: iconSize),
-          const SizedBox(width: 9),
-          Text(
-            'TalentMatch',
-            style: TextStyle(
-              fontSize: iconSize * 0.56,
-              fontWeight: FontWeight.w800,
-              color: kNavy,
+          const SizedBox(width: 8),
+          Flexible(
+            child: RichText(
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              text: TextSpan(
+                children: [
+                  TextSpan(
+                    text: 'Talent',
+                    style: TextStyle(
+                      fontSize: iconSize * 0.58,
+                      fontWeight: FontWeight.w900,
+                      color: kNavy,
+                      letterSpacing: -0.3,
+                      fontFamily: Theme.of(context).textTheme.bodyMedium?.fontFamily,
+                    ),
+                  ),
+                  TextSpan(
+                    text: 'Match',
+                    style: TextStyle(
+                      fontSize: iconSize * 0.58,
+                      fontWeight: FontWeight.w900,
+                      color: kBlue,
+                      letterSpacing: -0.3,
+                      fontFamily: Theme.of(context).textTheme.bodyMedium?.fontFamily,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],

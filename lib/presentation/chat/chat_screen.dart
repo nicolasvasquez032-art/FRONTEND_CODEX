@@ -6,6 +6,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/storage/secure_storage.dart';
 import '../shared/providers/chat_provider.dart';
 import '../shared/providers/auth_provider.dart';
+import '../shared/widgets/glass_background.dart';
 
 class ChatScreen extends StatefulWidget {
   final String roomId;
@@ -101,12 +102,18 @@ class _ChatScreenState extends State<ChatScreen> {
             Navigator.pop(context);
           },
         ),
-        backgroundColor: Colors.white.withValues(alpha: 0.7),
+        backgroundColor: Colors.white.withValues(alpha: 0.75),
         elevation: 0,
         centerTitle: true,
+        shape: Border(
+          bottom: BorderSide(
+            color: Colors.white.withValues(alpha: 0.85),
+            width: 1.0,
+          ),
+        ),
         flexibleSpace: ClipRect(
           child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
             child: Container(color: Colors.transparent),
           ),
         ),
@@ -128,35 +135,7 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
       body: Stack(
         children: [
-          // Background Glows
-          Positioned(
-            top: -100,
-            left: -50,
-            child: Container(
-              width: 300,
-              height: 300,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: kBlue.withValues(alpha: 0.15),
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: -50,
-            right: -50,
-            child: Container(
-              width: 250,
-              height: 250,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: kPurple.withValues(alpha: 0.15),
-              ),
-            ),
-          ),
-          BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 40, sigmaY: 40),
-            child: Container(color: Colors.transparent),
-          ),
+          const GlassBackground(),
 
           SafeArea(
             child: Column(
