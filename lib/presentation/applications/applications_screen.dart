@@ -359,7 +359,9 @@ class _TimelineTracker extends StatelessWidget {
     Color color = kLine;
     if (isError) {
       color = const Color(0xFFEF4444);
-    } else if (isActive) color = kBlue;
+    } else if (isActive) {
+      color = kBlue;
+    }
 
     return Column(
       children: [

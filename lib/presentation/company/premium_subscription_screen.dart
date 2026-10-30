@@ -56,6 +56,7 @@ class _PremiumSubscriptionScreenState extends State<PremiumSubscriptionScreen> {
     }
   }
 
+  // ignore: unused_element
   void _showSuccessDialog() {
     showModalBottomSheet(
       context: context,

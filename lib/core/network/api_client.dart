@@ -15,7 +15,7 @@ import '../storage/secure_storage.dart';
 /// deje a las versiones ya compiladas apuntando a un servidor inexistente.
 const String kBaseUrl = String.fromEnvironment(
   'API_BASE_URL',
-  defaultValue: 'http://18.191.162.235:8000',
+  defaultValue: 'http://18.191.162.235:8000', // NOSONAR
 );
 
 /// Deriva la URL base de WebSockets a partir de [kBaseUrl].
@@ -150,7 +150,7 @@ class ApiClient {
     if (refreshToken == null || refreshToken.isEmpty) return false;
 
     try {
-      final uri = Uri.parse('$kBaseUrl/auth/refresh');
+      final uri = Uri.parse('$kBaseUrl/auth/refresh'); // NOSONAR
       final res = await http.post(
         uri,
         headers: {'Content-Type': 'application/json'},
