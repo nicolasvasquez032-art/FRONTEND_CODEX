@@ -44,7 +44,7 @@ dependencies:
   flutter_localizations:
     sdk: flutter
   intl: ^0.20.3
-  sentry_flutter: ^8.14.2
+  sentry_flutter: ^10.1.0
 
 dev_dependencies:
   flutter_test:
@@ -61,5 +61,5 @@ flutter:
   uses-material-design: true
   generate: true
   assets:
-    - assets/images/logo.png
+    - assets/images/
     - assets/lottie/

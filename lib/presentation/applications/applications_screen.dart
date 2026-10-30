@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
@@ -14,6 +13,7 @@ import '../shared/providers/postulaciones_provider.dart';
 import '../shared/providers/vacantes_provider.dart';
 import '../shared/widgets/animated_empty_state.dart';
 import '../shared/widgets/glass_card.dart';
+import '../shared/widgets/talentmatch_top_header.dart';
 import '../job_detail/job_detail_screen.dart';
 import 'package:shimmer/shimmer.dart';
 
@@ -43,30 +43,39 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
     final vacProvider = context.watch<VacantesProvider>();
     final l10n = AppLocalizations.of(context);
     final isEs = context.watch<LocaleProvider>().isSpanish;
-    final topPadding = MediaQuery.paddingOf(context).top + 15;
-    final bottomPadding = MediaQuery.paddingOf(context).bottom + 100;
+    final bottomPadding = MediaQuery.paddingOf(context).bottom + 110;
 
-    return CustomScrollView(
-      physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-        slivers: [
-          CupertinoSliverRefreshControl(
-            onRefresh: _cargar,
-          ),
-          SliverPadding(
-            padding: EdgeInsets.fromLTRB(17, topPadding, 17, 16),
-            sliver: SliverList(
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            const TalentMatchTopHeader(),
+            Expanded(
+              child: CustomScrollView(
+                physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+                slivers: [
+                  CupertinoSliverRefreshControl(
+                    onRefresh: _cargar,
+                  ),
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(17, 10, 17, 16),
+                    sliver: SliverList(
               delegate: SliverChildListDelegate([
                 Row(
                   children: [
                     const Icon(Icons.timeline_outlined, size: 16, color: kBlue),
                     const SizedBox(width: 6),
-                    Text(
-                      isEs ? AppStrings.applicationsSubtitle : 'Tracking',
-                      style: const TextStyle(
-                        color: kBlue,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.2,
+                    Expanded(
+                      child: Text(
+                        isEs ? AppStrings.applicationsSubtitle : 'Tracking',
+                        style: const TextStyle(
+                          color: kBlue,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.2,
+                        ),
                       ),
                     ),
                   ],
@@ -124,8 +133,13 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
                 ),
               ),
             ),
-        ],
-      );
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Vacante? _findVacante(VacantesProvider vp, String vacanteId) {
