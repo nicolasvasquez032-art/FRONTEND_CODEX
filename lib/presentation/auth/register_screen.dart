@@ -585,7 +585,7 @@ class _RegisterScreenState extends State<RegisterScreen>
 
         // ── Full name (candidate only) ──
         if (!_isCompany) ...[
-          _FieldLabel('Nombre completo'),
+          const _FieldLabel('Nombre completo'),
           const SizedBox(height: 6),
           _RegTextField(
             controller: _fullNameCtrl,
@@ -670,7 +670,7 @@ class _RegisterScreenState extends State<RegisterScreen>
         const SizedBox(height: 14),
 
         // ── Confirm password ──
-        _FieldLabel('Confirmar contraseña'),
+        const _FieldLabel('Confirmar contraseña'),
         const SizedBox(height: 6),
         _RegTextField(
           controller: _confirmPasswordCtrl,
@@ -838,11 +838,11 @@ class _RegisterScreenState extends State<RegisterScreen>
             color: const Color(0xFFEAF2FF),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Row(
+          child: const Row(
             children: [
-              const Icon(Icons.lightbulb_outline_rounded, color: kBlue, size: 18),
-              const SizedBox(width: 10),
-              const Expanded(
+              Icon(Icons.lightbulb_outline_rounded, color: kBlue, size: 18),
+              SizedBox(width: 10),
+              Expanded(
                 child: Text(
                   'Cuantas más habilidades agregues, mayor será tu compatibilidad con las vacantes.',
                   style: TextStyle(fontSize: 11, color: kNavy, height: 1.5),
@@ -983,10 +983,10 @@ class _RegisterScreenState extends State<RegisterScreen>
           ],
         ),
         const SizedBox(height: 8),
-        Row(
+        const Row(
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
-          children: const [
+          children: [
             Icon(Icons.lock_outline, size: 12, color: kMuted),
             SizedBox(width: 4),
             Text(

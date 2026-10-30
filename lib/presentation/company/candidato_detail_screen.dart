@@ -132,7 +132,7 @@ class CandidatoDetailScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const SizedBox(height: 10),
-                    FadeInUp(delay: const Duration(milliseconds: 300), child: const Text('Acerca del Candidato', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: kNavy))),
+                    const FadeInUp(delay: Duration(milliseconds: 300), child: Text('Acerca del Candidato', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: kNavy))),
                     const SizedBox(height: 12),
                     FadeInUp(
                       delay: const Duration(milliseconds: 400),
@@ -145,7 +145,7 @@ class CandidatoDetailScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 30),
                     
-                    FadeInUp(delay: const Duration(milliseconds: 500), child: const Text('Habilidades', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: kNavy))),
+                    const FadeInUp(delay: Duration(milliseconds: 500), child: Text('Habilidades', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: kNavy))),
                     const SizedBox(height: 16),
                     Wrap(
                       spacing: 8,

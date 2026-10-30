@@ -199,10 +199,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                     )
                   else ...[
-                    FadeInUp(
-                      delay: const Duration(milliseconds: 400),
-                      duration: const Duration(milliseconds: 500),
-                      child: const _BentoContainer(child: CvUploadWidget()),
+                    const FadeInUp(
+                      delay: Duration(milliseconds: 400),
+                      duration: Duration(milliseconds: 500),
+                      child: _BentoContainer(child: CvUploadWidget()),
                     ),
                     const SizedBox(height: 20),
                     FadeInUp(

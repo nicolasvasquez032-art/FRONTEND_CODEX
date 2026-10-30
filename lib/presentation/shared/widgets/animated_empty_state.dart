@@ -88,13 +88,13 @@ class _AnimatedEmptyStateState extends State<AnimatedEmptyState> with SingleTick
           const SizedBox(height: 32),
           Text(
             widget.title,
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: kNavy),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: kNavy),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 12),
           Text(
             widget.subtitle,
-            style: TextStyle(fontSize: 13, color: kMuted, height: 1.5),
+            style: const TextStyle(fontSize: 13, color: kMuted, height: 1.5),
             textAlign: TextAlign.center,
           ),
         ],

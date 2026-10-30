@@ -240,11 +240,11 @@ class CompanyProfileScreen extends StatelessWidget {
       ),
           
           // Título de Configuración (fuera de la lista para no iterar)
-          SliverToBoxAdapter(
+          const SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.only(left: 28, bottom: 12, top: 40),
+              padding: EdgeInsets.only(left: 28, bottom: 12, top: 40),
               child: FadeInLeft(
-                child: const Text('Configuración', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: kMuted)),
+                child: Text('Configuración', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: kMuted)),
               ),
             ),
           ),
