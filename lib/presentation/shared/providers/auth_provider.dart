@@ -80,6 +80,42 @@ class AuthProvider extends ChangeNotifier {
   }
 
   // ──────────────────────────────────────────────
+  // Login Social (Google, Facebook, LinkedIn)
+  // ──────────────────────────────────────────────
+
+  Future<void> loginWithSocial({
+    required String provider,
+    String? token,
+    String? email,
+    String? fullName,
+  }) async {
+    _setLoading(true);
+    try {
+      session = await _repo
+          .loginWithSocial(
+            provider: provider,
+            token: token,
+            email: email,
+            fullName: fullName,
+          )
+          .timeout(const Duration(seconds: 20));
+      status = AuthStatus.authenticated;
+      error = null;
+    } on TimeoutException {
+      error = 'El servidor tardó demasiado en responder. Verifica tu conexión e inténtalo de nuevo.';
+      status = AuthStatus.unauthenticated;
+    } on ApiException catch (e) {
+      error = _mapError(e);
+      status = AuthStatus.unauthenticated;
+    } catch (_) {
+      error = 'Error al iniciar sesión con $provider. Inténtalo de nuevo.';
+      status = AuthStatus.unauthenticated;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // ──────────────────────────────────────────────
   // Registro candidato
   // ──────────────────────────────────────────────
 

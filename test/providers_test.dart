@@ -35,6 +35,19 @@ class FakeAuthRepo implements AuthRepository {
   }
 
   @override
+  Future<UserSession> loginWithSocial({
+    required String provider,
+    String? token,
+    String? email,
+    String? fullName,
+  }) async {
+    if (shouldTimeout) throw TimeoutException('timeout');
+    if (apiException != null) throw apiException!;
+    if (shouldFail) throw Exception('fail');
+    return currentSession ?? const UserSession(userId: 'u_social', profileId: 'p_social', role: 'candidate');
+  }
+
+  @override
   Future<UserSession?> restoreSession() async => currentSession;
 
   @override
@@ -204,6 +217,21 @@ void main() {
       expect(provider.session?.userId, 'u1');
       expect(provider.error, isNull);
       expect(provider.loading, isFalse);
+    });
+
+    test('LoginWithSocial autentica y guarda sesión exitosa', () async {
+      final fakeRepo = FakeAuthRepo();
+      final provider = AuthProvider(fakeRepo);
+
+      await provider.loginWithSocial(
+        provider: 'google',
+        email: 'google@test.com',
+        fullName: 'Google User',
+      );
+
+      expect(provider.status, AuthStatus.authenticated);
+      expect(provider.session?.userId, 'u_social');
+      expect(provider.error, isNull);
     });
 
     test('Login con ApiException maneja error amigable', () async {

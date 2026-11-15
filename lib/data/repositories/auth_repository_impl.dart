@@ -138,6 +138,61 @@ class AuthRepositoryImpl implements AuthRepository {
   // ──────────────────────────────────────────────
 
   @override
+  Future<UserSession> loginWithSocial({
+    required String provider,
+    String? token,
+    String? email,
+    String? fullName,
+  }) async {
+    final tokenData = await _api.post(
+      '/auth/oauth/social',
+      {
+        'provider': provider,
+        'token': token ?? 'mock_${provider}_token',
+        if (email != null && email.isNotEmpty) 'email': email,
+        if (fullName != null && fullName.isNotEmpty) 'full_name': fullName,
+      },
+      auth: false,
+    );
+    final accessToken = tokenData['access_token'] as String;
+    final refreshToken = tokenData['refresh_token'] as String?;
+
+    await _storage.saveSession(
+      token: accessToken,
+      userId: '',
+      profileId: '',
+      role: 'candidate',
+      refreshToken: refreshToken,
+      isPremium: false,
+    );
+
+    final session = _decodeJwtSession(accessToken);
+
+    await _storage.saveSession(
+      token: accessToken,
+      userId: session.userId,
+      profileId: session.profileId,
+      role: session.role,
+      refreshToken: refreshToken,
+      isPremium: session.isPremium,
+    );
+
+    final profileId = await _fetchProfileId();
+    if (profileId.isNotEmpty) {
+      await _storage.saveProfileId(profileId);
+      return UserSession(
+        userId: session.userId,
+        profileId: profileId,
+        role: session.role,
+        isPremium: session.isPremium,
+        email: session.email,
+      );
+    }
+
+    return session;
+  }
+
+  @override
   Future<void> logout() => _storage.clearSession();
 
   // ──────────────────────────────────────────────

@@ -70,6 +70,151 @@ class _LoginScreenState extends State<LoginScreen>
     }
   }
 
+  void _showSocialAuthModal({
+    required BuildContext context,
+    required String provider,
+    required String providerName,
+    required Color brandColor,
+    required Widget icon,
+    required String defaultEmail,
+    required String defaultName,
+    required bool isEs,
+  }) {
+    final emailController = TextEditingController(text: defaultEmail);
+    final nameController = TextEditingController(text: defaultName);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          padding: EdgeInsets.only(
+            left: 24,
+            right: 24,
+            top: 24,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+          ),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE2E8F0),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: brandColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    alignment: Alignment.center,
+                    child: icon,
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          isEs ? 'Continuar con $providerName' : 'Continue with $providerName',
+                          style: const TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF0F172A),
+                          ),
+                        ),
+                        Text(
+                          isEs ? 'Autenticación Social OAuth 2.0' : 'Social OAuth 2.0 Sign In',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              TextField(
+                controller: emailController,
+                decoration: InputDecoration(
+                  labelText: isEs ? 'Correo de la cuenta $providerName' : '$providerName account email',
+                  prefixIcon: const Icon(Icons.email_outlined, size: 20),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: nameController,
+                decoration: InputDecoration(
+                  labelText: isEs ? 'Nombre en tu perfil' : 'Profile Name',
+                  prefixIcon: const Icon(Icons.person_outline, size: 20),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                ),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: () async {
+                  Navigator.pop(ctx);
+                  final auth = this.context.read<AuthProvider>();
+                  await auth.loginWithSocial(
+                    provider: provider,
+                    email: emailController.text.trim(),
+                    fullName: nameController.text.trim(),
+                  );
+                  if (mounted && auth.error != null) {
+                    ScaffoldMessenger.of(this.context).showSnackBar(
+                      SnackBar(
+                        content: Text(auth.error!),
+                        backgroundColor: const Color(0xFFDC2626),
+                      ),
+                    );
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: brandColor,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  elevation: 0,
+                ),
+                child: Text(
+                  isEs ? 'Acceder con $providerName' : 'Sign In with $providerName',
+                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
@@ -488,50 +633,76 @@ class _LoginScreenState extends State<LoginScreen>
 
                 const SizedBox(height: 14),
 
-                // ── Botones de Autenticación Social (Google y LinkedIn) ──
+                // ── Botones de Autenticación Social (Google, LinkedIn y Facebook) ──
                 Row(
                   children: [
                     // Botón Google
                     Expanded(
                       child: _SocialAuthButton(
-                        onTap: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                isEs
-                                    ? 'Inicio de sesión con Google próximamente'
-                                    : 'Google Sign In coming soon',
-                              ),
-                              behavior: SnackBarBehavior.floating,
-                            ),
-                          );
-                        },
-                        iconWidget: const _GoogleGLogo(size: 18),
+                        onTap: () => _showSocialAuthModal(
+                          context: context,
+                          provider: 'google',
+                          providerName: 'Google',
+                          brandColor: const Color(0xFF4285F4),
+                          icon: const _GoogleGLogo(size: 20),
+                          defaultEmail: 'candidato.google@gmail.com',
+                          defaultName: 'Candidato Google',
+                          isEs: isEs,
+                        ),
+                        iconWidget: const _GoogleGLogo(size: 16),
                         label: 'Google',
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 8),
                     // Botón LinkedIn
                     Expanded(
                       child: _SocialAuthButton(
-                        onTap: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                isEs
-                                    ? 'Inicio de sesión con LinkedIn próximamente'
-                                    : 'LinkedIn Sign In coming soon',
-                              ),
-                              behavior: SnackBarBehavior.floating,
-                            ),
-                          );
-                        },
+                        onTap: () => _showSocialAuthModal(
+                          context: context,
+                          provider: 'linkedin',
+                          providerName: 'LinkedIn',
+                          brandColor: const Color(0xFF0A66C2),
+                          icon: const FaIcon(
+                            FontAwesomeIcons.linkedin,
+                            color: Color(0xFF0A66C2),
+                            size: 20,
+                          ),
+                          defaultEmail: 'candidato.linkedin@talentmatch.com',
+                          defaultName: 'Candidato LinkedIn',
+                          isEs: isEs,
+                        ),
                         iconWidget: const FaIcon(
                           FontAwesomeIcons.linkedin,
                           color: Color(0xFF0A66C2),
-                          size: 18,
+                          size: 15,
                         ),
                         label: 'LinkedIn',
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // Botón Facebook
+                    Expanded(
+                      child: _SocialAuthButton(
+                        onTap: () => _showSocialAuthModal(
+                          context: context,
+                          provider: 'facebook',
+                          providerName: 'Facebook',
+                          brandColor: const Color(0xFF1877F2),
+                          icon: const FaIcon(
+                            FontAwesomeIcons.facebook,
+                            color: Color(0xFF1877F2),
+                            size: 20,
+                          ),
+                          defaultEmail: 'candidato.facebook@talentmatch.com',
+                          defaultName: 'Candidato Facebook',
+                          isEs: isEs,
+                        ),
+                        iconWidget: const FaIcon(
+                          FontAwesomeIcons.facebook,
+                          color: Color(0xFF1877F2),
+                          size: 15,
+                        ),
+                        label: 'Facebook',
                       ),
                     ),
                   ],
@@ -1055,7 +1226,7 @@ class _SocialAuthButton extends StatelessWidget {
     return OutlinedButton(
       onPressed: onTap,
       style: OutlinedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(vertical: 13),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
         backgroundColor: Colors.white.withValues(alpha: 0.9),
         side: const BorderSide(color: Color(0xFFE2E8F0), width: 1.2),
         shape: RoundedRectangleBorder(
@@ -1065,15 +1236,20 @@ class _SocialAuthButton extends StatelessWidget {
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
           iconWidget,
-          const SizedBox(width: 8),
-          Text(
-            label,
-            style: const TextStyle(
-              color: Color(0xFF1E293B),
-              fontWeight: FontWeight.w600,
-              fontSize: 13.5,
+          const SizedBox(width: 5),
+          Flexible(
+            child: Text(
+              label,
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
+              style: const TextStyle(
+                color: Color(0xFF1E293B),
+                fontWeight: FontWeight.w600,
+                fontSize: 12.0,
+              ),
             ),
           ),
         ],
