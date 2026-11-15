@@ -1,7 +1,11 @@
+import 'dart:async';
+import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:ui';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -62,8 +66,11 @@ class _LoginScreenState extends State<LoginScreen>
     }
   }
 
+  Timer? _oauthPollTimer;
+
   @override
   void dispose() {
+    _oauthPollTimer?.cancel();
     _floatCtrl.dispose();
     _emailCtrl.dispose();
     _passwordCtrl.dispose();
@@ -91,8 +98,27 @@ class _LoginScreenState extends State<LoginScreen>
     required String provider,
     required String providerName,
   }) async {
-    final origin = Uri.base.origin;
-    final oauthUrl = Uri.parse('$kBaseUrl/auth/oauth/$provider/authorize?redirect_origin=$origin');
+    String origin = '';
+    if (kIsWeb) {
+      try {
+        origin = Uri.base.origin;
+      } catch (_) {
+        origin = '';
+      }
+    }
+
+    final sessionId = 'tm_${DateTime.now().millisecondsSinceEpoch}_${math.Random().nextInt(99999)}';
+    final queryParams = <String, String>{
+      'session_id': sessionId,
+    };
+    if (origin.isNotEmpty) {
+      queryParams['redirect_origin'] = origin;
+    }
+
+    final oauthUrl = Uri.parse('$kBaseUrl/auth/oauth/$provider/authorize').replace(
+      queryParameters: queryParams,
+    );
+
     try {
       final launched = await launchUrl(
         oauthUrl,
@@ -102,6 +128,9 @@ class _LoginScreenState extends State<LoginScreen>
       if (!launched) {
         await launchUrl(oauthUrl, mode: LaunchMode.platformDefault);
       }
+
+      // Inicia sondeo de sesión para sincronizar automáticamente el token en Android/móvil
+      _startOAuthPolling(sessionId: sessionId, providerName: providerName);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -112,6 +141,70 @@ class _LoginScreenState extends State<LoginScreen>
         );
       }
     }
+  }
+
+  /// Sondeo no bloqueante que detecta cuando el usuario aprueba en el navegador externo.
+  void _startOAuthPolling({
+    required String sessionId,
+    required String providerName,
+  }) {
+    _oauthPollTimer?.cancel();
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text('Conectando con $providerName en tu navegador...'),
+              ),
+            ],
+          ),
+          duration: const Duration(seconds: 40),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+    }
+
+    int attempts = 0;
+    _oauthPollTimer = Timer.periodic(const Duration(milliseconds: 1500), (timer) async {
+      attempts++;
+      if (attempts > 50) {
+        // Detener después de 75 segundos
+        timer.cancel();
+        return;
+      }
+
+      try {
+        final resp = await http.get(
+          Uri.parse('$kBaseUrl/auth/oauth/session/$sessionId'),
+        ).timeout(const Duration(seconds: 4));
+
+        if (resp.statusCode == 200) {
+          final data = jsonDecode(resp.body) as Map<String, dynamic>;
+          if (data['status'] == 'completed') {
+            timer.cancel();
+            final token = data['token']?.toString();
+            final refresh = data['refreshToken']?.toString() ?? '';
+            if (token != null && token.isNotEmpty && mounted) {
+              ScaffoldMessenger.of(context).hideCurrentSnackBar();
+              final auth = context.read<AuthProvider>();
+              await auth.handleSocialAuthToken(token: token, refreshToken: refresh);
+            }
+          }
+        }
+      } catch (_) {}
+    });
   }
 
   /// Acceso rápido candidato directo para pruebas locales de desarrollo.
