@@ -193,6 +193,37 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<UserSession> handleSocialAuthToken({
+    required String token,
+    required String refreshToken,
+  }) async {
+    final session = _decodeJwtSession(token);
+
+    await _storage.saveSession(
+      token: token,
+      userId: session.userId,
+      profileId: session.profileId,
+      role: session.role,
+      refreshToken: refreshToken,
+      isPremium: session.isPremium,
+    );
+
+    final profileId = await _fetchProfileId();
+    if (profileId.isNotEmpty) {
+      await _storage.saveProfileId(profileId);
+      return UserSession(
+        userId: session.userId,
+        profileId: profileId,
+        role: session.role,
+        isPremium: session.isPremium,
+        email: session.email,
+      );
+    }
+
+    return session;
+  }
+
+  @override
   Future<void> logout() => _storage.clearSession();
 
   // ──────────────────────────────────────────────

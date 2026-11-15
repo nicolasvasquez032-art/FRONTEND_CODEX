@@ -116,6 +116,30 @@ class AuthProvider extends ChangeNotifier {
   }
 
   // ──────────────────────────────────────────────
+  // Procesar token recibido de OAuth Social
+  // ──────────────────────────────────────────────
+
+  Future<void> handleSocialAuthToken({
+    required String token,
+    required String refreshToken,
+  }) async {
+    _setLoading(true);
+    try {
+      session = await _repo.handleSocialAuthToken(
+        token: token,
+        refreshToken: refreshToken,
+      );
+      status = AuthStatus.authenticated;
+      error = null;
+    } catch (_) {
+      error = 'Error al completar la autenticación con el proveedor social.';
+      status = AuthStatus.unauthenticated;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // ──────────────────────────────────────────────
   // Registro candidato
   // ──────────────────────────────────────────────
 

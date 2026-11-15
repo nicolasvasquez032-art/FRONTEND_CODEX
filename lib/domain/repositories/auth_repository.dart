@@ -35,6 +35,12 @@ abstract class AuthRepository {
     String? fullName,
   });
 
+  /// Procesa y guarda los tokens de autenticación obtenidos vía OAuth social.
+  Future<UserSession> handleSocialAuthToken({
+    required String token,
+    required String refreshToken,
+  });
+
   /// Cierra sesión borrando los datos persistidos.
   Future<void> logout();
 

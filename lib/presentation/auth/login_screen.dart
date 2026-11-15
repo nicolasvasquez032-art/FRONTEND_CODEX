@@ -3,8 +3,10 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/constants/app_colors.dart';
+import '../../core/network/api_client.dart';
 import '../shared/providers/auth_provider.dart';
 import '../shared/providers/locale_provider.dart';
 import '../shared/widgets/brand_logo.dart';
@@ -44,6 +46,20 @@ class _LoginScreenState extends State<LoginScreen>
       vsync: this,
       duration: const Duration(seconds: 8),
     )..repeat(reverse: true);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkIncomingOAuthToken();
+    });
+  }
+
+  void _checkIncomingOAuthToken() {
+    final uri = Uri.base;
+    final token = uri.queryParameters['token'];
+    final refresh = uri.queryParameters['refresh'] ?? uri.queryParameters['refreshToken'] ?? '';
+    if (token != null && token.isNotEmpty) {
+      final auth = context.read<AuthProvider>();
+      auth.handleSocialAuthToken(token: token, refreshToken: refresh);
+    }
   }
 
   @override
@@ -70,149 +86,54 @@ class _LoginScreenState extends State<LoginScreen>
     }
   }
 
-  void _showSocialAuthModal({
-    required BuildContext context,
+  /// Abre inmediatamente la ventana oficial de autenticación del proveedor (Google, Facebook o LinkedIn).
+  Future<void> _launchSocialOAuth({
     required String provider,
     required String providerName,
-    required Color brandColor,
-    required Widget icon,
-    required String defaultEmail,
-    required String defaultName,
-    required bool isEs,
-  }) {
-    final emailController = TextEditingController(text: defaultEmail);
-    final nameController = TextEditingController(text: defaultName);
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) {
-        return Container(
-          padding: EdgeInsets.only(
-            left: 24,
-            right: 24,
-            top: 24,
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
-          ),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE2E8F0),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 18),
-              Row(
-                children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: brandColor.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    alignment: Alignment.center,
-                    child: icon,
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          isEs ? 'Continuar con $providerName' : 'Continue with $providerName',
-                          style: const TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF0F172A),
-                          ),
-                        ),
-                        Text(
-                          isEs ? 'Autenticación Social OAuth 2.0' : 'Social OAuth 2.0 Sign In',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey.shade600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              TextField(
-                controller: emailController,
-                decoration: InputDecoration(
-                  labelText: isEs ? 'Correo de la cuenta $providerName' : '$providerName account email',
-                  prefixIcon: const Icon(Icons.email_outlined, size: 20),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: nameController,
-                decoration: InputDecoration(
-                  labelText: isEs ? 'Nombre en tu perfil' : 'Profile Name',
-                  prefixIcon: const Icon(Icons.person_outline, size: 20),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                ),
-              ),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: () async {
-                  Navigator.pop(ctx);
-                  final auth = this.context.read<AuthProvider>();
-                  await auth.loginWithSocial(
-                    provider: provider,
-                    email: emailController.text.trim(),
-                    fullName: nameController.text.trim(),
-                  );
-                  if (mounted && auth.error != null) {
-                    ScaffoldMessenger.of(this.context).showSnackBar(
-                      SnackBar(
-                        content: Text(auth.error!),
-                        backgroundColor: const Color(0xFFDC2626),
-                      ),
-                    );
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: brandColor,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  elevation: 0,
-                ),
-                child: Text(
-                  isEs ? 'Acceder con $providerName' : 'Sign In with $providerName',
-                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
-                ),
-              ),
-            ],
+  }) async {
+    final origin = Uri.base.origin;
+    final oauthUrl = Uri.parse('$kBaseUrl/auth/oauth/$provider/authorize?redirect_origin=$origin');
+    try {
+      final launched = await launchUrl(
+        oauthUrl,
+        webOnlyWindowName: '_blank',
+        mode: LaunchMode.externalApplication,
+      );
+      if (!launched) {
+        await launchUrl(oauthUrl, mode: LaunchMode.platformDefault);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('No se pudo abrir la ventana de $providerName: $e'),
+            backgroundColor: const Color(0xFFDC2626),
           ),
         );
-      },
+      }
+    }
+  }
+
+  /// Acceso rápido candidato directo para pruebas locales de desarrollo.
+  Future<void> _directQuickLogin({
+    required String provider,
+    required String defaultEmail,
+    required String defaultName,
+  }) async {
+    final auth = context.read<AuthProvider>();
+    await auth.loginWithSocial(
+      provider: provider,
+      email: defaultEmail,
+      fullName: defaultName,
     );
+    if (mounted && auth.error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(auth.error!),
+          backgroundColor: const Color(0xFFDC2626),
+        ),
+      );
+    }
   }
 
   @override
@@ -639,15 +560,14 @@ class _LoginScreenState extends State<LoginScreen>
                     // Botón Google
                     Expanded(
                       child: _SocialAuthButton(
-                        onTap: () => _showSocialAuthModal(
-                          context: context,
+                        onTap: () => _launchSocialOAuth(
                           provider: 'google',
                           providerName: 'Google',
-                          brandColor: const Color(0xFF4285F4),
-                          icon: const _GoogleGLogo(size: 20),
+                        ),
+                        onLongPress: () => _directQuickLogin(
+                          provider: 'google',
                           defaultEmail: 'candidato.google@gmail.com',
                           defaultName: 'Candidato Google',
-                          isEs: isEs,
                         ),
                         iconWidget: const _GoogleGLogo(size: 16),
                         label: 'Google',
@@ -657,19 +577,14 @@ class _LoginScreenState extends State<LoginScreen>
                     // Botón LinkedIn
                     Expanded(
                       child: _SocialAuthButton(
-                        onTap: () => _showSocialAuthModal(
-                          context: context,
+                        onTap: () => _launchSocialOAuth(
                           provider: 'linkedin',
                           providerName: 'LinkedIn',
-                          brandColor: const Color(0xFF0A66C2),
-                          icon: const FaIcon(
-                            FontAwesomeIcons.linkedin,
-                            color: Color(0xFF0A66C2),
-                            size: 20,
-                          ),
+                        ),
+                        onLongPress: () => _directQuickLogin(
+                          provider: 'linkedin',
                           defaultEmail: 'candidato.linkedin@talentmatch.com',
                           defaultName: 'Candidato LinkedIn',
-                          isEs: isEs,
                         ),
                         iconWidget: const FaIcon(
                           FontAwesomeIcons.linkedin,
@@ -683,19 +598,14 @@ class _LoginScreenState extends State<LoginScreen>
                     // Botón Facebook
                     Expanded(
                       child: _SocialAuthButton(
-                        onTap: () => _showSocialAuthModal(
-                          context: context,
+                        onTap: () => _launchSocialOAuth(
                           provider: 'facebook',
                           providerName: 'Facebook',
-                          brandColor: const Color(0xFF1877F2),
-                          icon: const FaIcon(
-                            FontAwesomeIcons.facebook,
-                            color: Color(0xFF1877F2),
-                            size: 20,
-                          ),
+                        ),
+                        onLongPress: () => _directQuickLogin(
+                          provider: 'facebook',
                           defaultEmail: 'candidato.facebook@talentmatch.com',
                           defaultName: 'Candidato Facebook',
-                          isEs: isEs,
                         ),
                         iconWidget: const FaIcon(
                           FontAwesomeIcons.facebook,
@@ -1209,14 +1119,16 @@ class _LanguageSegmentItem extends StatelessWidget {
   }
 }
 
-/// Botón de autenticación social (Google o LinkedIn).
+/// Botón de autenticación social (Google, LinkedIn o Facebook).
 class _SocialAuthButton extends StatelessWidget {
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
   final Widget iconWidget;
   final String label;
 
   const _SocialAuthButton({
     required this.onTap,
+    this.onLongPress,
     required this.iconWidget,
     required this.label,
   });
@@ -1225,6 +1137,7 @@ class _SocialAuthButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return OutlinedButton(
       onPressed: onTap,
+      onLongPress: onLongPress,
       style: OutlinedButton.styleFrom(
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
         backgroundColor: Colors.white.withValues(alpha: 0.9),

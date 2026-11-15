@@ -48,6 +48,15 @@ class FakeAuthRepo implements AuthRepository {
   }
 
   @override
+  Future<UserSession> handleSocialAuthToken({
+    required String token,
+    required String refreshToken,
+  }) async {
+    if (shouldFail) throw Exception('fail');
+    return currentSession ?? const UserSession(userId: 'u_oauth', profileId: 'p_oauth', role: 'candidate');
+  }
+
+  @override
   Future<UserSession?> restoreSession() async => currentSession;
 
   @override
