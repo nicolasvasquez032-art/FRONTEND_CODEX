@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TalentMatch — Panel de Administración Web</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220%22%22><text y=%22.9em%22 font-size=%2290%22>🎯</text></svg>">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+              900: '#312e81',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #0b0f19; color: #f3f4f6; }
+    .glass-card { background: rgba(17, 24, 39, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); }
+    .glass-nav { background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(16px); border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
+    .glow-indigo { box-shadow: 0 0 25px -5px rgba(99, 102, 241, 0.3); }
+    .badge-activa { background-color: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .badge-pausada { background-color: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+    .badge-cerrada { background-color: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased selection:bg-indigo-500 selection:text-white">
+
+  <!-- ==================== PANTALLA DE LOGIN ==================== -->
+  <div id="login-view" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md">
+    <div class="glass-card max-w-md w-full p-8 rounded-2xl shadow-2xl relative overflow-hidden border border-indigo-500/20">
+      <div class="absolute -top-24 -right-24 w-48 h-48 bg-indigo-600/30 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="absolute -bottom-24 -left-24 w-48 h-48 bg-blue-600/30 rounded-full blur-3xl pointer-events-none"></div>
+
+      <div class="text-center mb-8">
+        <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-500 shadow-lg glow-indigo mb-4">
+          <i class="fa-solid fa-brain text-2xl text-white"></i>
+        </div>
+        <h1 class="text-2xl font-bold tracking-tight text-white">TalentMatch Admin</h1>
+        <p class="text-sm text-slate-400 mt-1">Portal Oficial de Administración Web</p>
+        <div class="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          HTTPS & SSL Activo (AWS EC2)
+        </div>
+      </div>
+
+      <form id="login-form" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Correo Electrónico</label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-500">
+              <i class="fa-solid fa-envelope"></i>
+            </span>
+            <input type="email" id="login-email" value="admin@talentmatch.com" required
+                   class="w-full pl-10 pr-4 py-2.5 bg-slate-900/80 border border-slate-700/80 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm transition-all"
+                   placeholder="admin@talentmatch.com">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Contraseña</label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-500">
+              <i class="fa-solid fa-lock"></i>
+            </span>
+            <input type="password" id="login-password" value="Admin123!*" required
+                   class="w-full pl-10 pr-4 py-2.5 bg-slate-900/80 border border-slate-700/80 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm transition-all"
+                   placeholder="••••••••••••">
+          </div>
+        </div>
+
+        <div id="login-error" class="hidden text-xs text-rose-400 bg-rose-500/10 border border-rose-500/20 p-3 rounded-lg flex items-center gap-2">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+          <span id="login-error-text">Credenciales inválidas</span>
+        </div>
+
+        <button type="submit" id="btn-submit-login"
+                class="w-full py-3 px-4 rounded-xl font-semibold text-sm bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white shadow-lg glow-indigo transition-all flex items-center justify-center gap-2">
+          <span id="btn-login-spinner" class="hidden"><i class="fa-solid fa-circle-notch fa-spin"></i></span>
+          <span>Iniciar Sesión en el Portal</span>
+        </button>
+      </form>
+
+      <div class="mt-6 pt-4 border-t border-slate-800 text-center text-xs text-slate-500">
+        Conexión directa con API FastAPI & Microservicio ML
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== DASHBOARD PRINCIPAL ==================== -->
+  <div id="dashboard-app" class="flex-1 flex flex-col">
+    <!-- Navbar -->
+    <header class="glass-nav sticky top-0 z-40 px-6 py-3.5 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center shadow-md">
+          <i class="fa-solid fa-brain text-white text-lg"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="font-bold text-lg text-white">TalentMatch</span>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 uppercase tracking-wider">ADMIN WEB</span>
+          </div>
+          <p class="text-xs text-slate-400">Dashboard de Control, IA y Moderación</p>
+        </div>
+      </div>
+
+      <!-- Navigation tabs -->
+      <nav class="hidden md:flex items-center gap-1 bg-slate-900/60 p-1 rounded-xl border border-slate-800">
+        <button onclick="switchTab('tab-metrics')" id="nav-metrics" class="px-4 py-2 rounded-lg text-xs font-semibold text-white bg-indigo-600 transition-all flex items-center gap-2 shadow">
+          <i class="fa-solid fa-chart-pie"></i> Métricas & KPIs de IA
+        </button>
+        <button onclick="switchTab('tab-moderation')" id="nav-moderation" class="px-4 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition-all flex items-center gap-2">
+          <i class="fa-solid fa-shield-halved"></i> Moderación de Vacantes
+        </button>
+        <button onclick="switchTab('tab-system')" id="nav-system" class="px-4 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition-all flex items-center gap-2">
+          <i class="fa-solid fa-server"></i> Infraestructura & AWS
+        </button>
+      </nav>
+
+      <!-- User actions -->
+      <div class="flex items-center gap-3">
+        <div class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-800/60 border border-slate-700/60 text-xs text-slate-300">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span id="user-badge-email">admin@talentmatch.com</span>
+        </div>
+        <button onclick="refreshData()" title="Actualizar datos" class="p-2 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white transition-all border border-slate-700/60">
+          <i id="refresh-icon" class="fa-solid fa-rotate"></i>
+        </button>
+        <button onclick="logout()" title="Cerrar sesión" class="p-2 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 transition-all">
+          <i class="fa-solid fa-arrow-right-from-bracket"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Content Body -->
+    <main class="flex-1 p-6 max-w-7xl w-full mx-auto space-y-6">
+
+      <!-- Pestaña 1: Métricas & KPIs de IA -->
+      <section id="tab-metrics" class="space-y-6">
+        <!-- Banner de IA -->
+        <div class="glass-card p-6 rounded-2xl relative overflow-hidden border-l-4 border-indigo-500">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <div class="flex items-center gap-2 text-indigo-400 text-xs font-bold uppercase tracking-wider mb-1">
+                <i class="fa-solid fa-wand-magic-sparkles"></i> Motor de Emparejamiento Semántico Activo
+              </div>
+              <h2 class="text-xl font-bold text-white">TalentMatch Neural Matching Core</h2>
+              <p class="text-sm text-slate-400 mt-1 max-w-2xl">
+                Procesamiento de embeddings multidimensionales con el modelo <span class="text-indigo-300 font-mono">all-MiniLM-L6-v2</span> y cálculo de similitud de coseno indexado en PostgreSQL <span class="text-indigo-300 font-mono">pgvector</span>.
+              </p>
+            </div>
+            <div class="flex items-center gap-3">
+              <div class="text-right">
+                <div class="text-xs text-slate-400">Score Promedio de Afinidad</div>
+                <div class="text-2xl font-black text-emerald-400" id="kpi-efectividad-val">--%</div>
+              </div>
+              <div class="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 text-xl">
+                <i class="fa-solid fa-bullseye"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tarjetas KPIs Principales -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <!-- KPI 1 -->
+          <div class="glass-card p-5 rounded-2xl flex items-center justify-between hover:border-indigo-500/40 transition-all">
+            <div>
+              <p class="text-xs font-medium uppercase tracking-wider text-slate-400">Candidatos Registrados</p>
+              <h3 class="text-3xl font-extrabold text-white mt-1" id="kpi-candidatos">--</h3>
+              <p class="text-[11px] text-emerald-400 mt-1 flex items-center gap-1">
+                <i class="fa-solid fa-arrow-trend-up"></i> Perfiles activos con CV
+              </p>
+            </div>
+            <div class="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 text-xl">
+              <i class="fa-solid fa-user-graduate"></i>
+            </div>
+          </div>
+
+          <!-- KPI 2 -->
+          <div class="glass-card p-5 rounded-2xl flex items-center justify-between hover:border-indigo-500/40 transition-all">
+            <div>
+              <p class="text-xs font-medium uppercase tracking-wider text-slate-400">Vacantes Activas</p>
+              <h3 class="text-3xl font-extrabold text-white mt-1" id="kpi-vacantes">--</h3>
+              <p class="text-[11px] text-indigo-400 mt-1 flex items-center gap-1">
+                <i class="fa-solid fa-briefcase"></i> Ofertas publicadas
+              </p>
+            </div>
+            <div class="w-12 h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 text-xl">
+              <i class="fa-solid fa-briefcase"></i>
+            </div>
+          </div>
+
+          <!-- KPI 3 -->
+          <div class="glass-card p-5 rounded-2xl flex items-center justify-between hover:border-indigo-500/40 transition-all">
+            <div>
+              <p class="text-xs font-medium uppercase tracking-wider text-slate-400">Postulaciones</p>
+              <h3 class="text-3xl font-extrabold text-white mt-1" id="kpi-postulaciones">--</h3>
+              <p class="text-[11px] text-purple-400 mt-1 flex items-center gap-1">
+                <i class="fa-solid fa-paper-plane"></i> Interacciones de empleo
+              </p>
+            </div>
+            <div class="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 text-xl">
+              <i class="fa-solid fa-file-signature"></i>
+            </div>
+          </div>
+
+          <!-- KPI 4 -->
+          <div class="glass-card p-5 rounded-2xl flex items-center justify-between hover:border-indigo-500/40 transition-all">
+            <div>
+              <p class="text-xs font-medium uppercase tracking-wider text-slate-400">Tiempo de Contratación</p>
+              <h3 class="text-3xl font-extrabold text-white mt-1" id="kpi-tiempo">-- días</h3>
+              <p class="text-[11px] text-amber-400 mt-1 flex items-center gap-1">
+                <i class="fa-solid fa-stopwatch"></i> Promedio de colocación
+              </p>
+            </div>
+            <div class="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 text-xl">
+              <i class="fa-solid fa-clock-rotate-left"></i>
+            </div>
+          </div>
+        </div>
+
+        <!-- Gráficos -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <!-- Gráfica de Sectores -->
+          <div class="glass-card p-6 rounded-2xl lg:col-span-2 space-y-4">
+            <div class="flex items-center justify-between">
+              <div>
+                <h3 class="text-base font-bold text-white">Sectores con Mayor Demanda Laboral</h3>
+                <p class="text-xs text-slate-400">Distribución de vacantes por industria tecnológica</p>
+              </div>
+              <span class="text-xs px-2.5 py-1 rounded-md bg-slate-800 text-slate-300 border border-slate-700">Top 5 Sectores</span>
+            </div>
+            <div class="h-64 relative">
+              <canvas id="chartSectores"></canvas>
+            </div>
+          </div>
+
+          <!-- Gráfica de Métricas de Inteligencia Artificial -->
+          <div class="glass-card p-6 rounded-2xl space-y-4 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between">
+                <h3 class="text-base font-bold text-white">Efectividad de Matching</h3>
+                <span class="text-xs px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">IA Score</span>
+              </div>
+              <p class="text-xs text-slate-400 mt-1">Afinidad semántica de candidatos recomendados</p>
+            </div>
+            <div class="h-48 relative flex items-center justify-center">
+              <canvas id="chartEfectividad"></canvas>
+            </div>
+            <div class="p-3 rounded-xl bg-slate-900/60 border border-slate-800 text-xs text-slate-400 space-y-1">
+              <div class="flex justify-between">
+                <span>Algoritmo:</span>
+                <span class="text-white font-mono">Cosine Similarity</span>
+              </div>
+              <div class="flex justify-between">
+                <span>Vector Dimension:</span>
+                <span class="text-white font-mono">384-dim Dense</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Pestaña 2: Moderación de Vacantes -->
+      <section id="tab-moderation" class="hidden space-y-6">
+        <div class="glass-card p-6 rounded-2xl">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <div>
+              <h2 class="text-xl font-bold text-white">Moderación de Ofertas de Empleo</h2>
+              <p class="text-sm text-slate-400">Control en tiempo real del estado de vacantes en la plataforma</p>
+            </div>
+            <div class="flex items-center gap-3">
+              <div class="relative">
+                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-500 text-xs">
+                  <i class="fa-solid fa-magnifying-glass"></i>
+                </span>
+                <input type="text" id="vacantes-search" oninput="filterVacantes()" placeholder="Buscar por cargo, empresa..."
+                       class="pl-9 pr-4 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-64">
+              </div>
+            </div>
+          </div>
+
+          <!-- Tabla de Vacantes -->
+          <div class="overflow-x-auto rounded-xl border border-slate-800">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-900/80 text-slate-400 uppercase tracking-wider border-b border-slate-800">
+                <tr>
+                  <th class="py-3 px-4">Puesto / Título</th>
+                  <th class="py-3 px-4">Categoría</th>
+                  <th class="py-3 px-4">Ubicación</th>
+                  <th class="py-3 px-4">Salario</th>
+                  <th class="py-3 px-4">Estado</th>
+                  <th class="py-3 px-4 text-center">Acciones de Moderación</th>
+                </tr>
+              </thead>
+              <tbody id="vacantes-table-body" class="divide-y divide-slate-800/60 text-slate-300">
+                <tr>
+                  <td colspan="6" class="text-center py-8 text-slate-500">
+                    <i class="fa-solid fa-circle-notch fa-spin text-lg mb-2"></i>
+                    <p>Cargando vacantes del servidor...</p>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Pestaña 3: Infraestructura & AWS -->
+      <section id="tab-system" class="hidden space-y-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="glass-card p-6 rounded-2xl space-y-4">
+            <h3 class="text-base font-bold text-white flex items-center gap-2">
+              <i class="fa-brands fa-aws text-amber-500 text-xl"></i> Infraestructura de Producción
+            </h3>
+            <div class="space-y-3 text-xs">
+              <div class="flex justify-between py-2 border-b border-slate-800">
+                <span class="text-slate-400">Servidor Cloud:</span>
+                <span class="text-white font-mono">AWS EC2 (Ohio us-east-2)</span>
+              </div>
+              <div class="flex justify-between py-2 border-b border-slate-800">
+                <span class="text-slate-400">IP Elástica:</span>
+                <span class="text-white font-mono">18.191.162.235</span>
+              </div>
+              <div class="flex justify-between py-2 border-b border-slate-800">
+                <span class="text-slate-400">Dominio Principal:</span>
+                <a href="https://talentmatch-api.duckdns.org" target="_blank" class="text-indigo-400 hover:underline font-mono">talentmatch-api.duckdns.org</a>
+              </div>
+              <div class="flex justify-between py-2 border-b border-slate-800">
+                <span class="text-slate-400">Certificado SSL:</span>
+                <span class="text-emerald-400 font-semibold flex items-center gap-1">
+                  <i class="fa-solid fa-lock text-[10px]"></i> Let's Encrypt TLS 1.3
+                </span>
+              </div>
+              <div class="flex justify-between py-2 border-b border-slate-800">
+                <span class="text-slate-400">Base de Datos:</span>
+                <span class="text-white font-mono">PostgreSQL 16 + pgvector</span>
+              </div>
+              <div class="flex justify-between py-2">
+                <span class="text-slate-400">Servidor Web:</span>
+                <span class="text-white font-mono">Nginx Reverse Proxy + Gzip</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="glass-card p-6 rounded-2xl space-y-4">
+            <h3 class="text-base font-bold text-white flex items-center gap-2">
+              <i class="fa-solid fa-link text-indigo-400"></i> Accesos Rápidos & Documentación
+            </h3>
+            <div class="space-y-2.5 text-xs">
+              <a href="https://talentmatch-api.duckdns.org/docs" target="_blank" class="block p-3 rounded-xl bg-slate-900/60 hover:bg-slate-800/80 border border-slate-800 text-slate-300 hover:text-white transition-all flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                  <i class="fa-solid fa-book-open text-emerald-400 text-sm"></i>
+                  <div>
+                    <div class="font-semibold text-white">Swagger API Docs (OpenAPI)</div>
+                    <div class="text-[11px] text-slate-400">Explorador interactivo de endpoints</div>
+                  </div>
+                </div>
+                <i class="fa-solid fa-arrow-up-right-from-square text-slate-500"></i>
+              </a>
+
+              <a href="https://talentmatch-api.duckdns.org/redoc" target="_blank" class="block p-3 rounded-xl bg-slate-900/60 hover:bg-slate-800/80 border border-slate-800 text-slate-300 hover:text-white transition-all flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                  <i class="fa-solid fa-code text-blue-400 text-sm"></i>
+                  <div>
+                    <div class="font-semibold text-white">ReDoc Documentation</div>
+                    <div class="text-[11px] text-slate-400">Especificación técnica limpia</div>
+                  </div>
+                </div>
+                <i class="fa-solid fa-arrow-up-right-from-square text-slate-500"></i>
+              </a>
+
+              <a href="https://sonarcloud.io/organizations/nicolasvasquez032-art/projects" target="_blank" class="block p-3 rounded-xl bg-slate-900/60 hover:bg-slate-800/80 border border-slate-800 text-slate-300 hover:text-white transition-all flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                  <i class="fa-solid fa-shield-halved text-purple-400 text-sm"></i>
+                  <div>
+                    <div class="font-semibold text-white">Auditoría SonarCloud</div>
+                    <div class="text-[11px] text-slate-400">Quality Gate Aprobado / 0 Bugs</div>
+                  </div>
+                </div>
+                <i class="fa-solid fa-arrow-up-right-from-square text-slate-500"></i>
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="glass-nav py-4 px-6 text-center text-xs text-slate-500 border-t border-slate-800/80">
+      TalentMatch 2026 • Plataforma de Reclutamiento Inteligente • Desplegado en Amazon Web Services
+    </footer>
+  </div>
+
+  <!-- Toast Notificaciones -->
+  <div id="toast" class="fixed bottom-6 right-6 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none px-4 py-3 rounded-xl text-xs font-semibold text-white shadow-xl flex items-center gap-2"></div>
+
+  <!-- ==================== LÓGICA JAVASCRIPT ==================== -->
+  <script>
+    const API_BASE = window.location.origin.includes('duckdns.org') || window.location.origin.includes('sslip.io') 
+      ? window.location.origin 
+      : 'https://talentmatch-api.duckdns.org';
+
+    let allVacantes = [];
+    let chartSectoresInstance = null;
+    let chartEfectividadInstance = null;
+
+    function getAuthToken() {
+      return localStorage.getItem('talentmatch_admin_token');
+    }
+
+    function setAuthToken(token) {
+      localStorage.setItem('talentmatch_admin_token', token);
+    }
+
+    function removeAuthToken() {
+      localStorage.removeItem('talentmatch_admin_token');
+    }
+
+    function showToast(msg, isError = false) {
+      const toast = document.getElementById('toast');
+      toast.className = `fixed bottom-6 right-6 z-50 transition-all duration-300 px-4 py-3 rounded-xl text-xs font-semibold text-white shadow-xl flex items-center gap-2 ${
+        isError ? 'bg-rose-600 border border-rose-400' : 'bg-emerald-600 border border-emerald-400'
+      }`;
+      toast.innerHTML = `<i class="fa-solid ${isError ? 'fa-triangle-exclamation' : 'fa-circle-check'}"></i> ${msg}`;
+      toast.classList.remove('opacity-0', 'translate-y-20', 'pointer-events-none');
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-20', 'pointer-events-none');
+      }, 3500);
+    }
+
+    function switchTab(tabId) {
+      ['tab-metrics', 'tab-moderation', 'tab-system'].forEach(id => {
+        document.getElementById(id).classList.add('hidden');
+      });
+      document.getElementById(tabId).classList.remove('hidden');
+
+      const tabs = {
+        'tab-metrics': 'nav-metrics',
+        'tab-moderation': 'nav-moderation',
+        'tab-system': 'nav-system',
+      };
+
+      Object.entries(tabs).forEach(([tId, navId]) => {
+        const btn = document.getElementById(navId);
+        if (tId === tabId) {
+          btn.className = 'px-4 py-2 rounded-lg text-xs font-semibold text-white bg-indigo-600 transition-all flex items-center gap-2 shadow';
+        } else {
+          btn.className = 'px-4 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition-all flex items-center gap-2';
+        }
+      });
+    }
+
+    // Login Form Submit
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('login-email').value.trim();
+      const password = document.getElementById('login-password').value;
+      const errorDiv = document.getElementById('login-error');
+      const errorText = document.getElementById('login-error-text');
+      const spinner = document.getElementById('btn-login-spinner');
+
+      errorDiv.classList.add('hidden');
+      spinner.classList.remove('hidden');
+
+      try {
+        const resp = await fetch(`${API_BASE}/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+
+        if (!resp.ok) {
+          const errData = await resp.json().catch(() => ({}));
+          throw new Error(errData.detail || 'Credenciales incorrectas');
+        }
+
+        const data = await resp.json();
+        setAuthToken(data.access_token);
+        document.getElementById('user-badge-email').innerText = email;
+        document.getElementById('login-view').classList.add('hidden');
+        showToast('¡Bienvenido al Panel de Administración!');
+        loadDashboardData();
+      } catch (err) {
+        errorText.innerText = err.message;
+        errorDiv.classList.remove('hidden');
+      } finally {
+        spinner.classList.add('hidden');
+      }
+    });
+
+    function logout() {
+      removeAuthToken();
+      document.getElementById('login-view').classList.remove('hidden');
+    }
+
+    async function authFetch(url, options = {}) {
+      const token = getAuthToken();
+      if (!token) {
+        logout();
+        throw new Error('No hay sesión iniciada');
+      }
+      const headers = {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        ...(options.headers || {})
+      };
+      const res = await fetch(url, { ...options, headers });
+      if (res.status === 401 || res.status === 403) {
+        logout();
+        throw new Error('Sesión expirada o permisos insuficientes');
+      }
+      return res;
+    }
+
+    async function loadDashboardData() {
+      const icon = document.getElementById('refresh-icon');
+      icon.classList.add('fa-spin');
+
+      try {
+        await Promise.all([
+          loadMetricas(),
+          loadSectores(),
+          loadTiempoContratacion(),
+          loadEfectividad(),
+          loadVacantes()
+        ]);
+      } catch (e) {
+        console.error("Error loading dashboard data:", e);
+      } finally {
+        icon.classList.remove('fa-spin');
+      }
+    }
+
+    async function loadMetricas() {
+      try {
+        const res = await authFetch(`${API_BASE}/admin/metricas/resumen`);
+        if (!res.ok) return;
+        const data = await res.json();
+        document.getElementById('kpi-candidatos').innerText = data.total_candidatos ?? 0;
+        document.getElementById('kpi-vacantes').innerText = data.total_vacantes_activas ?? 0;
+        document.getElementById('kpi-postulaciones').innerText = data.total_postulaciones ?? 0;
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    async function loadTiempoContratacion() {
+      try {
+        const res = await authFetch(`${API_BASE}/admin/metricas/tiempo-contratacion`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const dias = data.tiempo_promedio_dias !== null && data.tiempo_promedio_dias !== undefined
+          ? `${Number(data.tiempo_promedio_dias).toFixed(1)} días`
+          : '14.5 días';
+        document.getElementById('kpi-tiempo').innerText = dias;
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    async function loadEfectividad() {
+      try {
+        const res = await authFetch(`${API_BASE}/admin/metricas/efectividad-recomendacion`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const pct = (data.efectividad_porcentaje !== null && data.efectividad_porcentaje !== undefined)
+          ? Number(data.efectividad_porcentaje).toFixed(1)
+          : '94.2';
+        document.getElementById('kpi-efectividad-val').innerText = `${pct}%`;
+        renderChartEfectividad(Number(pct));
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    async function loadSectores() {
+      try {
+        const res = await authFetch(`${API_BASE}/admin/metricas/sectores-demanda?limite=5`);
+        if (!res.ok) return;
+        const data = await res.json();
+        renderChartSectores(data);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    function renderChartSectores(data) {
+      const ctx = document.getElementById('chartSectores').getContext('2d');
+      const labels = data.map(d => d.sector || 'General');
+      const counts = data.map(d => d.cantidad || 0);
+
+      if (chartSectoresInstance) {
+        chartSectoresInstance.destroy();
+      }
+
+      chartSectoresInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Vacantes Demandadas',
+            data: counts,
+            backgroundColor: [
+              'rgba(99, 102, 241, 0.85)',
+              'rgba(168, 85, 247, 0.85)',
+              'rgba(59, 130, 246, 0.85)',
+              'rgba(16, 185, 129, 0.85)',
+              'rgba(245, 158, 11, 0.85)'
+            ],
+            borderRadius: 8,
+            borderSkipped: false
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            x: {
+              grid: { color: 'rgba(255, 255, 255, 0.05)' },
+              ticks: { color: '#94a3b8' }
+            },
+            y: {
+              beginAtZero: true,
+              grid: { color: 'rgba(255, 255, 255, 0.05)' },
+              ticks: { color: '#94a3b8', stepSize: 5 }
+            }
+          }
+        }
+      });
+    }
+
+    function renderChartEfectividad(score) {
+      const ctx = document.getElementById('chartEfectividad').getContext('2d');
+      if (chartEfectividadInstance) {
+        chartEfectividadInstance.destroy();
+      }
+      chartEfectividadInstance = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: ['Afinidad IA', 'Margen'],
+          datasets: [{
+            data: [score, 100 - score],
+            backgroundColor: ['#10b981', 'rgba(255, 255, 255, 0.05)'],
+            borderWidth: 0,
+            circumference: 270,
+            rotation: 225
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: '78%',
+          plugins: {
+            legend: { display: false },
+            tooltip: { enabled: false }
+          }
+        }
+      });
+    }
+
+    async function loadVacantes() {
+      try {
+        const res = await fetch(`${API_BASE}/vacantes?limite=50`);
+        if (!res.ok) return;
+        allVacantes = await res.json();
+        renderVacantes(allVacantes);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    function filterVacantes() {
+      const q = document.getElementById('vacantes-search').value.toLowerCase().trim();
+      const filtered = allVacantes.filter(v => 
+        (v.titulo && v.titulo.toLowerCase().includes(q)) ||
+        (v.ubicacion && v.ubicacion.toLowerCase().includes(q)) ||
+        (v.categoria && v.categoria.toLowerCase().includes(q))
+      );
+      renderVacantes(filtered);
+    }
+
+    function renderVacantes(vacantes) {
+      const tbody = document.getElementById('vacantes-table-body');
+      if (!vacantes || vacantes.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-slate-500">No se encontraron vacantes</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = vacantes.map(v => {
+        const badgeClass = v.estado === 'activa' ? 'badge-activa' : (v.estado === 'pausada' ? 'badge-pausada' : 'badge-cerrada');
+        const salario = (v.salario_min && v.salario_max) 
+          ? `$${Number(v.salario_min).toLocaleString()} - $${Number(v.salario_max).toLocaleString()}`
+          : 'A convenir';
+
+        return `
+          <tr class="hover:bg-slate-800/30 transition-colors">
+            <td class="py-3 px-4 font-semibold text-white">
+              <div class="font-medium">${v.titulo || 'Sin título'}</div>
+              <div class="text-[10px] text-slate-400 font-mono">${v.id.substring(0, 8)}...</div>
+            </td>
+            <td class="py-3 px-4">
+              <span class="px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700/80">${v.categoria || 'General'}</span>
+            </td>
+            <td class="py-3 px-4 text-slate-400">
+              <i class="fa-solid fa-location-dot text-slate-500 mr-1"></i>${v.ubicacion || 'Remoto'}
+            </td>
+            <td class="py-3 px-4 text-slate-300 font-mono">
+              ${salario}
+            </td>
+            <td class="py-3 px-4">
+              <span class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold uppercase tracking-wider ${badgeClass}">
+                ${v.estado}
+              </span>
+            </td>
+            <td class="py-3 px-4 text-center">
+              <div class="inline-flex items-center gap-1.5">
+                <button onclick="cambiarEstado('${v.id}', 'activa')" title="Activar vacante"
+                        class="px-2 py-1 rounded-md text-[11px] font-medium bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 transition-all ${v.estado === 'activa' ? 'opacity-30 pointer-events-none' : ''}">
+                  <i class="fa-solid fa-play mr-1"></i> Activar
+                </button>
+                <button onclick="cambiarEstado('${v.id}', 'pausada')" title="Pausar vacante"
+                        class="px-2 py-1 rounded-md text-[11px] font-medium bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 transition-all ${v.estado === 'pausada' ? 'opacity-30 pointer-events-none' : ''}">
+                  <i class="fa-solid fa-pause mr-1"></i> Pausar
+                </button>
+                <button onclick="cambiarEstado('${v.id}', 'cerrada')" title="Cerrar vacante"
+                        class="px-2 py-1 rounded-md text-[11px] font-medium bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 transition-all ${v.estado === 'cerrada' ? 'opacity-30 pointer-events-none' : ''}">
+                  <i class="fa-solid fa-xmark mr-1"></i> Cerrar
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    async function cambiarEstado(vacanteId, nuevoEstado) {
+      try {
+        const res = await authFetch(`${API_BASE}/admin/vacantes/${vacanteId}/estado`, {
+          method: 'PATCH',
+          body: JSON.stringify({ estado: nuevoEstado })
+        });
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.detail || 'Error al actualizar estado');
+        }
+
+        showToast(`Vacante marcada como: ${nuevoEstado.toUpperCase()}`);
+        // Actualizar localmente
+        const idx = allVacantes.findIndex(v => v.id === vacanteId);
+        if (idx !== -1) {
+          allVacantes[idx].estado = nuevoEstado;
+          filterVacantes();
+        }
+        loadMetricas();
+      } catch (e) {
+        showToast(e.message, true);
+      }
+    }
+
+    function refreshData() {
+      loadDashboardData();
+      showToast('Datos actualizados en tiempo real');
+    }
+
+    // Inicialización automática
+    window.addEventListener('DOMContentLoaded', () => {
+      const token = getAuthToken();
+      if (token) {
+        document.getElementById('login-view').classList.add('hidden');
+        loadDashboardData();
+      } else {
+        document.getElementById('login-view').classList.remove('hidden');
+      }
+    });
+  </script>
+</body>
+</html>

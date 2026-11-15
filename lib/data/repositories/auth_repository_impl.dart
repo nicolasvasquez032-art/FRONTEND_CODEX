@@ -59,7 +59,13 @@ class AuthRepositoryImpl implements AuthRepository {
     final profileId = await _fetchProfileId();
     if (profileId.isNotEmpty) {
       await _storage.saveProfileId(profileId);
-      return UserSession(userId: session.userId, profileId: profileId, role: session.role, isPremium: session.isPremium);
+      return UserSession(
+        userId: session.userId,
+        profileId: profileId,
+        role: session.role,
+        isPremium: session.isPremium,
+        email: session.email,
+      );
     }
 
     return session;
@@ -185,11 +191,18 @@ class AuthRepositoryImpl implements AuthRepository {
       final userId    = claims['sub']?.toString() ?? '';
       final role      = claims['role']?.toString() ?? 'candidate';
       final profileId = claims['profile_id']?.toString() ?? '';
+      final email     = claims['email']?.toString();
 
       final isPremiumRaw = claims['is_premium'];
       final isPremium = isPremiumRaw == true || isPremiumRaw.toString().toLowerCase() == 'true';
 
-      return UserSession(userId: userId, profileId: profileId, role: role, isPremium: isPremium);
+      return UserSession(
+        userId: userId,
+        profileId: profileId,
+        role: role,
+        isPremium: isPremium,
+        email: email,
+      );
     } catch (_) {
       // Fallback: sesión vacía (el usuario verá su perfil en blanco)
       return const UserSession(userId: '', profileId: '', role: 'candidate', isPremium: false);

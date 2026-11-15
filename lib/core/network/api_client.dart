@@ -15,7 +15,7 @@ import '../storage/secure_storage.dart';
 /// deje a las versiones ya compiladas apuntando a un servidor inexistente.
 const String kBaseUrl = String.fromEnvironment(
   'API_BASE_URL',
-  defaultValue: 'http://18.191.162.235:8000', // NOSONAR
+  defaultValue: 'https://talentmatch-api.duckdns.org', // NOSONAR
 );
 
 /// Deriva la URL base de WebSockets a partir de [kBaseUrl].

@@ -13,6 +13,7 @@ import 'data/repositories/postulacion_repository_impl.dart';
 import 'data/repositories/recomendacion_repository_impl.dart';
 import 'data/repositories/vacante_repository_impl.dart';
 import 'data/repositories/notificacion_repository_impl.dart';
+import 'data/repositories/admin_repository_impl.dart';
 import 'core/notifications/fcm_service.dart';
 import 'presentation/auth/login_screen.dart';
 import 'presentation/shared/providers/auth_provider.dart';
@@ -22,11 +23,13 @@ import 'presentation/shared/providers/recomendaciones_provider.dart';
 import 'presentation/shared/providers/vacantes_provider.dart';
 import 'presentation/shared/providers/notificaciones_provider.dart';
 import 'presentation/shared/providers/chat_provider.dart';
+import 'presentation/shared/providers/admin_provider.dart';
 import 'presentation/shared/providers/locale_provider.dart';
 import 'l10n/app_localizations.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'presentation/shell/candidate_shell.dart';
 import 'presentation/shell/company_shell.dart';
+import 'presentation/shell/admin_shell.dart';
 import 'presentation/onboarding/onboarding_screen.dart';
 
 /// DSN de Sentry configurable en tiempo de compilación:
@@ -67,6 +70,7 @@ class TalentMatchApp extends StatelessWidget {
     final perfilRepo        = PerfilRepositoryImpl(apiClient);
     final recomendacionRepo = RecomendacionRepositoryImpl(apiClient);
     final notificacionRepo  = NotificacionRepositoryImpl(apiClient);
+    final adminRepo         = AdminRepositoryImpl(apiClient);
 
     // Conectar interceptor global de sesión expirada (401 definitivo)
     ApiClient.onSessionExpired = (message) {
@@ -91,6 +95,8 @@ class TalentMatchApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => NotificacionesProvider(notificacionRepo)),
         // Chat
         ChangeNotifierProvider(create: (_) => ChatProvider()),
+        // Panel de Administrador (RF-06)
+        ChangeNotifierProvider(create: (_) => AdminProvider(adminRepo)),
         // Internacionalización / Idioma
         ChangeNotifierProvider(create: (_) => LocaleProvider()),
       ],
@@ -131,7 +137,11 @@ class _AppRouter extends StatelessWidget {
       duration: const Duration(milliseconds: 400),
       child: switch (status) {
         AuthStatus.unknown         => const _SplashScreen(),
-        AuthStatus.authenticated   => role == 'company' ? const CompanyShell() : const CandidateShell(),
+        AuthStatus.authenticated   => switch (role) {
+            'admin'   => const AdminShell(),
+            'company' => const CompanyShell(),
+            _         => const CandidateShell(),
+          },
         AuthStatus.unauthenticated => hasSeenOnboarding ? const LoginScreen() : const OnboardingScreen(),
       },
     );
