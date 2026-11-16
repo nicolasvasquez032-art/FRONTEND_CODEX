@@ -20,14 +20,28 @@ class RecomendacionModel extends Recomendacion {
     required super.empresaId,
     required super.scoreSimilitud,
     required super.explicacion,
+    super.descripcion,
+    super.requisitos,
+    super.ubicacion,
+    super.categoria,
+    super.salarioMin,
+    super.salarioMax,
   });
 
   factory RecomendacionModel.fromJson(Map<String, dynamic> json) =>
       RecomendacionModel(
-        vacanteId:      json['vacante_id']    as String,
-        titulo:         json['titulo']         as String,
-        empresaId:      json['empresa_id']     as String,
+        vacanteId: json['vacante_id'] as String,
+        titulo: json['titulo'] as String,
+        empresaId: json['empresa_id'] as String,
         scoreSimilitud: (json['score_similitud'] as num).toDouble(),
-        explicacion:    json['explicacion']    as String,
+        explicacion: json['explicacion'] as String,
+        descripcion: json['descripcion'] as String?,
+        requisitos: (json['requisitos'] as List<dynamic>?)
+            ?.map((e) => e.toString())
+            .toList(),
+        ubicacion: json['ubicacion'] as String?,
+        categoria: json['categoria'] as String?,
+        salarioMin: (json['salario_min'] as num?)?.toDouble(),
+        salarioMax: (json['salario_max'] as num?)?.toDouble(),
       );
 }

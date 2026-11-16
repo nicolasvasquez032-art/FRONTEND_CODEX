@@ -22,10 +22,26 @@ abstract class AuthRepository {
   Future<void> registerCompany({
     required String email,
     required String password,
+    String? nombre,
   });
 
   /// Envía un correo de recuperación de contraseña.
   Future<void> requestPasswordReset(String email);
+
+  /// Inicia sesión o registra candidato con proveedor social (Google, Facebook, LinkedIn).
+  Future<UserSession> loginWithSocial({
+    required String provider,
+    String? token,
+    String? email,
+    String? fullName,
+  });
+
+  /// Procesa y guarda los tokens de autenticación obtenidos vía OAuth social.
+  Future<UserSession> handleSocialAuthToken({
+    required String token,
+    required String refreshToken,
+    bool isNewUser = false,
+  });
 
   /// Cierra sesión borrando los datos persistidos.
   Future<void> logout();

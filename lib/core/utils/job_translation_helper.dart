@@ -246,6 +246,8 @@ class JobTranslationHelper {
 
     final trimmed = explanation.trim();
 
+    if (trimmed.startsWith('Recommended with')) return trimmed;
+
     if (trimmed.startsWith('Habilidades coincidentes:')) {
       return trimmed.replaceFirst('Habilidades coincidentes:', 'Matching skills:');
     }
@@ -262,6 +264,30 @@ class JobTranslationHelper {
       return 'Recommended profile based on technical affinity in AI & ML';
     }
 
-    return explanation;
+    // Traducción reactiva para explicaciones semánticas estructuradas
+    String res = trimmed;
+    res = res.replaceAllMapped(
+      RegExp(r'Recomendada con un (\d+)% de afinidad:'),
+      (m) => 'Recommended with ${m[1]}% match:',
+    );
+    res = res.replaceAll('Tu perfil como Desarrollador Full Stack', 'Your background as a Full Stack Developer');
+    res = res.replaceAll('Tu perfil como Desarrollador Backend', 'Your background as a Backend Developer');
+    res = res.replaceAll('Tu perfil como Desarrollador Frontend', 'Your background as a Frontend Developer');
+    res = res.replaceAll('Tu perfil como Desarrollador Móvil', 'Your background as a Mobile Developer');
+    res = res.replaceAll('Tu perfil como Especialista en IA', 'Your background as an AI Specialist');
+    res = res.replaceAll('Tu perfil como Ingeniero de Sistemas', 'Your background as a Systems Engineer');
+    res = res.replaceAll('coincide directamente con el desarrollo de soluciones web y móviles solicitado en esta vacante', 'directly matches web and mobile solutions development required for this role');
+    res = res.replaceAll('coincide directamente con la ingeniería de inteligencia artificial y motores de matching solicitado en esta vacante', 'directly matches artificial intelligence engineering and matching engines required for this role');
+    res = res.replaceAll('coincide directamente con el análisis de datos y optimización de modelos solicitado en esta vacante', 'directly matches data analysis and model optimization required for this role');
+    res = res.replaceAll('coincide directamente con la infraestructura en la nube y alta disponibilidad solicitado en esta vacante', 'directly matches cloud infrastructure and high availability required for this role');
+    res = res.replaceAll('coincide directamente con el desarrollo avanzado en el ecosistema móvil solicitado en esta vacante', 'directly matches advanced mobile ecosystem development required for this role');
+    res = res.replaceAll('coincide directamente con el diseño de experiencias de usuario (UI/UX) y producto digital solicitado en esta vacante', 'directly matches UI/UX user experience and digital product design required for this role');
+    res = res.replaceAll('coincide directamente con el desarrollo de servicios backend y APIs escalables solicitado en esta vacante', 'directly matches scalable backend services and API development required for this role');
+    res = res.replaceAll('respaldado por tu dominio en', 'supported by your skills in');
+    res = res.replaceAll('bases de datos SQL y NoSQL', 'SQL & NoSQL databases');
+    res = res.replaceAll(' y ', ', and ');
+    res = res.replaceAll(' e Inteligencia Artificial', ', and Artificial Intelligence & ML');
+
+    return res;
   }
 }

@@ -19,6 +19,16 @@ class PerfilRepositoryImpl implements PerfilRepository {
   }
 
   // ──────────────────────────────────────────────
+  // GET /perfiles/me
+  // ──────────────────────────────────────────────
+
+  @override
+  Future<Profile> getMiPerfil() async {
+    final raw = await _api.get('/perfiles/me', auth: true);
+    return ProfileModel.fromJson(raw);
+  }
+
+  // ──────────────────────────────────────────────
   // PUT /perfiles/{profileId}
   // ──────────────────────────────────────────────
 

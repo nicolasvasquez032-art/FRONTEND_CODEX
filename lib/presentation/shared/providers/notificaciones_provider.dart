@@ -20,6 +20,13 @@ class NotificacionesProvider extends ChangeNotifier {
 
   NotificacionesProvider(this._repository);
 
+  void limpiar() {
+    _notificaciones = [];
+    _status = NotificacionesStatus.initial;
+    _error = null;
+    notifyListeners();
+  }
+
   Future<void> cargar(String usuarioId) async {
     _status = NotificacionesStatus.loading;
     _error = null;

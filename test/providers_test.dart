@@ -35,6 +35,29 @@ class FakeAuthRepo implements AuthRepository {
   }
 
   @override
+  Future<UserSession> loginWithSocial({
+    required String provider,
+    String? token,
+    String? email,
+    String? fullName,
+  }) async {
+    if (shouldTimeout) throw TimeoutException('timeout');
+    if (apiException != null) throw apiException!;
+    if (shouldFail) throw Exception('fail');
+    return currentSession ?? const UserSession(userId: 'u_social', profileId: 'p_social', role: 'candidate');
+  }
+
+  @override
+  Future<UserSession> handleSocialAuthToken({
+    required String token,
+    required String refreshToken,
+    bool isNewUser = false,
+  }) async {
+    if (shouldFail) throw Exception('fail');
+    return currentSession ?? const UserSession(userId: 'u_oauth', profileId: 'p_oauth', role: 'candidate');
+  }
+
+  @override
   Future<UserSession?> restoreSession() async => currentSession;
 
   @override
@@ -56,7 +79,7 @@ class FakeAuthRepo implements AuthRepository {
   }
 
   @override
-  Future<void> registerCompany({required String email, required String password}) async {
+  Future<void> registerCompany({required String email, required String password, String? nombre}) async {
     if (shouldFail) throw Exception('fail');
   }
 
@@ -125,6 +148,13 @@ class FakePostulacionRepo implements PostulacionRepository {
     if (apiException != null) throw apiException!;
     if (shouldFail) throw Exception('fail');
     return postulaciones;
+  }
+
+  @override
+  Future<List<Postulacion>> listarPostulacionesVacante(String vacanteId) async {
+    if (apiException != null) throw apiException!;
+    if (shouldFail) throw Exception('fail');
+    return postulaciones.where((p) => p.vacanteId == vacanteId).toList();
   }
 
   @override
@@ -204,6 +234,21 @@ void main() {
       expect(provider.session?.userId, 'u1');
       expect(provider.error, isNull);
       expect(provider.loading, isFalse);
+    });
+
+    test('LoginWithSocial autentica y guarda sesión exitosa', () async {
+      final fakeRepo = FakeAuthRepo();
+      final provider = AuthProvider(fakeRepo);
+
+      await provider.loginWithSocial(
+        provider: 'google',
+        email: 'google@test.com',
+        fullName: 'Google User',
+      );
+
+      expect(provider.status, AuthStatus.authenticated);
+      expect(provider.session?.userId, 'u_social');
+      expect(provider.error, isNull);
     });
 
     test('Login con ApiException maneja error amigable', () async {

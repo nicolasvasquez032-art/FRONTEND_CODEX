@@ -98,10 +98,66 @@ void main() {
       );
       expect(
         JobTranslationHelper.translateExplanation(
+          'Coincidencia semántica con tus habilidades en desarrollo.',
+          false,
+        ),
+        contains('Semantic match with'),
+      );
+      expect(
+        JobTranslationHelper.translateExplanation(
+          'Fuerte afinidad semántica con tus habilidades técnicas.',
+          false,
+        ),
+        contains('Strong semantic match with your skills'),
+      );
+      expect(
+        JobTranslationHelper.translateExplanation(
           'Perfil recomendado por afinidad técnica en IA y ML',
           false,
         ),
         'Recommended profile based on technical affinity in AI & ML',
+      );
+      expect(
+        JobTranslationHelper.translateExplanation(
+          'Recomendada con un 67% de afinidad: Tu perfil como Desarrollador Full Stack coincide directamente con el desarrollo de soluciones web y móviles solicitado en esta vacante, respaldado por tu dominio en Python y bases de datos SQL y NoSQL e Inteligencia Artificial.',
+          false,
+        ),
+        contains('Recommended with 67% match:'),
+      );
+      expect(
+        JobTranslationHelper.translateExplanation(
+          'Tu perfil como Desarrollador Backend coincide directamente con el desarrollo de servicios backend y APIs escalables solicitado en esta vacante',
+          false,
+        ),
+        contains('Backend Developer'),
+      );
+      expect(
+        JobTranslationHelper.translateExplanation(
+          'Tu perfil como Desarrollador Frontend coincide directamente con el diseño de experiencias de usuario (UI/UX) y producto digital solicitado en esta vacante',
+          false,
+        ),
+        contains('Frontend Developer'),
+      );
+      expect(
+        JobTranslationHelper.translateExplanation(
+          'Tu perfil como Desarrollador Móvil coincide directamente con el desarrollo avanzado en el ecosistema móvil solicitado en esta vacante',
+          false,
+        ),
+        contains('Mobile Developer'),
+      );
+      expect(
+        JobTranslationHelper.translateExplanation(
+          'Tu perfil como Especialista en IA coincide directamente con la ingeniería de inteligencia artificial y motores de matching solicitado en esta vacante',
+          false,
+        ),
+        contains('AI Specialist'),
+      );
+      expect(
+        JobTranslationHelper.translateExplanation(
+          'Tu perfil como Ingeniero de Sistemas coincide directamente con la infraestructura en la nube y alta disponibilidad solicitado en esta vacante o análisis de datos y optimización de modelos solicitado en esta vacante',
+          false,
+        ),
+        contains('Systems Engineer'),
       );
     });
   });

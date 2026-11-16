@@ -5,6 +5,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_strings.dart';
 import '../shared/providers/auth_provider.dart';
 import '../shared/providers/perfil_provider.dart';
+import '../shared/providers/recomendaciones_provider.dart';
 
 /// Widget embebible (no es una pantalla completa) que maneja
 /// la selección y subida del CV del candidato.
@@ -47,12 +48,14 @@ class CvUploadWidget extends StatelessWidget {
 
     if (!context.mounted) return;
     if (ok) {
+      // Disparar inmediatamente recarga de recomendaciones IA en segundo plano
+      context.read<RecomendacionesProvider>().cargar(profileId);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Row(children: [
             Icon(Icons.check_circle, color: Colors.white, size: 18),
             SizedBox(width: 8),
-            Text('CV subido correctamente'),
+            Text('CV subido correctamente. Analizando vacantes con IA...'),
           ]),
           backgroundColor: kGreen,
           behavior: SnackBarBehavior.floating,

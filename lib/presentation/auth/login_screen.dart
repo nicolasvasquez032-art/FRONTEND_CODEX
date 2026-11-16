@@ -1,15 +1,23 @@
+import 'dart:async';
+import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:ui';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/constants/app_colors.dart';
+import '../../core/network/api_client.dart';
 import '../shared/providers/auth_provider.dart';
 import '../shared/providers/locale_provider.dart';
 import '../shared/widgets/brand_logo.dart';
+import '../shared/widgets/app_toast.dart';
 import 'forgot_password_screen.dart';
 import 'register_screen.dart';
+import 'social_popup_helper.dart';
 
 /// Pantalla de Inicio de Sesión de TalentMatch.
 ///
@@ -44,10 +52,49 @@ class _LoginScreenState extends State<LoginScreen>
       vsync: this,
       duration: const Duration(seconds: 8),
     )..repeat(reverse: true);
+
+    if (kIsWeb) {
+      SocialPopupHelper.onWebMessage((data) async {
+        final token = data['token']?.toString();
+        final refresh = data['refreshToken']?.toString() ?? '';
+        final isNewUser = data['is_new_user'] == true;
+        if (token != null && token.isNotEmpty && mounted) {
+          _oauthPollTimer?.cancel();
+          final auth = context.read<AuthProvider>();
+          await auth.handleSocialAuthToken(
+            token: token,
+            refreshToken: refresh,
+            isNewUser: isNewUser,
+          );
+        }
+      });
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkIncomingOAuthToken();
+    });
   }
+
+  void _checkIncomingOAuthToken() {
+    final uri = Uri.base;
+    final token = uri.queryParameters['token'];
+    final refresh = uri.queryParameters['refresh'] ?? uri.queryParameters['refreshToken'] ?? '';
+    final isNewUser = uri.queryParameters['is_new_user'] == 'true';
+    if (token != null && token.isNotEmpty) {
+      final auth = context.read<AuthProvider>();
+      auth.handleSocialAuthToken(
+        token: token,
+        refreshToken: refresh,
+        isNewUser: isNewUser,
+      );
+    }
+  }
+
+  Timer? _oauthPollTimer;
 
   @override
   void dispose() {
+    _oauthPollTimer?.cancel();
     _floatCtrl.dispose();
     _emailCtrl.dispose();
     _passwordCtrl.dispose();
@@ -59,13 +106,134 @@ class _LoginScreenState extends State<LoginScreen>
     final auth = context.read<AuthProvider>();
     await auth.login(_emailCtrl.text.trim(), _passwordCtrl.text);
     if (mounted && auth.error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(auth.error!),
-          backgroundColor: const Color(0xFFDC2626),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      AppToast.error(context, auth.error!);
+    }
+  }
+
+  /// Abre inmediatamente la ventana oficial emergente de autenticación del proveedor (Google, Facebook o LinkedIn).
+  Future<void> _launchSocialOAuth({
+    required String provider,
+    required String providerName,
+  }) async {
+    String origin = '';
+    if (kIsWeb) {
+      try {
+        origin = Uri.base.origin;
+      } catch (_) {
+        origin = '';
+      }
+    }
+
+    final sessionId = 'tm_${DateTime.now().millisecondsSinceEpoch}_${math.Random.secure().nextInt(99999)}';
+    final queryParams = <String, String>{
+      'session_id': sessionId,
+    };
+    if (origin.isNotEmpty) {
+      queryParams['redirect_origin'] = origin;
+    }
+
+    final oauthUrl = Uri.parse('$kBaseUrl/auth/oauth/$provider/authorize').replace(
+      queryParameters: queryParams,
+    );
+
+    try {
+      if (kIsWeb) {
+        SocialPopupHelper.openPopup(
+          oauthUrl.toString(),
+          name: 'TalentMatch_${provider}_Auth',
+        );
+      } else {
+        final launched = await launchUrl(
+          oauthUrl,
+          mode: LaunchMode.inAppBrowserView,
+        );
+        if (!launched) {
+          await launchUrl(oauthUrl, mode: LaunchMode.platformDefault);
+        }
+      }
+
+      // Inicia sondeo de sesión para sincronizar automáticamente el token en Android/móvil
+      _startOAuthPolling(sessionId: sessionId, providerName: providerName);
+    } catch (e) {
+      if (mounted) {
+        AppToast.error(context, 'No se pudo abrir la ventana de $providerName: $e');
+      }
+    }
+  }
+
+  /// Sondeo no bloqueante que detecta cuando el usuario aprueba en el navegador.
+  void _startOAuthPolling({
+    required String sessionId,
+    required String providerName,
+  }) {
+    _oauthPollTimer?.cancel();
+
+    if (mounted) {
+      AppToast.info(context, 'Conectando con $providerName...');
+    }
+
+    int attempts = 0;
+    _oauthPollTimer = Timer.periodic(const Duration(milliseconds: 1500), (timer) async {
+      attempts++;
+      if (attempts > 50) {
+        // Detener después de 75 segundos
+        timer.cancel();
+        return;
+      }
+
+      try {
+        final resp = await http.get(
+          Uri.parse('$kBaseUrl/auth/oauth/session/$sessionId'),
+        ).timeout(const Duration(seconds: 4));
+
+        if (resp.statusCode == 200) {
+          final data = jsonDecode(resp.body) as Map<String, dynamic>;
+          if (data['status'] == 'completed') {
+            timer.cancel();
+            try {
+              await closeInAppWebView();
+            } catch (_) {}
+
+            final token = data['token']?.toString();
+            final refresh = data['refreshToken']?.toString() ?? '';
+            final isNewUser = data['is_new_user'] == true;
+            if (token != null && token.isNotEmpty && mounted) {
+              final auth = context.read<AuthProvider>();
+              await auth.handleSocialAuthToken(
+                token: token,
+                refreshToken: refresh,
+                isNewUser: isNewUser,
+              );
+            }
+          }
+        }
+      } catch (_) {}
+    });
+  }
+
+  /// Acceso rápido candidato directo para pruebas locales de desarrollo.
+  Future<void> _directQuickLogin({
+    required String provider,
+    required String defaultEmail,
+    required String defaultName,
+  }) async {
+    final auth = context.read<AuthProvider>();
+    await auth.loginWithSocial(
+      provider: provider,
+      email: defaultEmail,
+      fullName: defaultName,
+    );
+    if (mounted && auth.error != null) {
+      AppToast.error(context, auth.error!);
+    } else if (mounted && auth.status == AuthStatus.authenticated) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (_) => const RegisterScreen(
+            initialStep: 1,
+            isSocialOnboarding: true,
+          ),
         ),
+        (route) => false,
       );
     }
   }
@@ -242,46 +410,100 @@ class _LoginScreenState extends State<LoginScreen>
                   ],
                 ),
 
-                // Alerta de error si el backend reporta alguna falla
+                // Alerta de error si el backend reporta alguna falla con diseño Glassmorphic
                 if (auth.error != null) ...[
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 14),
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 9,
-                    ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFEF2F2),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFFFECACA)),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.info_outline_rounded,
-                          color: Color(0xFFDC2626),
-                          size: 19,
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            auth.error!,
-                            style: const TextStyle(
-                              color: Color(0xFF991B1B),
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: () => auth.clearError(),
-                          child: const Icon(
-                            Icons.close_rounded,
-                            color: Color(0xFFF87171),
-                            size: 17,
-                          ),
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFEF4444).withValues(alpha: 0.12),
+                          blurRadius: 16,
+                          offset: const Offset(0, 4),
                         ),
                       ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(14),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(14),
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                Colors.white.withValues(alpha: 0.92),
+                                const Color(0xFFFEE2E2).withValues(alpha: 0.50),
+                              ],
+                            ),
+                            border: Border.all(
+                              color: const Color(0xFFFCA5A5).withValues(alpha: 0.8),
+                              width: 1.2,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 26,
+                                height: 26,
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    colors: [Color(0xFFEF4444), Color(0xFFDC2626)],
+                                  ),
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(0xFFEF4444).withValues(alpha: 0.35),
+                                      blurRadius: 6,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                alignment: Alignment.center,
+                                child: const Icon(
+                                  Icons.error_outline_rounded,
+                                  color: Colors.white,
+                                  size: 15,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  auth.error!,
+                                  style: const TextStyle(
+                                    color: Color(0xFF991B1B),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () => auth.clearError(),
+                                behavior: HitTestBehavior.opaque,
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF991B1B).withValues(alpha: 0.08),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.close_rounded,
+                                    color: Color(0xFFB91C1C),
+                                    size: 14,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -488,50 +710,65 @@ class _LoginScreenState extends State<LoginScreen>
 
                 const SizedBox(height: 14),
 
-                // ── Botones de Autenticación Social (Google y LinkedIn) ──
+                // ── Botones de Autenticación Social (Google, LinkedIn y Facebook) ──
                 Row(
                   children: [
                     // Botón Google
                     Expanded(
                       child: _SocialAuthButton(
-                        onTap: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                isEs
-                                    ? 'Inicio de sesión con Google próximamente'
-                                    : 'Google Sign In coming soon',
-                              ),
-                              behavior: SnackBarBehavior.floating,
-                            ),
-                          );
-                        },
-                        iconWidget: const _GoogleGLogo(size: 18),
+                        onTap: () => _launchSocialOAuth(
+                          provider: 'google',
+                          providerName: 'Google',
+                        ),
+                        onLongPress: () => _directQuickLogin(
+                          provider: 'google',
+                          defaultEmail: 'candidato.google@gmail.com',
+                          defaultName: 'Candidato Google',
+                        ),
+                        iconWidget: const _GoogleGLogo(size: 16),
                         label: 'Google',
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 8),
                     // Botón LinkedIn
                     Expanded(
                       child: _SocialAuthButton(
-                        onTap: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                isEs
-                                    ? 'Inicio de sesión con LinkedIn próximamente'
-                                    : 'LinkedIn Sign In coming soon',
-                              ),
-                              behavior: SnackBarBehavior.floating,
-                            ),
-                          );
-                        },
+                        onTap: () => _launchSocialOAuth(
+                          provider: 'linkedin',
+                          providerName: 'LinkedIn',
+                        ),
+                        onLongPress: () => _directQuickLogin(
+                          provider: 'linkedin',
+                          defaultEmail: 'candidato.linkedin@talentmatch.com',
+                          defaultName: 'Candidato LinkedIn',
+                        ),
                         iconWidget: const FaIcon(
                           FontAwesomeIcons.linkedin,
                           color: Color(0xFF0A66C2),
-                          size: 18,
+                          size: 15,
                         ),
                         label: 'LinkedIn',
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // Botón Facebook
+                    Expanded(
+                      child: _SocialAuthButton(
+                        onTap: () => _launchSocialOAuth(
+                          provider: 'facebook',
+                          providerName: 'Facebook',
+                        ),
+                        onLongPress: () => _directQuickLogin(
+                          provider: 'facebook',
+                          defaultEmail: 'candidato.facebook@talentmatch.com',
+                          defaultName: 'Candidato Facebook',
+                        ),
+                        iconWidget: const FaIcon(
+                          FontAwesomeIcons.facebook,
+                          color: Color(0xFF1877F2),
+                          size: 15,
+                        ),
+                        label: 'Facebook',
                       ),
                     ),
                   ],
@@ -1038,45 +1275,92 @@ class _LanguageSegmentItem extends StatelessWidget {
   }
 }
 
-/// Botón de autenticación social (Google o LinkedIn).
+/// Botón de autenticación social (Google, LinkedIn o Facebook).
 class _SocialAuthButton extends StatelessWidget {
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
   final Widget iconWidget;
   final String label;
 
   const _SocialAuthButton({
     required this.onTap,
+    this.onLongPress,
     required this.iconWidget,
     required this.label,
   });
 
   @override
   Widget build(BuildContext context) {
-    return OutlinedButton(
-      onPressed: onTap,
-      style: OutlinedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(vertical: 13),
-        backgroundColor: Colors.white.withValues(alpha: 0.9),
-        side: const BorderSide(color: Color(0xFFE2E8F0), width: 1.2),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        elevation: 0,
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          iconWidget,
-          const SizedBox(width: 8),
-          Text(
-            label,
-            style: const TextStyle(
-              color: Color(0xFF1E293B),
-              fontWeight: FontWeight.w600,
-              fontSize: 13.5,
-            ),
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0F172A).withValues(alpha: 0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+          BoxShadow(
+            color: Colors.white.withValues(alpha: 0.75),
+            blurRadius: 6,
+            offset: const Offset(0, -1),
           ),
         ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onTap,
+              onLongPress: onLongPress,
+              splashColor: const Color(0xFF38BDF8).withValues(alpha: 0.15),
+              highlightColor: Colors.white.withValues(alpha: 0.35),
+              borderRadius: BorderRadius.circular(14),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(14),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Colors.white.withValues(alpha: 0.90),
+                      Colors.white.withValues(alpha: 0.60),
+                    ],
+                  ),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.95),
+                    width: 1.4,
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    iconWidget,
+                    const SizedBox(width: 5),
+                    Flexible(
+                      child: Text(
+                        label,
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                        style: const TextStyle(
+                          color: Color(0xFF0F172A),
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12.0,
+                          letterSpacing: -0.1,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

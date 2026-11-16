@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
 
@@ -13,6 +14,7 @@ import '../profile/notifications_screen.dart';
 import '../shared/providers/auth_provider.dart';
 import '../shared/providers/locale_provider.dart';
 import '../shared/providers/notificaciones_provider.dart';
+import '../shared/providers/perfil_provider.dart';
 import '../shared/providers/postulaciones_provider.dart';
 import '../shared/providers/recomendaciones_provider.dart';
 import '../shared/providers/vacantes_provider.dart';
@@ -31,7 +33,12 @@ import '../shared/widgets/language_switch_button.dart';
 /// - Tarjetas de vacante idénticas a Figma (inicial en gradiente azul, tags, match score, tiempo y rango salarial en pastilla verde).
 class HomeScreen extends StatefulWidget {
   final VoidCallback onExplore;
-  const HomeScreen({super.key, required this.onExplore});
+  final VoidCallback? onGoToProfile;
+  const HomeScreen({
+    super.key,
+    required this.onExplore,
+    this.onGoToProfile,
+  });
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -55,6 +62,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final pProvider = context.read<PostulacionesProvider>();
     final rProvider = context.read<RecomendacionesProvider>();
     final nProvider = context.read<NotificacionesProvider>();
+    final perfilProvider = Provider.of<PerfilProvider?>(context, listen: false);
 
     // 1. Cargar vacantes activas
     if (vProvider.status == VacantesStatus.initial) {
@@ -68,26 +76,31 @@ class _HomeScreenState extends State<HomeScreen> {
       nProvider.cargar(session.userId);
     }
 
-    // 3. Cargar postulaciones del candidato si hay sesión
+    // 3. Cargar perfil y postulaciones del candidato si hay sesión
     if (session != null && session.profileId.isNotEmpty) {
+      perfilProvider?.cargar(session.profileId);
       if (pProvider.status == PostulacionesStatus.initial) {
         pProvider.cargar(session.profileId);
       }
       // 4. Cargar recomendaciones IA
-      if (rProvider.status == RecomendacionesStatus.initial) {
-        rProvider.cargar(session.profileId);
-      }
+      rProvider.cargar(session.profileId);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final authProvider = context.watch<AuthProvider>();
     final vProvider = context.watch<VacantesProvider>();
     final rProvider = context.watch<RecomendacionesProvider>();
+    final perfilProvider = Provider.of<PerfilProvider?>(context);
     final isEs = context.watch<LocaleProvider>().isSpanish;
 
+    final hasSession =
+        authProvider.session != null && authProvider.session!.userId.isNotEmpty;
+    final hasCv = perfilProvider?.hasCv ?? false;
+
     // Resuelve lista de vacantes a renderizar según recomendaciones y filtros
-    final jobs = _resolveDisplayJobs(vProvider, rProvider, isEs);
+    final jobs = _resolveDisplayJobs(vProvider, rProvider, isEs, hasSession);
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -144,8 +157,14 @@ class _HomeScreenState extends State<HomeScreen> {
                           const SizedBox(height: 14),
 
                           // 5. Lista de Tarjetas o Estados de Carga
-                          if (vProvider.status == VacantesStatus.loading && jobs.isEmpty)
+                          if (rProvider.status == RecomendacionesStatus.loading && jobs.isEmpty)
+                            _buildAiAnalyzingCard(context, isEs, rProvider)
+                          else if (vProvider.status == VacantesStatus.loading && jobs.isEmpty)
                             ..._buildLoadingSkeletons()
+                          else if (hasSession && !hasCv)
+                            _buildAiEmptyStateCard(context, isEs)
+                          else if (hasSession && rProvider.recomendaciones.isEmpty)
+                            _buildAiAnalyzingCard(context, isEs, rProvider)
                           else if (jobs.isEmpty)
                             _buildEmptyState(isEs)
                           else
@@ -277,10 +296,10 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               Text(
                 isEs ? 'TU TALENTO, MÁS LEJOS' : 'YOUR TALENT, FURTHER',
-                style: const TextStyle(
+                style: GoogleFonts.inter(
                   fontSize: 12.5,
                   fontWeight: FontWeight.w700,
-                  color: Color(0xFF64748B),
+                  color: const Color(0xFF64748B),
                   letterSpacing: 0.8,
                 ),
               ),
@@ -290,24 +309,22 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     TextSpan(
                       text: isEs ? 'Tu próximo reto\n' : 'Your next challenge\n',
-                      style: const TextStyle(
+                      style: GoogleFonts.inter(
                         fontSize: 27,
                         fontWeight: FontWeight.w800,
-                        color: Color(0xFF0F172A),
+                        color: const Color(0xFF0F172A),
                         height: 1.15,
                         letterSpacing: -0.5,
-                        fontFamily: 'Inter',
                       ),
                     ),
                     TextSpan(
                       text: isEs ? 'empieza aquí.' : 'starts here.',
-                      style: const TextStyle(
+                      style: GoogleFonts.inter(
                         fontSize: 27,
                         fontWeight: FontWeight.w800,
-                        color: Color(0xFF2563EB),
+                        color: const Color(0xFF2563EB),
                         height: 1.15,
                         letterSpacing: -0.5,
-                        fontFamily: 'Inter',
                       ),
                     ),
                   ],
@@ -888,6 +905,7 @@ class _HomeScreenState extends State<HomeScreen> {
     VacantesProvider vProvider,
     RecomendacionesProvider rProvider,
     bool isEs,
+    bool hasSession,
   ) {
     List<_DisplayJob> list = [];
 
@@ -904,14 +922,16 @@ class _HomeScreenState extends State<HomeScreen> {
                 id: rec.vacanteId,
                 empresaId: rec.empresaId,
                 titulo: rec.titulo,
-                descripcion: rec.explicacion,
-                requisitos: [],
-                ubicacion: 'Remoto',
-                categoria: 'Backend',
+                descripcion: (rec.descripcion != null && rec.descripcion!.trim().isNotEmpty)
+                    ? rec.descripcion!
+                    : rec.explicacion,
+                requisitos: rec.requisitos ?? [],
+                ubicacion: rec.ubicacion ?? 'Remoto',
+                categoria: rec.categoria ?? 'Tecnología',
                 estado: VacanteEstado.activa,
                 creadoEn: DateTime.now().subtract(const Duration(hours: 23)),
-                salarioMin: 3000,
-                salarioMax: 5000,
+                salarioMin: rec.salarioMin ?? 3000,
+                salarioMax: rec.salarioMax ?? 5000,
               );
 
         list.add(_DisplayJob.fromVacante(
@@ -921,22 +941,8 @@ class _HomeScreenState extends State<HomeScreen> {
           rec: rec,
         ));
       }
-    } else if (vProvider.vacantes.isNotEmpty) {
-      // Prioridad 2: Vacantes generales cargadas
-      final scores = [98, 94, 91, 88, 85, 82];
-      for (var i = 0; i < vProvider.vacantes.length; i++) {
-        final v = vProvider.vacantes[i];
-        final score = scores[i % scores.length];
-        list.add(_DisplayJob.fromVacante(
-          v: v,
-          isEs: isEs,
-          customMatch: score,
-        ));
-      }
-    }
-
-    // Si aún no hay vacantes (o base de datos vacía), provee las del Figma como default
-    if (list.isEmpty) {
+    } else if (!hasSession) {
+      // Si el usuario no ha iniciado sesión (modo preview o testing), provee las del Figma como default
       list = _getFigmaDefaultJobs(isEs);
     }
 
@@ -1199,7 +1205,366 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Estado vacío
+  // Tarjeta de activación de recomendaciones con IA
+  Widget _buildAiEmptyStateCard(BuildContext context, bool isEs) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 26),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: const Color(0xFFDBEAFE),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF2563EB).withValues(alpha: 0.06),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // Icono con degradado azul y morado
+          Container(
+            width: 58,
+            height: 58,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF2563EB), Color(0xFF6366F1)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF2563EB).withValues(alpha: 0.3),
+                  blurRadius: 16,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: const Icon(
+              Icons.auto_awesome_rounded,
+              color: Colors.white,
+              size: 28,
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Pastilla indicadora de IA
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEFF6FF),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: const Color(0xFFBFDBFE)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.psychology_outlined,
+                  size: 15,
+                  color: Color(0xFF2563EB),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  isEs ? 'Motor de Inteligencia Artificial' : 'AI Matching Engine',
+                  style: const TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF2563EB),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // Título principal
+          Text(
+            isEs
+                ? 'Activa tus recomendaciones con IA'
+                : 'Activate your AI Recommendations',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF0F172A),
+              letterSpacing: -0.3,
+            ),
+          ),
+          const SizedBox(height: 8),
+
+          // Explicación
+          Text(
+            isEs
+                ? 'Nuestro modelo de IA analiza tu perfil profesional, hoja de vida y habilidades técnicas para recomendarte únicamente las vacantes donde tienes alta afinidad. Completa tu información para desbloquear tus ofertas ideales.'
+                : 'Our AI model evaluates your profile, resume, and technical skills to recommend only the jobs with high affinity. Complete your info to unlock your ideal job offers.',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 13,
+              height: 1.45,
+              fontWeight: FontWeight.w400,
+              color: Color(0xFF64748B),
+            ),
+          ),
+          const SizedBox(height: 22),
+
+          // Botón 1: Completar perfil / Subir CV
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                if (widget.onGoToProfile != null) {
+                  widget.onGoToProfile!();
+                } else {
+                  Navigator.pushNamed(context, '/profile');
+                }
+              },
+              icon: const Icon(Icons.assignment_ind_outlined, size: 18),
+              label: Text(
+                isEs ? 'Completar perfil / Subir CV' : 'Complete Profile / Upload CV',
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2563EB),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 13),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                elevation: 0,
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+
+          // Botón 2: Explorar todas las vacantes
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: widget.onExplore,
+              icon: const Icon(Icons.explore_outlined, size: 18),
+              label: Text(
+                isEs ? 'Explorar todas las vacantes' : 'Explore all vacancies',
+                style: const TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF2563EB),
+                ),
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFF2563EB),
+                side: const BorderSide(color: Color(0xFFBFDBFE), width: 1.2),
+                padding: const EdgeInsets.symmetric(vertical: 13),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // Tarjeta de Carga / Análisis IA cuando el candidato ya subió su CV
+  // ─────────────────────────────────────────────────────────────
+  Widget _buildAiAnalyzingCard(
+    BuildContext context,
+    bool isEs,
+    RecomendacionesProvider rProvider,
+  ) {
+    final session = context.read<AuthProvider>().session;
+    final profileId = session?.profileId ?? '';
+
+    // Si aún no está cargando y no hay recomendaciones, disparar la carga automáticamente
+    if (rProvider.status != RecomendacionesStatus.loading &&
+        rProvider.recomendaciones.isEmpty &&
+        profileId.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && rProvider.status != RecomendacionesStatus.loading) {
+          rProvider.cargar(profileId);
+        }
+      });
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 26),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: const Color(0xFF93C5FD),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF2563EB).withValues(alpha: 0.08),
+            blurRadius: 22,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // Icono con indicador circular de carga y destello IA
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              const SizedBox(
+                width: 66,
+                height: 66,
+                child: CircularProgressIndicator(
+                  strokeWidth: 3.2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2563EB)),
+                  backgroundColor: Color(0xFFDBEAFE),
+                ),
+              ),
+              Container(
+                width: 50,
+                height: 50,
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Color(0xFF2563EB), Color(0xFF6366F1)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.auto_awesome_rounded,
+                  color: Colors.white,
+                  size: 24,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+
+          // Pastilla indicadora de estado
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEFF6FF),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: const Color(0xFFBFDBFE)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF16A34A),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    isEs ? 'Hoja de vida procesada por IA' : 'Resume processed by AI',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF1E40AF),
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // Título principal
+          Text(
+            isEs
+                ? 'Analizando vacantes compatibles...'
+                : 'Matching vacancies with your profile...',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF0F172A),
+              letterSpacing: -0.3,
+            ),
+          ),
+          const SizedBox(height: 8),
+
+          // Explicación detallada
+          Text(
+            isEs
+                ? 'Nuestro modelo de Inteligencia Artificial está comparando tus habilidades técnicas y experiencia con las vacantes disponibles para calcular tu porcentaje de afinidad.'
+                : 'Our AI model is comparing your skills and experience with open vacancies to compute your match affinity.',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 13,
+              height: 1.45,
+              fontWeight: FontWeight.w400,
+              color: Color(0xFF64748B),
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // Barra de progreso elegante
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: const LinearProgressIndicator(
+              minHeight: 6,
+              color: Color(0xFF2563EB),
+              backgroundColor: Color(0xFFE2E8F0),
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // Botón: Actualizar recomendaciones
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                HapticFeedback.lightImpact();
+                if (profileId.isNotEmpty) {
+                  rProvider.cargar(profileId);
+                }
+              },
+              icon: const Icon(Icons.refresh_rounded, size: 18),
+              label: Text(
+                isEs ? 'Ver recomendaciones analizadas' : 'View matched recommendations',
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2563EB),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 13),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                elevation: 0,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Estado vacío por filtros
   Widget _buildEmptyState(bool isEs) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 20),

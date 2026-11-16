@@ -19,6 +19,9 @@ class AuthRepositoryImpl implements AuthRepository {
     required String email,
     required String password,
   }) async {
+    await ApiClient.clearCache();
+    await _storage.clearSession();
+
     // 1. Obtener token
     final tokenData = await _api.post(
       '/auth/login',
@@ -38,31 +41,27 @@ class AuthRepositoryImpl implements AuthRepository {
       isPremium: false,
     );
 
-    // 3. Obtener el perfil del candidato para extraer user_id y profile_id
-    //    Llamamos a /perfiles usando un endpoint auxiliar que devuelve el perfil
-    //    del usuario actual. Como el backend no tiene /me, usamos el token JWT
-    //    decodificado o bien registramos con el flujo normal.
-    //    El backend devuelve el sub del JWT como user_id en el token.
-    //    Decodificamos el payload del JWT (sin verificar firma — solo para leer claims).
+    // 3. Decodificar JWT
     final session = _decodeJwtSession(token);
+    final realProfileId = session.role == 'candidate' ? await _fetchProfileId() : '';
+    final profileId = realProfileId.isNotEmpty ? realProfileId : session.profileId;
 
     await _storage.saveSession(
       token: token,
       userId: session.userId,
-      profileId: session.profileId,
+      profileId: profileId,
       role: session.role,
       refreshToken: refreshToken,
       isPremium: session.isPremium,
     );
 
-    // Obtener el profile_id real desde el backend (el JWT no lo incluye)
-    final profileId = await _fetchProfileId();
-    if (profileId.isNotEmpty) {
-      await _storage.saveProfileId(profileId);
-      return UserSession(userId: session.userId, profileId: profileId, role: session.role, isPremium: session.isPremium);
-    }
-
-    return session;
+    return UserSession(
+      userId: session.userId,
+      profileId: profileId,
+      role: session.role,
+      isPremium: session.isPremium,
+      email: session.email,
+    );
   }
 
   // ──────────────────────────────────────────────
@@ -103,12 +102,14 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<void> registerCompany({
     required String email,
     required String password,
+    String? nombre,
   }) async {
     await _api.post(
       '/auth/registro/empresa',
       {
         'email': email,
         'password': password,
+        if (nombre != null && nombre.trim().isNotEmpty) 'nombre': nombre.trim(),
       },
       auth: false,
     );
@@ -132,7 +133,92 @@ class AuthRepositoryImpl implements AuthRepository {
   // ──────────────────────────────────────────────
 
   @override
-  Future<void> logout() => _storage.clearSession();
+  Future<UserSession> loginWithSocial({
+    required String provider,
+    String? token,
+    String? email,
+    String? fullName,
+  }) async {
+    final tokenData = await _api.post(
+      '/auth/oauth/social',
+      {
+        'provider': provider,
+        'token': token ?? 'mock_${provider}_token',
+        if (email != null && email.isNotEmpty) 'email': email,
+        if (fullName != null && fullName.isNotEmpty) 'full_name': fullName,
+      },
+      auth: false,
+    );
+    final accessToken = tokenData['access_token'] as String;
+    final refreshToken = tokenData['refresh_token'] as String?;
+    final isNewUser = tokenData['is_new_user'] == true;
+    final responseProfileId = tokenData['profile_id']?.toString();
+
+    await ApiClient.clearCache();
+    await _storage.clearSession();
+
+    final session = _decodeJwtSession(accessToken);
+    final effectiveProfileId = (responseProfileId != null && responseProfileId.isNotEmpty)
+        ? responseProfileId
+        : (session.profileId.isNotEmpty ? session.profileId : await _fetchProfileId());
+
+    await _storage.saveSession(
+      token: accessToken,
+      userId: session.userId,
+      profileId: effectiveProfileId,
+      role: session.role,
+      refreshToken: refreshToken,
+      isPremium: session.isPremium,
+    );
+
+    return UserSession(
+      userId: session.userId,
+      profileId: effectiveProfileId,
+      role: session.role,
+      isPremium: session.isPremium,
+      email: session.email,
+      isNewUser: isNewUser,
+    );
+  }
+
+  @override
+  Future<UserSession> handleSocialAuthToken({
+    required String token,
+    required String refreshToken,
+    bool isNewUser = false,
+  }) async {
+    await ApiClient.clearCache();
+    await _storage.clearSession();
+
+    final session = _decodeJwtSession(token);
+    final profileId = session.profileId.isNotEmpty
+        ? session.profileId
+        : await _fetchProfileId();
+
+    await _storage.saveSession(
+      token: token,
+      userId: session.userId,
+      profileId: profileId,
+      role: session.role,
+      refreshToken: refreshToken,
+      isPremium: session.isPremium,
+    );
+
+    return UserSession(
+      userId: session.userId,
+      profileId: profileId,
+      role: session.role,
+      isPremium: session.isPremium,
+      email: session.email,
+      isNewUser: isNewUser,
+    );
+  }
+
+  @override
+  Future<void> logout() async {
+    await ApiClient.clearCache();
+    await _storage.clearSession();
+  }
 
   // ──────────────────────────────────────────────
   // Restaurar sesión desde storage
@@ -185,11 +271,18 @@ class AuthRepositoryImpl implements AuthRepository {
       final userId    = claims['sub']?.toString() ?? '';
       final role      = claims['role']?.toString() ?? 'candidate';
       final profileId = claims['profile_id']?.toString() ?? '';
+      final email     = claims['email']?.toString();
 
       final isPremiumRaw = claims['is_premium'];
       final isPremium = isPremiumRaw == true || isPremiumRaw.toString().toLowerCase() == 'true';
 
-      return UserSession(userId: userId, profileId: profileId, role: role, isPremium: isPremium);
+      return UserSession(
+        userId: userId,
+        profileId: profileId,
+        role: role,
+        isPremium: isPremium,
+        email: email,
+      );
     } catch (_) {
       // Fallback: sesión vacía (el usuario verá su perfil en blanco)
       return const UserSession(userId: '', profileId: '', role: 'candidate', isPremium: false);

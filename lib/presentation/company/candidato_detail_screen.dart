@@ -1,9 +1,17 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
+import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
-import '../shared/widgets/match_badge.dart';
+import '../../core/network/api_client.dart';
+import '../../core/storage/secure_storage.dart';
+import '../chat/chat_screen.dart';
+import '../chat/widgets/schedule_interview_dialog.dart';
+import '../shared/providers/auth_provider.dart';
+import '../shared/widgets/app_toast.dart';
 import '../shared/widgets/bouncy_tap.dart';
+import '../shared/widgets/match_badge.dart';
+import '../videocall/video_call_screen.dart';
 
 class CandidatoDetailScreen extends StatelessWidget {
   final Map<String, dynamic> candidato;
@@ -12,8 +20,10 @@ class CandidatoDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final int matchScore = (candidato['match'] as num).toInt();
-    final List<String> skills = candidato['skills'];
+    final int? matchScore = (candidato['match'] as num?)?.toInt();
+    final List<String> skills = candidato['skills'] is List
+        ? (candidato['skills'] as List).cast<String>()
+        : <String>[];
     final String heroTag = 'candidato_avatar_${candidato['nombre']}'; // Tag único para la animación Hero
 
     return Scaffold(
@@ -96,7 +106,18 @@ class CandidatoDetailScreen extends StatelessWidget {
                           delay: const Duration(milliseconds: 200),
                           child: Row(
                             children: [
-                              MatchBadge(percent: matchScore, compact: false),
+                              if (matchScore != null && matchScore > 0)
+                                MatchBadge(percent: matchScore, compact: false)
+                              else
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                                  ),
+                                  child: const Text('CV en revisión', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                                ),
                               const Spacer(),
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -218,12 +239,21 @@ class CandidatoDetailScreen extends StatelessWidget {
             Expanded(
               flex: 1,
               child: BouncyTap(
-                onPressed: () => Navigator.pop(context),
+                onPressed: () {
+                  AppToast.info(context, 'Candidato descartado');
+                  Navigator.pop(context);
+                },
                 child: SizedBox(
                   height: 55,
                   child: OutlinedButton(
-                    onPressed: null,
-                    style: OutlinedButton.styleFrom(side: BorderSide(color: Colors.redAccent.withValues(alpha: 0.5), width: 2), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
+                    onPressed: () {
+                      AppToast.info(context, 'Candidato descartado');
+                      Navigator.pop(context);
+                    },
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(color: Colors.redAccent.withValues(alpha: 0.5), width: 1.8),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    ),
                     child: const Text('Descartar', style: TextStyle(color: Colors.redAccent, fontSize: 15, fontWeight: FontWeight.bold)),
                   ),
                 ),
@@ -233,14 +263,18 @@ class CandidatoDetailScreen extends StatelessWidget {
             Expanded(
               flex: 2,
               child: BouncyTap(
-                onPressed: () {},
+                onPressed: () => _mostrarOpcionesEntrevista(context),
                 child: SizedBox(
                   height: 55,
                   child: FilledButton.icon(
-                    onPressed: null,
-                    icon: const Icon(Icons.mail_outline),
+                    onPressed: () => _mostrarOpcionesEntrevista(context),
+                    icon: const Icon(Icons.video_call_rounded, size: 22),
                     label: const Text('Agendar Entrevista', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-                    style: FilledButton.styleFrom(backgroundColor: kBlue, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)), disabledBackgroundColor: kBlue, disabledForegroundColor: Colors.white),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: kBlue,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    ),
                   ),
                 ),
               ),
@@ -249,5 +283,227 @@ class CandidatoDetailScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  void _mostrarOpcionesEntrevista(BuildContext context) {
+    final candidateName = candidato['nombre']?.toString() ?? 'Candidato';
+    final callCode = DateTime.now().millisecondsSinceEpoch.toRadixString(36);
+    final meetingUrl = 'https://meet.jit.si/TalentMatch-Entrevista-$callCode#config.prejoinPageEnabled=false';
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 26),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.15),
+              blurRadius: 30,
+              offset: const Offset(0, -5),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF2563EB).withValues(alpha: 0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.videocam_rounded, color: Color(0xFF2563EB), size: 24),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Entrevista Laboral Virtual',
+                          style: TextStyle(
+                            color: Color(0xFF0F172A),
+                            fontSize: 17,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        Text(
+                          'Con $candidateName',
+                          style: const TextStyle(
+                            color: Color(0xFF64748B),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              // 1. Coordinar por Chat
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    _abrirChat(context);
+                  },
+                  icon: const Icon(Icons.chat_bubble_outline_rounded, size: 20),
+                  label: const Text('Enviar Mensaje por Chat', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: kBlue,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+
+              // 2. Programar Entrevista (Calendario)
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton.icon(
+                  onPressed: () async {
+                    Navigator.pop(ctx);
+                    final roomId = await _resolverRoomId(context);
+                    if (roomId != null && context.mounted) {
+                      final scheduled = await ScheduleInterviewDialog.show(
+                        context,
+                        roomId: roomId,
+                        candidateName: candidateName,
+                      );
+                      if (scheduled == true && context.mounted) {
+                        _abrirChat(context);
+                      }
+                    }
+                  },
+                  icon: const Icon(Icons.calendar_month_rounded, size: 20),
+                  label: const Text('Programar Entrevista (Calendario)', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0D9488),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+
+              // 3. Iniciar Videollamada Inmediata
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => VideoCallScreen(
+                          meetingUrl: meetingUrl,
+                          roomTitle: 'Entrevista con $candidateName',
+                          candidateName: candidateName,
+                        ),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.video_call_rounded, size: 22, color: Color(0xFF10B981)),
+                  label: const Text('Iniciar Videollamada Inmediata', style: TextStyle(color: kNavy, fontWeight: FontWeight.w700, fontSize: 14)),
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(color: const Color(0xFF10B981).withValues(alpha: 0.5), width: 1.5),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<String?> _resolverRoomId(BuildContext context) async {
+    final auth = context.read<AuthProvider>();
+    final session = auth.session;
+    final candUserId = candidato['candidato_user_id']?.toString();
+    if (session == null || candUserId == null || candUserId.isEmpty) return null;
+
+    try {
+      final client = ApiClient(SecureStorage());
+      final res = await client.post('/chat/room', {
+        'empresa_id': session.userId,
+        'candidato_id': candUserId,
+      }, auth: true);
+      return res['id']?.toString() ?? '${session.userId}_$candUserId';
+    } catch (_) {
+      return '${session.userId}_$candUserId';
+    }
+  }
+
+  Future<void> _abrirChat(BuildContext context) async {
+    final auth = context.read<AuthProvider>();
+    final session = auth.session;
+    final candUserId = candidato['candidato_user_id']?.toString();
+    final candName = candidato['nombre']?.toString() ?? 'Candidato';
+
+    if (session == null || candUserId == null || candUserId.isEmpty) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ChatScreen(
+            roomId: candidato['id']?.toString() ?? 'room_chat',
+            otherUserName: candName,
+            otherUserRole: 'Candidato',
+          ),
+        ),
+      );
+      return;
+    }
+
+    try {
+      final client = ApiClient(SecureStorage());
+      final res = await client.post('/chat/room', {
+        'empresa_id': session.userId,
+        'candidato_id': candUserId,
+      }, auth: true);
+      final roomId = res['id']?.toString() ?? '${session.userId}_$candUserId';
+      if (context.mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ChatScreen(
+              roomId: roomId,
+              otherUserName: candName,
+              otherUserRole: 'Candidato',
+            ),
+          ),
+        );
+      }
+    } catch (_) {
+      if (context.mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ChatScreen(
+              roomId: '${session.userId}_$candUserId',
+              otherUserName: candName,
+              otherUserRole: 'Candidato',
+            ),
+          ),
+        );
+      }
+    }
   }
 }

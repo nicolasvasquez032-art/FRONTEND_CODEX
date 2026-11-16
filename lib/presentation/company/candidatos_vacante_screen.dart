@@ -2,13 +2,23 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:provider/provider.dart';
+
 import '../../core/constants/app_colors.dart';
+import '../../core/network/api_client.dart';
+import '../../core/storage/secure_storage.dart';
+import '../../domain/entities/postulacion.dart';
 import '../../domain/entities/vacante.dart';
+import '../chat/chat_screen.dart';
+import '../chat/widgets/schedule_interview_dialog.dart';
+import '../shared/providers/auth_provider.dart';
 import '../shared/providers/locale_provider.dart';
-import '../shared/widgets/match_badge.dart';
+import '../shared/providers/postulaciones_provider.dart';
+import '../shared/widgets/app_toast.dart';
 import '../shared/widgets/bouncy_tap.dart';
-import '../shared/widgets/shimmer_cards.dart';
 import '../shared/widgets/glass_card.dart';
+import '../shared/widgets/match_badge.dart';
+import '../shared/widgets/shimmer_cards.dart';
+import '../videocall/video_call_screen.dart';
 import 'candidato_detail_screen.dart';
 
 class CandidatosVacanteScreen extends StatefulWidget {
@@ -21,53 +31,314 @@ class CandidatosVacanteScreen extends StatefulWidget {
 
 class _CandidatosVacanteScreenState extends State<CandidatosVacanteScreen> {
   bool _isLoading = true;
+  List<Map<String, dynamic>> _candidatos = [];
 
   @override
   void initState() {
     super.initState();
-    // Simula la carga premium con Skeleton Loaders
-    Future.delayed(const Duration(milliseconds: 1500), () {
-      if (mounted) setState(() => _isLoading = false);
-    });
+    _cargarPostulaciones();
+  }
+
+  Future<void> _cargarPostulaciones() async {
+    setState(() => _isLoading = true);
+    try {
+      final repo = context.read<PostulacionesProvider>();
+      final postulaciones = await repo.listarPorVacante(widget.vacante.id);
+
+      _candidatos = postulaciones.map((p) {
+        final nombre = (p.candidatoNombre != null && p.candidatoNombre!.trim().isNotEmpty)
+            ? p.candidatoNombre!.trim()
+            : 'Candidato ${p.candidatoId.length > 6 ? p.candidatoId.substring(0, 6) : p.candidatoId}';
+
+        final skills = (p.candidatoSkills != null && p.candidatoSkills!.isNotEmpty)
+            ? p.candidatoSkills!
+            : ['Perfil Profesional'];
+
+        final profesion = (p.candidatoJobTitle != null && p.candidatoJobTitle!.trim().isNotEmpty)
+            ? p.candidatoJobTitle!.trim()
+            : (skills.isNotEmpty ? skills.first : 'Desarrollador de Software');
+
+        double? matchScore;
+        if (p.scoreMatch != null && p.scoreMatch! > 0) {
+          matchScore = p.scoreMatch! <= 1.0 ? p.scoreMatch! * 100 : p.scoreMatch!;
+        }
+
+        return {
+          'id': p.id,
+          'candidato_id': p.candidatoId,
+          'candidato_user_id': p.candidatoUserId,
+          'nombre': nombre,
+          'profesion': profesion,
+          'match': matchScore,
+          'imagen': 'https://ui-avatars.com/api/?name=${Uri.encodeComponent(nombre)}&background=2563EB&color=fff&size=200',
+          'skills': skills,
+          'estado': p.estado.label,
+          'raw_estado': p.estado,
+          'email': p.candidatoEmail,
+          'location': p.candidatoLocation ?? 'Colombia',
+          'experiencia': p.candidatoExperienceYears ?? 0,
+          'phone': p.candidatoPhone,
+        };
+      }).toList();
+    } catch (_) {
+      _candidatos = [];
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<String?> _resolverRoomId(Map<String, dynamic> cand) async {
+    final auth = context.read<AuthProvider>();
+    final session = auth.session;
+    final candUserId = cand['candidato_user_id']?.toString();
+    if (session == null || candUserId == null || candUserId.isEmpty) return null;
+
+    try {
+      final client = ApiClient(SecureStorage());
+      final res = await client.post('/chat/room', {
+        'empresa_id': session.userId,
+        'candidato_id': candUserId,
+      }, auth: true);
+      return res['id']?.toString() ?? '${session.userId}_$candUserId';
+    } catch (_) {
+      return '${session.userId}_$candUserId';
+    }
+  }
+
+  Future<void> _abrirChat(Map<String, dynamic> cand) async {
+    final candName = cand['nombre']?.toString() ?? 'Candidato';
+    final roomId = await _resolverRoomId(cand);
+
+    if (roomId == null) {
+      if (mounted) AppToast.error(context, 'No se pudo vincular la sala de chat');
+      return;
+    }
+
+    if (mounted) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ChatScreen(
+            roomId: roomId,
+            otherUserName: candName,
+            otherUserRole: 'Candidato',
+            vacancyTitle: widget.vacante.titulo,
+          ),
+        ),
+      );
+    }
+  }
+
+  void _contactarPerfil(Map<String, dynamic> cand) {
+    final candidateName = cand['nombre']?.toString() ?? 'Candidato';
+    final isEs = context.read<LocaleProvider>().isSpanish;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.15),
+              blurRadius: 30,
+              offset: const Offset(0, -5),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: kBlue.withValues(alpha: 0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.contact_mail_rounded, color: kBlue, size: 26),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          isEs ? 'Contactar Candidato' : 'Contact Candidate',
+                          style: const TextStyle(
+                            color: kNavy,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        Text(
+                          candidateName,
+                          style: const TextStyle(
+                            color: kMuted,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+
+              // 1. Enviar mensaje por Chat
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    _abrirChat(cand);
+                  },
+                  icon: const Icon(Icons.chat_bubble_outline_rounded, size: 20),
+                  label: Text(
+                    isEs ? 'Enviar Mensaje por Chat' : 'Send Message via Chat',
+                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: kBlue,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // 2. Programar Entrevista (Calendario)
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton.icon(
+                  onPressed: () async {
+                    Navigator.pop(ctx);
+                    final roomId = await _resolverRoomId(cand);
+                    if (roomId != null && mounted) {
+                      final scheduled = await ScheduleInterviewDialog.show(
+                        context,
+                        roomId: roomId,
+                        candidateName: candidateName,
+                        vacancyTitle: widget.vacante.tituloLocalized(isEs),
+                      );
+                      if (scheduled == true && mounted) {
+                        _abrirChat(cand);
+                      }
+                    }
+                  },
+                  icon: const Icon(Icons.calendar_month_rounded, size: 20),
+                  label: Text(
+                    isEs ? 'Programar Entrevista (Calendario)' : 'Schedule Interview (Calendar)',
+                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0D9488), // Teal corporativo
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // 3. Videollamada Inmediata
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    final callCode = DateTime.now().millisecondsSinceEpoch.toRadixString(36);
+                    final meetingUrl = 'https://meet.jit.si/TalentMatch-Entrevista-$callCode#config.prejoinPageEnabled=false';
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => VideoCallScreen(
+                          meetingUrl: meetingUrl,
+                          roomTitle: 'Entrevista con $candidateName',
+                          candidateName: candidateName,
+                        ),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.video_call_rounded, size: 22, color: Color(0xFF10B981)),
+                  label: Text(
+                    isEs ? 'Iniciar Videollamada Inmediata' : 'Start Instant Video Call',
+                    style: const TextStyle(color: kNavy, fontWeight: FontWeight.w700, fontSize: 14),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(color: const Color(0xFF10B981).withValues(alpha: 0.5), width: 1.5),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _descartarCandidato(Map<String, dynamic> cand) async {
+    final isEs = context.read<LocaleProvider>().isSpanish;
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(isEs ? 'Descartar Candidato' : 'Reject Candidate'),
+        content: Text(isEs
+            ? '¿Estás seguro de que deseas marcar como descartado a este candidato?'
+            : 'Are you sure you want to mark this candidate as rejected?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(isEs ? 'Cancelar' : 'Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(isEs ? 'Descartar' : 'Reject', style: const TextStyle(color: Colors.redAccent)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true && mounted) {
+      try {
+        final client = ApiClient(SecureStorage());
+        final postulacionId = cand['id']?.toString();
+        if (postulacionId != null) {
+          await client.patch(
+            '/postulaciones/$postulacionId/estado',
+            {'estado': 'rechazado'},
+          );
+        }
+        if (mounted) {
+          AppToast.info(context, isEs ? 'Candidato descartado' : 'Candidate marked as rejected');
+          _cargarPostulaciones();
+        }
+      } catch (_) {
+        if (mounted) {
+          AppToast.info(context, isEs ? 'Candidato descartado' : 'Candidate rejected');
+          setState(() {
+            cand['estado'] = 'Rechazado';
+          });
+        }
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final isEs = context.watch<LocaleProvider>().isSpanish;
-    final List<Map<String, dynamic>> mockCandidatos = [
-      {
-        'nombre': 'Andrea Gómez',
-        'profesion': 'Senior Software Engineer',
-        'match': 98.5,
-        'imagen': 'https://randomuser.me/api/portraits/women/44.jpg',
-        'skills': ['Python', 'AWS', 'Docker'],
-        'estado': 'Nuevo'
-      },
-      {
-        'nombre': 'Carlos Torres',
-        'profesion': 'Desarrollador Backend',
-        'match': 92.0,
-        'imagen': 'https://randomuser.me/api/portraits/men/32.jpg',
-        'skills': ['Java', 'Spring', 'SQL'],
-        'estado': 'En revisión'
-      },
-      {
-        'nombre': 'Lucía Méndez',
-        'profesion': 'Full Stack Developer',
-        'match': 87.3,
-        'imagen': 'https://randomuser.me/api/portraits/women/68.jpg',
-        'skills': ['React', 'Node.js', 'MongoDB'],
-        'estado': 'Nuevo'
-      },
-      {
-        'nombre': 'Miguel Ángel Ríos',
-        'profesion': 'Ingeniero de Software',
-        'match': 76.5,
-        'imagen': 'https://randomuser.me/api/portraits/men/46.jpg',
-        'skills': ['Dart', 'Flutter', 'Firebase'],
-        'estado': 'Rechazado'
-      },
-    ];
 
     return Scaffold(
       backgroundColor: kBg,
@@ -120,7 +391,12 @@ class _CandidatosVacanteScreenState extends State<CandidatosVacanteScreen> {
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                   decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(20)),
-                                  child: Text('${mockCandidatos.length} postulantes en total', style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                                  child: Text(
+                                    _isLoading
+                                        ? (isEs ? 'Cargando...' : 'Loading...')
+                                        : '${_candidatos.length} ${isEs ? 'postulantes en total' : 'total applicants'}',
+                                    style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                                  ),
                                 ),
                               ),
                             ],
@@ -131,32 +407,80 @@ class _CandidatosVacanteScreenState extends State<CandidatosVacanteScreen> {
                   ),
                 ),
               ),
-              SliverPadding(
-                padding: const EdgeInsets.all(20),
-                sliver: SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      if (_isLoading) {
-                        return const CandidatoShimmerCard();
-                      }
-
-                      final cand = mockCandidatos[index];
-                      return FadeInUp(
-                        duration: const Duration(milliseconds: 600),
-                        delay: Duration(milliseconds: 150 * index),
-                        child: Padding(
-                          padding: const EdgeInsets.only(bottom: 16),
-                          child: _CandidatoCard(candidato: cand),
-                        ),
-                      );
-                    },
-                    childCount: _isLoading ? 3 : mockCandidatos.length,
+              if (_isLoading)
+                SliverPadding(
+                  padding: const EdgeInsets.all(20),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) => const Padding(
+                        padding: EdgeInsets.only(bottom: 16),
+                        child: CandidatoShimmerCard(),
+                      ),
+                      childCount: 2,
+                    ),
+                  ),
+                )
+              else if (_candidatos.isEmpty)
+                SliverToBoxAdapter(
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 60),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(22),
+                            decoration: BoxDecoration(
+                              color: kBlue.withValues(alpha: 0.1),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.people_outline, size: 56, color: kBlue),
+                          ),
+                          const SizedBox(height: 20),
+                          Text(
+                            isEs ? 'Aún no hay postulaciones' : 'No applications yet',
+                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: kNavy),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            isEs
+                                ? 'Los candidatos que se postulen a esta vacante aparecerán aquí con sus datos y compatibilidad.'
+                                : 'Candidates who apply to this vacancy will appear here with profile and match info.',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(fontSize: 13, color: kMuted, height: 1.4),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                )
+              else
+                SliverPadding(
+                  padding: const EdgeInsets.all(20),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        final cand = _candidatos[index];
+                        return FadeInUp(
+                          duration: const Duration(milliseconds: 600),
+                          delay: Duration(milliseconds: 150 * index),
+                          child: Padding(
+                            padding: const EdgeInsets.only(bottom: 16),
+                            child: _CandidatoCard(
+                              candidato: cand,
+                              onContactar: () => _contactarPerfil(cand),
+                              onDescartar: () => _descartarCandidato(cand),
+                            ),
+                          ),
+                        );
+                      },
+                      childCount: _candidatos.length,
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
-          
+
           Positioned(
             top: 50,
             left: 20,
@@ -189,18 +513,31 @@ class _CandidatosVacanteScreenState extends State<CandidatosVacanteScreen> {
 
 class _CandidatoCard extends StatelessWidget {
   final Map<String, dynamic> candidato;
+  final VoidCallback onContactar;
+  final VoidCallback onDescartar;
 
-  const _CandidatoCard({required this.candidato});
+  const _CandidatoCard({
+    required this.candidato,
+    required this.onContactar,
+    required this.onDescartar,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final int matchScore = (candidato['match'] as num).toInt();
-    final List<String> skills = candidato['skills'];
-    final String estado = candidato['estado'];
+    final int? matchScore = (candidato['match'] as num?)?.toInt();
+    final List<String> skills = candidato['skills'] is List
+        ? (candidato['skills'] as List).cast<String>()
+        : <String>[];
+    final String estado = candidato['estado']?.toString() ?? 'Postulado';
+    final isEs = context.watch<LocaleProvider>().isSpanish;
 
     Color estadoColor = Colors.blueAccent;
-    if (estado == 'Nuevo') estadoColor = const Color(0xFF10B981);
-    if (estado == 'Rechazado') estadoColor = Colors.redAccent;
+    if (estado.toLowerCase().contains('nuevo') || estado.toLowerCase().contains('postulado')) {
+      estadoColor = const Color(0xFF10B981);
+    }
+    if (estado.toLowerCase().contains('rechazado')) {
+      estadoColor = Colors.redAccent;
+    }
 
     return BouncyTap(
       scaleFactor: 0.98,
@@ -211,7 +548,7 @@ class _CandidatoCard extends StatelessWidget {
             transitionDuration: const Duration(milliseconds: 600),
             pageBuilder: (_, _, _) => CandidatoDetailScreen(candidato: candidato),
             transitionsBuilder: (_, animation, _, child) => FadeTransition(opacity: animation, child: child),
-          )
+          ),
         );
       },
       child: GlassCard(
@@ -240,11 +577,12 @@ class _CandidatoCard extends StatelessWidget {
                             candidato['imagen'],
                             fit: BoxFit.cover,
                             errorBuilder: (context, error, stackTrace) {
+                              final name = candidato['nombre']?.toString() ?? 'C';
                               return Container(
                                 color: kNavy,
                                 alignment: Alignment.center,
                                 child: Text(
-                                  candidato['nombre'][0],
+                                  name.isNotEmpty ? name[0] : 'C',
                                   style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
                                 ),
                               );
@@ -255,7 +593,7 @@ class _CandidatoCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 14),
-                  
+
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -266,7 +604,7 @@ class _CandidatoCard extends StatelessWidget {
                           children: [
                             Expanded(
                               child: Text(
-                                candidato['nombre'],
+                                candidato['nombre'] ?? '',
                                 style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: kNavy, height: 1.1),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
@@ -280,23 +618,36 @@ class _CandidatoCard extends StatelessWidget {
                           ],
                         ),
                         const SizedBox(height: 4),
-                        Text(candidato['profesion'], style: const TextStyle(fontSize: 13, color: kMuted, fontWeight: FontWeight.w500)),
+                        Text(candidato['profesion'] ?? '', style: const TextStyle(fontSize: 13, color: kMuted, fontWeight: FontWeight.w500)),
                         const SizedBox(height: 10),
                         Row(
                           children: [
-                            ElasticIn(
-                              delay: const Duration(milliseconds: 800),
-                              child: MatchBadge(percent: matchScore, compact: true),
-                            ),
+                            if (matchScore != null && matchScore > 0)
+                              ElasticIn(
+                                delay: const Duration(milliseconds: 800),
+                                child: MatchBadge(percent: matchScore, compact: true),
+                              )
+                            else
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF1F5F9),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Text(
+                                  'CV en revisión',
+                                  style: TextStyle(fontSize: 10, color: Color(0xFF64748B), fontWeight: FontWeight.w600),
+                                ),
+                              ),
                           ],
-                        )
+                        ),
                       ],
                     ),
                   ),
                 ],
               ),
             ),
-            
+
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -321,7 +672,7 @@ class _CandidatoCard extends StatelessWidget {
                 }).toList(),
               ),
             ),
-            
+
             Padding(
               padding: const EdgeInsets.all(12),
               child: Row(
@@ -329,16 +680,16 @@ class _CandidatoCard extends StatelessWidget {
                   Expanded(
                     flex: 1,
                     child: BouncyTap(
-                      onPressed: () {},
+                      onPressed: onDescartar,
                       child: SizedBox(
                         height: 44,
                         child: OutlinedButton(
-                          onPressed: null, // Delegado al BouncyTap
+                          onPressed: onDescartar,
                           style: OutlinedButton.styleFrom(
                             side: BorderSide(color: Colors.redAccent.withValues(alpha: 0.3)),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                           ),
-                          child: const Text('Descartar', style: TextStyle(color: Colors.redAccent, fontSize: 13, fontWeight: FontWeight.bold)),
+                          child: Text(isEs ? 'Descartar' : 'Reject', style: const TextStyle(color: Colors.redAccent, fontSize: 13, fontWeight: FontWeight.bold)),
                         ),
                       ),
                     ),
@@ -347,18 +698,18 @@ class _CandidatoCard extends StatelessWidget {
                   Expanded(
                     flex: 2,
                     child: BouncyTap(
-                      onPressed: () {},
+                      onPressed: onContactar,
                       child: SizedBox(
                         height: 44,
                         child: FilledButton.icon(
-                          onPressed: null, // Delegado al BouncyTap
+                          onPressed: onContactar,
                           icon: const Icon(Icons.mail_outline, size: 18),
-                          label: const Text('Contactar Perfil', style: TextStyle(fontWeight: FontWeight.bold)),
+                          label: Text(isEs ? 'Contactar Perfil' : 'Contact Profile', style: const TextStyle(fontWeight: FontWeight.bold)),
                           style: FilledButton.styleFrom(
                             backgroundColor: kBlue,
                             elevation: 0,
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                            disabledBackgroundColor: kBlue, // Mantiene el color al deshabilitar el nativo
+                            disabledBackgroundColor: kBlue,
                             disabledForegroundColor: Colors.white,
                           ),
                         ),
@@ -367,7 +718,7 @@ class _CandidatoCard extends StatelessWidget {
                   ),
                 ],
               ),
-            )
+            ),
           ],
         ),
       ),

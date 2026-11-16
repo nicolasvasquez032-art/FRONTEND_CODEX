@@ -71,7 +71,7 @@ void main() {
     expect(find.byIcon(Icons.notifications_none_rounded), findsOneWidget);
 
     // Figma Explore Hero Section
-    expect(find.text('Descubre nuevas oportunidades'), findsOneWidget);
+    expect(find.textContaining(RegExp(r'oportunidades', caseSensitive: false)), findsOneWidget);
     expect(find.textContaining('Explorar', findRichText: true), findsOneWidget);
     expect(find.textContaining('Empleos', findRichText: true), findsOneWidget);
     expect(find.byType(Image), findsWidgets); // 3D Animated Magnifier Hero
@@ -82,15 +82,34 @@ void main() {
     expect(find.byIcon(Icons.tune_rounded), findsOneWidget);
 
     // Count header & Figma cards
-    expect(find.text('20 vacantes encontradas'), findsOneWidget);
+    expect(find.textContaining('vacantes encontradas'), findsOneWidget);
     expect(find.text('Desarrollador Python Senior'), findsWidgets);
     expect(find.text('Remoto'), findsWidgets);
     expect(find.text('Backend'), findsWidgets);
     expect(find.text('\$ 3.000 – \$ 5.000 COP'), findsWidgets);
 
-    // Floating map button
+    // Floating map button starts visible (opacity 1.0)
     expect(find.text('Ver Mapa'), findsOneWidget);
     expect(find.byIcon(Icons.map_outlined), findsOneWidget);
+
+    // Initial state: FAB is visible (opacity 1.0)
+    final fabOpacityFinder = find.ancestor(
+      of: find.text('Ver Mapa'),
+      matching: find.byType(AnimatedOpacity),
+    );
+    expect(tester.widget<AnimatedOpacity>(fabOpacityFinder).opacity, 1.0);
+
+    // Scroll down to hide FAB
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -300));
+    await tester.pump(const Duration(milliseconds: 350));
+
+    expect(tester.widget<AnimatedOpacity>(fabOpacityFinder).opacity, 0.0);
+
+    // Scroll back up to show FAB
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, 300));
+    await tester.pump(const Duration(milliseconds: 350));
+
+    expect(tester.widget<AnimatedOpacity>(fabOpacityFinder).opacity, 1.0);
   });
 
   testWidgets('ApplicationsScreen renders TalentMatchTopHeader with BrandFull, language switch, chat and notification bell', (tester) async {

@@ -5,53 +5,62 @@ import 'package:talentmatch/core/constants/app_colors.dart';
 class AppTheme {
   AppTheme._();
 
-  static ThemeData get darkTheme => ThemeData(
-        useMaterial3: true,
+  static ThemeData get darkTheme {
+    final interFont = GoogleFonts.inter().fontFamily;
+    return ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.dark,
+      fontFamily: interFont,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: kBlue,
         brightness: Brightness.dark,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: kBlue,
-          brightness: Brightness.dark,
-          primary: kBlue,
-          secondary: kCyan,
-          surface: const Color(0xFF0B1120),
-          onSurface: Colors.white,
-        ),
-        scaffoldBackgroundColor: const Color(0xFF0B1120),
-      );
+        primary: kBlue,
+        secondary: kCyan,
+        surface: const Color(0xFF0B1120),
+        onSurface: Colors.white,
+      ),
+      scaffoldBackgroundColor: const Color(0xFF0B1120),
+      textTheme: GoogleFonts.interTextTheme(ThemeData(brightness: Brightness.dark).textTheme),
+    );
+  }
 
-  static ThemeData get theme => ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: kBlue,
-          primary: kBlue,
-          secondary: kCyan,
-          surface: kBg,
-          onSurface: kText,
+  static ThemeData get theme {
+    final interFont = GoogleFonts.inter().fontFamily;
+    return ThemeData(
+      useMaterial3: true,
+      fontFamily: interFont,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: kBlue,
+        primary: kBlue,
+        secondary: kCyan,
+        surface: kBg,
+        onSurface: kText,
+      ),
+      scaffoldBackgroundColor: kBg,
+      textTheme: GoogleFonts.interTextTheme().copyWith(
+        displayLarge: GoogleFonts.inter(
+          fontSize: 28, fontWeight: FontWeight.w800, color: kNavy, letterSpacing: -0.5,
         ),
-        scaffoldBackgroundColor: kBg,
-        textTheme: GoogleFonts.interTextTheme().copyWith(
-          displayLarge: GoogleFonts.inter(
-            fontSize: 28, fontWeight: FontWeight.w800, color: kNavy,
-          ),
-          headlineMedium: GoogleFonts.inter(
-            fontSize: 22, fontWeight: FontWeight.w800, color: kNavy,
-          ),
-          titleLarge: GoogleFonts.inter(
-            fontSize: 18, fontWeight: FontWeight.w700, color: kNavy,
-          ),
-          titleMedium: GoogleFonts.inter(
-            fontSize: 15, fontWeight: FontWeight.w600, color: kText,
-          ),
-          bodyMedium: GoogleFonts.inter(
-            fontSize: 13, fontWeight: FontWeight.w400, color: kText,
-          ),
-          bodySmall: GoogleFonts.inter(
-            fontSize: 11, fontWeight: FontWeight.w400, color: kMuted,
-          ),
-          labelLarge: GoogleFonts.inter(
-            fontSize: 13, fontWeight: FontWeight.w700, color: kWhite,
-          ),
+        headlineMedium: GoogleFonts.inter(
+          fontSize: 22, fontWeight: FontWeight.w800, color: kNavy, letterSpacing: -0.3,
         ),
+        titleLarge: GoogleFonts.inter(
+          fontSize: 18, fontWeight: FontWeight.w700, color: kNavy, letterSpacing: -0.2,
+        ),
+        titleMedium: GoogleFonts.inter(
+          fontSize: 15, fontWeight: FontWeight.w600, color: kText,
+        ),
+        bodyMedium: GoogleFonts.inter(
+          fontSize: 13, fontWeight: FontWeight.w400, color: kText,
+        ),
+        bodySmall: GoogleFonts.inter(
+          fontSize: 11, fontWeight: FontWeight.w400, color: kMuted,
+        ),
+        labelLarge: GoogleFonts.inter(
+          fontSize: 13, fontWeight: FontWeight.w700, color: kWhite,
+        ),
+      ),
+      primaryTextTheme: GoogleFonts.interTextTheme(),
         // AppBar
         appBarTheme: AppBarTheme(
           backgroundColor: kWhite,
@@ -141,6 +150,6 @@ class AppTheme {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
         dividerTheme: const DividerThemeData(color: kLine, thickness: 1),
-        // InputDecoration overrides for SnackBar shape
       );
+  }
 }

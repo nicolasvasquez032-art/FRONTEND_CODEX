@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:provider/provider.dart';
 import 'package:animate_do/animate_do.dart';
@@ -11,7 +12,10 @@ import '../../domain/entities/vacante.dart';
 import '../../domain/entities/recomendacion.dart';
 import '../shared/providers/auth_provider.dart';
 import '../shared/providers/locale_provider.dart';
+import '../shared/providers/perfil_provider.dart';
 import '../shared/providers/postulaciones_provider.dart';
+import '../shared/providers/vacantes_provider.dart';
+import '../shared/widgets/app_toast.dart';
 import '../shared/widgets/match_badge.dart';
 import '../shared/widgets/glass_card.dart';
 import '../explore/map_screen.dart';
@@ -34,12 +38,34 @@ class JobDetailScreen extends StatefulWidget {
 
 class _JobDetailScreenState extends State<JobDetailScreen> {
   late ConfettiController _confettiController;
+  Vacante? _loadedVacante;
   bool _showOriginalText = false;
+
+  Vacante get _currentVacante => _loadedVacante ?? widget.vacante;
 
   @override
   void initState() {
     super.initState();
     _confettiController = ConfettiController(duration: const Duration(seconds: 2));
+    WidgetsBinding.instance.addPostFrameCallback((_) => _ensureFullVacanteDetails());
+  }
+
+  Future<void> _ensureFullVacanteDetails() async {
+    final cur = _currentVacante;
+    final hasProperDesc = cur.descripcion.isNotEmpty &&
+        cur.descripcion != widget.recomendacionML?.explicacion;
+    final hasReqs = cur.requisitos.isNotEmpty;
+    if (hasProperDesc && hasReqs) return;
+
+    final vProvider = Provider.of<VacantesProvider?>(context, listen: false);
+    if (vProvider != null) {
+      final full = await vProvider.getVacanteDetalle(cur.id);
+      if (full != null && mounted) {
+        setState(() {
+          _loadedVacante = full;
+        });
+      }
+    }
   }
 
   @override
@@ -50,7 +76,7 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final vacante = widget.vacante;
+    final vacante = _currentVacante;
     final recomendacionML = widget.recomendacionML;
     final heroTagTitle = widget.heroTagTitle;
 
@@ -255,6 +281,63 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
                                 Text(
                                   recomendacionML.explicacionLocalized(isEs),
                                   style: const TextStyle(fontSize: 13, color: kMatchText, height: 1.5),
+                                ),
+                                Builder(
+                                  builder: (_) {
+                                    final exp = recomendacionML.explicacionLocalized(isEs);
+                                    final techCatalog = isEs
+                                        ? [
+                                            'Python', 'FastAPI', 'Java', 'Spring Boot',
+                                            'Dart/Flutter', 'JavaScript', 'TypeScript',
+                                            'C#/.NET', 'Next.js', 'Angular', 'React',
+                                            'SQL y NoSQL', 'Docker', 'Redis', 'AWS',
+                                            'Linux', 'Git', 'Inteligencia Artificial',
+                                          ]
+                                        : [
+                                            'Python', 'FastAPI', 'Java', 'Spring Boot',
+                                            'Dart/Flutter', 'JavaScript', 'TypeScript',
+                                            'C#/.NET', 'Next.js', 'Angular', 'React',
+                                            'SQL & NoSQL', 'Docker', 'Redis', 'AWS',
+                                            'Linux', 'Git', 'Artificial Intelligence',
+                                          ];
+                                    final expLower = exp.toLowerCase();
+                                    final matched = techCatalog.where((t) {
+                                      final check = t
+                                          .toLowerCase()
+                                          .replaceAll('dart/', '')
+                                          .replaceAll('/flutter', '')
+                                          .replaceAll(' & nosql', '')
+                                          .replaceAll(' y nosql', '');
+                                      return expLower.contains(check);
+                                    }).toList();
+                                    if (matched.isEmpty) return const SizedBox.shrink();
+                                    return Padding(
+                                      padding: const EdgeInsets.only(top: 10),
+                                      child: Wrap(
+                                        spacing: 6,
+                                        runSpacing: 6,
+                                        children: matched.take(4).map((tech) => Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                          decoration: BoxDecoration(
+                                            color: kGreen.withValues(alpha: 0.12),
+                                            borderRadius: BorderRadius.circular(6),
+                                            border: Border.all(color: kGreen.withValues(alpha: 0.3), width: 0.8),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const Icon(Icons.check_circle_outline_rounded, size: 12, color: kGreen),
+                                              const SizedBox(width: 4),
+                                              Text(
+                                                tech,
+                                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: kGreen),
+                                              ),
+                                            ],
+                                          ),
+                                        )).toList(),
+                                      ),
+                                    );
+                                  },
                                 ),
                               ],
                             ),
@@ -555,6 +638,21 @@ class _PostularseBar extends StatelessWidget {
       return;
     }
 
+    // 1. Verificar si el candidato tiene hoja de vida (CV) cargada
+    final perfilProv = context.read<PerfilProvider>();
+    if (perfilProv.profile == null && candidatoId.isNotEmpty) {
+      await perfilProv.cargar(candidatoId);
+    }
+
+    final hasCv = perfilProv.profile?.cvText != null && perfilProv.profile!.cvText!.trim().isNotEmpty;
+    if (!hasCv) {
+      if (context.mounted) {
+        _mostrarDialogoRequiereCv(context);
+      }
+      return;
+    }
+
+    if (!context.mounted) return;
     final provider = context.read<PostulacionesProvider>();
     final ok = await provider.postularse(
       candidatoId: candidatoId,
@@ -584,15 +682,168 @@ class _PostularseBar extends StatelessWidget {
         ),
       );
     } else {
+      final isAlreadyApplied = provider.error?.toLowerCase().contains('ya existe') == true ||
+          provider.error?.toLowerCase().contains('already exists') == true;
+
+      if (isAlreadyApplied && candidatoId.isNotEmpty) {
+        await provider.cargar(candidatoId);
+      }
+
+      if (!context.mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          backgroundColor: Colors.red.shade700,
+          backgroundColor: isAlreadyApplied ? const Color(0xFF2563EB) : Colors.red.shade700,
           content: Text(
-            provider.error ?? (isSpanish ? 'Ya estás postulado a esta vacante.' : 'Already applied to this job.'),
-            style: const TextStyle(color: Colors.white),
+            isAlreadyApplied
+                ? (isSpanish ? 'Ya estás postulado a esta vacante.' : 'You have already applied to this job.')
+                : (provider.error ?? (isSpanish ? 'Ya estás postulado a esta vacante.' : 'Already applied to this job.')),
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
           ),
         ),
       );
+    }
+  }
+
+  void _mostrarDialogoRequiereCv(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetCtx) => Container(
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: const Color(0xFFE2E8F0),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                color: const Color(0xFFEFF6FF),
+                shape: BoxShape.circle,
+                border: Border.all(color: const Color(0xFFBFDBFE)),
+              ),
+              child: const Icon(
+                Icons.upload_file_rounded,
+                color: Color(0xFF2563EB),
+                size: 32,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              isSpanish ? 'Hoja de Vida Requerida' : 'Resume Required',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: kNavy,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              isSpanish
+                  ? 'Para postularte a esta vacante y que la empresa evalúe tu compatibilidad real con Inteligencia Artificial, necesitas subir tu hoja de vida primero.'
+                  : 'To apply for this job and allow the company to evaluate your real compatibility with Artificial Intelligence, you need to upload your resume first.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 14,
+                height: 1.5,
+                color: Color(0xFF64748B),
+              ),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton.icon(
+                onPressed: () async {
+                  Navigator.pop(sheetCtx);
+                  await _subirCvDesdeDetalle(context);
+                },
+                icon: const Icon(Icons.cloud_upload_outlined, size: 20),
+                label: Text(
+                  isSpanish ? 'Subir Hoja de Vida ahora' : 'Upload Resume now',
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2563EB),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  elevation: 0,
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              height: 46,
+              child: TextButton(
+                onPressed: () => Navigator.pop(sheetCtx),
+                child: Text(
+                  isSpanish ? 'Cancelar' : 'Cancel',
+                  style: const TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.w600),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _subirCvDesdeDetalle(BuildContext context) async {
+    final perfilProv = context.read<PerfilProvider>();
+    final profileId = candidatoId;
+    if (profileId.isEmpty) return;
+
+    final PlatformFile? picked;
+    try {
+      picked = await FilePicker.pickFile(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png', 'webp'],
+      );
+    } catch (_) {
+      if (context.mounted) {
+        AppToast.error(context, isSpanish ? 'No se pudo abrir el selector de archivos.' : 'Could not open file picker.');
+      }
+      return;
+    }
+
+    if (picked == null) return;
+
+    final bytes = (await picked.readAsBytes()).toList();
+    final fileName = picked.name;
+    final ext = picked.extension?.toLowerCase() ?? 'pdf';
+    final mimeType = ext == 'pdf' ? 'application/pdf' : 'image/$ext';
+
+    if (!context.mounted) return;
+    AppToast.info(context, isSpanish ? 'Subiendo y analizando hoja de vida...' : 'Uploading and analyzing resume...');
+
+    final ok = await perfilProv.subirCv(
+      profileId: profileId,
+      fileBytes: bytes,
+      fileName: fileName,
+      mimeType: mimeType,
+    );
+
+    if (!context.mounted) return;
+    if (ok) {
+      AppToast.success(context, isSpanish ? '¡Hoja de vida subida con éxito! Ahora puedes postularte.' : 'Resume uploaded successfully! You can now apply.');
+    } else {
+      AppToast.error(context, perfilProv.cvError ?? (isSpanish ? 'Error al subir la hoja de vida.' : 'Error uploading resume.'));
     }
   }
 
@@ -769,7 +1020,16 @@ class _SwipeToApplyButtonState extends State<SwipeToApplyButton> {
                         _isFinished = true;
                       });
                       HapticFeedback.mediumImpact();
-                      await widget.onSwipe();
+                      try {
+                        await widget.onSwipe();
+                      } finally {
+                        if (mounted) {
+                          setState(() {
+                            _dragPosition = 0.0;
+                            _isFinished = false;
+                          });
+                        }
+                      }
                     } else {
                       // Return to start
                       setState(() => _dragPosition = 0.0);

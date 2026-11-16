@@ -1,31 +1,116 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:animate_do/animate_do.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../core/constants/app_colors.dart';
+import '../../core/network/api_client.dart';
+import '../../core/storage/secure_storage.dart';
+import '../../domain/entities/vacante.dart';
 import '../../l10n/app_localizations.dart';
 import '../shared/providers/auth_provider.dart';
 import '../shared/providers/locale_provider.dart';
+import '../shared/providers/vacantes_provider.dart';
+import '../shared/widgets/app_toast.dart';
 import '../shared/widgets/bouncy_tap.dart';
+import '../shared/widgets/colombia_location_picker.dart';
 import '../shared/widgets/language_switch_button.dart';
 import '../shared/widgets/glass_card.dart';
+import '../legal/legal_screen.dart';
 import 'premium_subscription_screen.dart';
 
-class CompanyProfileScreen extends StatelessWidget {
+class CompanyProfileScreen extends StatefulWidget {
   const CompanyProfileScreen({super.key});
+
+  @override
+  State<CompanyProfileScreen> createState() => _CompanyProfileScreenState();
+}
+
+class _CompanyProfileScreenState extends State<CompanyProfileScreen> {
+  String _companyName = '';
+  String _companySector = 'Tecnología';
+  String _companyLocation = 'Colombia';
+  String _companyPlan = 'Plan Gratuito';
+  String _companyLogo = '';
+  int _companyColorIndex = 0;
+
+  final List<Color> _brandColors = const [
+    Color(0xFF2563EB), // Azul Royal
+    Color(0xFF0D9488), // Teal
+    Color(0xFF7C3AED), // Púrpura
+    Color(0xFF0284C7), // Cian
+    Color(0xFF059669), // Esmeralda
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarDatosEmpresa();
+  }
+
+  Future<void> _cargarDatosEmpresa() async {
+    final session = context.read<AuthProvider>().session;
+    final prefs = await SharedPreferences.getInstance();
+    final uid = session?.userId ?? session?.email ?? '';
+
+    String name = prefs.getString('company_name_$uid') ??
+        prefs.getString('company_name_active') ??
+        '';
+
+    final userEmail = session?.email;
+    if (name.isEmpty && userEmail != null && userEmail.isNotEmpty) {
+      final emailPrefix = userEmail.contains('@') ? userEmail.split('@').first : userEmail;
+      final clean = emailPrefix.replaceAll(RegExp(r'[0-9_\.]'), ' ').trim();
+      name = clean.isNotEmpty
+          ? clean.split(' ').map((w) => w.isNotEmpty ? '${w[0].toUpperCase()}${w.substring(1)}' : '').join(' ')
+          : 'Mi Empresa';
+    }
+
+    if (mounted) {
+      setState(() {
+        _companyName = name.isNotEmpty ? name : 'Mi Empresa';
+        _companySector = prefs.getString('company_sector_$uid') ?? 'Tecnología';
+        _companyLocation = prefs.getString('company_location_$uid') ?? 'Colombia';
+        _companyPlan = prefs.getString('company_plan_$uid') ?? 'Plan Gratuito';
+        _companyLogo = prefs.getString('company_logo_$uid') ?? '';
+        _companyColorIndex = prefs.getInt('company_color_$uid') ?? 0;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final l10n = AppLocalizations.of(context);
     final localeProvider = context.watch<LocaleProvider>();
-    
+    final isEs = localeProvider.isSpanish;
+    final vacantesProv = context.watch<VacantesProvider>();
+
+    final misVacantes = vacantesProv.vacantes
+        .where((v) => v.empresaId == auth.session?.userId)
+        .toList();
+
+    final activas = misVacantes.where((v) => v.estado == VacanteEstado.activa).length;
+    final totalPostulaciones = misVacantes.fold<int>(0, (sum, v) => sum + v.totalPostulaciones);
+
+    final double pctVacantes = misVacantes.isEmpty ? 0.0 : 1.0;
+    final double pctPostulados = totalPostulaciones == 0 ? 0.0 : (totalPostulaciones >= 10 ? 1.0 : totalPostulaciones / 10.0);
+    final double pctActivas = misVacantes.isEmpty ? 0.0 : (activas / misVacantes.length);
+
+    final brandColor = _companyColorIndex < _brandColors.length
+        ? _brandColors[_companyColorIndex]
+        : _brandColors.first;
+
+    final initial = _companyName.isNotEmpty ? _companyName[0].toUpperCase() : 'E';
+
     return Scaffold(
       backgroundColor: kBg,
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
         slivers: [
-          // 1. Cabecera Curva con Tarjeta Superpuesta (Estilo Mis Vacantes)
+          // 1. Cabecera Curva con Tarjeta Superpuesta
           SliverToBoxAdapter(
             child: SizedBox(
               height: 520, // 280 (cabecera azul) + 240 (altura expuesta de la tarjeta)
@@ -86,45 +171,134 @@ class CompanyProfileScreen extends StatelessWidget {
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  FadeInDown(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text('MI EMPRESA', style: TextStyle(color: Colors.blueAccent.shade100, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
-                                        const SizedBox(height: 6),
-                                        const Text('Global Tech', style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: -0.5, height: 1.1)),
-                                        const Text('Solutions', style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: -0.5, height: 1.1)),
-                                      ],
+                                  Expanded(
+                                    child: FadeInDown(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            isEs ? 'MI EMPRESA' : 'MY COMPANY',
+                                            style: TextStyle(color: Colors.blueAccent.shade100, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.5),
+                                          ),
+                                          const SizedBox(height: 6),
+                                          Row(
+                                            children: [
+                                              Flexible(
+                                                child: Text(
+                                                  _companyName,
+                                                  style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: -0.5, height: 1.15),
+                                                  maxLines: 2,
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 6),
+                                              GestureDetector(
+                                                onTap: () => _showEditCompanyModal(context, isEs),
+                                                child: Container(
+                                                  padding: const EdgeInsets.all(4),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.white.withValues(alpha: 0.15),
+                                                    borderRadius: BorderRadius.circular(8),
+                                                  ),
+                                                  child: const Icon(Icons.edit_outlined, size: 13, color: Colors.white70),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 6),
+                                          Row(
+                                            children: [
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.white.withValues(alpha: 0.15),
+                                                  borderRadius: BorderRadius.circular(6),
+                                                ),
+                                                child: Text(
+                                                  _companySector,
+                                                  style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Icon(Icons.location_on_outlined, size: 13, color: Colors.blueAccent.shade100),
+                                              const SizedBox(width: 2),
+                                              Text(
+                                                _companyLocation,
+                                                style: TextStyle(color: Colors.blueAccent.shade100, fontSize: 11, fontWeight: FontWeight.w500),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
+                                  const SizedBox(width: 12),
                                   Row(
                                     children: [
                                       const LanguageSwitchButton(),
                                       const SizedBox(width: 8),
                                       FadeInDown(
-                                        child: Container(
-                                          width: 56,
-                                          height: 56,
-                                          decoration: BoxDecoration(
-                                            color: Colors.white.withValues(alpha: 0.18),
-                                            shape: BoxShape.circle,
-                                            border: Border.all(color: Colors.white.withValues(alpha: 0.8), width: 1.5),
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: Colors.cyanAccent.withValues(alpha: 0.25),
-                                                blurRadius: 12,
-                                                spreadRadius: 1,
+                                        child: GestureDetector(
+                                          onTap: () => _showEditCompanyModal(context, isEs),
+                                          child: Stack(
+                                            children: [
+                                              Container(
+                                                width: 56,
+                                                height: 56,
+                                                decoration: BoxDecoration(
+                                                  color: brandColor,
+                                                  shape: BoxShape.circle,
+                                                  border: Border.all(color: Colors.white.withValues(alpha: 0.8), width: 1.5),
+                                                  boxShadow: [
+                                                    BoxShadow(
+                                                      color: brandColor.withValues(alpha: 0.4),
+                                                      blurRadius: 12,
+                                                      spreadRadius: 1,
+                                                    ),
+                                                  ],
+                                                ),
+                                                alignment: Alignment.center,
+                                                child: _companyLogo.isNotEmpty
+                                                    ? ClipOval(
+                                                        child: Image.network(
+                                                          _companyLogo,
+                                                          fit: BoxFit.cover,
+                                                          errorBuilder: (_, _, _) => Text(
+                                                            initial,
+                                                            style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900),
+                                                          ),
+                                                        ),
+                                                      )
+                                                    : Text(
+                                                        initial,
+                                                        style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900),
+                                                      ),
+                                              ),
+                                              Positioned(
+                                                bottom: 0,
+                                                right: 0,
+                                                child: Container(
+                                                  padding: const EdgeInsets.all(4),
+                                                  decoration: const BoxDecoration(
+                                                    color: Colors.white,
+                                                    shape: BoxShape.circle,
+                                                  ),
+                                                  child: const Icon(
+                                                    Icons.edit,
+                                                    size: 11,
+                                                    color: kBlue,
+                                                  ),
+                                                ),
                                               ),
                                             ],
                                           ),
-                                          child: const Icon(Icons.apartment, size: 28, color: Colors.white),
                                         ),
                                       ),
                                     ],
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 24),
+                              const SizedBox(height: 20),
                               FadeInDown(
                                 delay: const Duration(milliseconds: 100),
                                 child: Container(
@@ -137,9 +311,12 @@ class CompanyProfileScreen extends StatelessWidget {
                                   child: Builder(
                                     builder: (context) {
                                       final id = auth.session?.userId;
-                                      final shortId = (id != null && id.length > 8) ? id.substring(0,8) : '001';
-                                      return Text('ID: $shortId... • Premium Plan', style: const TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.bold));
-                                    }
+                                      final shortId = (id != null && id.length > 8) ? id.substring(0, 8) : '001';
+                                      final planDisplay = auth.session?.isPremium == true
+                                          ? 'Plan Pro'
+                                          : _companyPlan;
+                                      return Text('ID: $shortId... • $planDisplay', style: const TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.bold));
+                                    },
                                   ),
                                 ),
                               ),
@@ -159,158 +336,854 @@ class CompanyProfileScreen extends StatelessWidget {
                       delay: const Duration(milliseconds: 500),
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        // Círculo decorativo líquido detrás (Cian)
-                        Positioned(
-                          top: -20,
-                          left: -20,
-                          child: Container(
-                            width: 140,
-                            height: 140,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Colors.cyan.withValues(alpha: 0.3),
+                        child: Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            // Círculo decorativo líquido detrás (Cian)
+                            Positioned(
+                              top: -20,
+                              left: -20,
+                              child: Container(
+                                width: 140,
+                                height: 140,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.cyan.withValues(alpha: 0.3),
+                                ),
+                              ),
                             ),
-                          ),
-                        ),
-                        // Círculo decorativo líquido detrás (Morado)
-                        Positioned(
-                          bottom: -20,
-                          right: -20,
-                          child: Container(
-                            width: 120,
-                            height: 120,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Colors.purpleAccent.withValues(alpha: 0.2),
+                            // Círculo decorativo líquido detrás (Morado)
+                            Positioned(
+                              bottom: -20,
+                              right: -20,
+                              child: Container(
+                                width: 120,
+                                height: 120,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.purpleAccent.withValues(alpha: 0.2),
+                                ),
+                              ),
                             ),
-                          ),
-                        ),
-                        // Tarjeta de Cristal
-                        GlassCard(
-                          borderRadius: BorderRadius.circular(28),
-                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            // Tarjeta de Cristal
+                            GlassCard(
+                              borderRadius: BorderRadius.circular(28),
+                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                     children: [
-                                      Text('Rendimiento del mes', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: kNavy)),
-                                      SizedBox(height: 4),
-                                      Text('+15% vs mes anterior', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF10B981))),
+                                      Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            isEs ? 'Rendimiento de publicaciones' : 'Listing Performance',
+                                            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: kNavy),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            misVacantes.isEmpty
+                                                ? (isEs ? 'Sin vacantes publicadas aún' : 'No vacancies published yet')
+                                                : (isEs ? '$activas vacantes activas en curso' : '$activas active listings running'),
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w700,
+                                              color: misVacantes.isEmpty ? kMuted : const Color(0xFF10B981),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      Container(
+                                        padding: const EdgeInsets.all(10),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius: BorderRadius.circular(12),
+                                          boxShadow: [BoxShadow(color: kBlue.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4))],
+                                        ),
+                                        child: const Icon(Icons.show_chart, color: kBlue, size: 20),
+                                      ),
                                     ],
                                   ),
-                                  Container(
-                                    padding: const EdgeInsets.all(10),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(12),
-                                      boxShadow: [BoxShadow(color: kBlue.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4))],
-                                    ),
-                                    child: const Icon(Icons.show_chart, color: kBlue, size: 20),
+                                  const SizedBox(height: 28),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                    children: [
+                                      _buildDonutChart(isEs ? 'Vacantes' : 'Jobs', '${misVacantes.length}', pctVacantes, kBlue, 600),
+                                      _buildDonutChart(isEs ? 'Postulados' : 'Applicants', '$totalPostulaciones', pctPostulados, const Color(0xFF10B981), 700),
+                                      _buildDonutChart(isEs ? 'Activas' : 'Active', '$activas', pctActivas, Colors.orangeAccent, 800),
+                                    ],
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 28),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                                children: [
-                                  _buildDonutChart('Contratos', '12', 0.85, kBlue, 600),
-                                  _buildDonutChart('Respuesta', '92%', 0.92, const Color(0xFF10B981), 700),
-                                  _buildDonutChart('Vistas', '4k', 0.65, Colors.orangeAccent, 800),
-                                ],
-                              ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
                   ),
-                ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
-      ),
           
-          // Título de Configuración (fuera de la lista para no iterar)
-          const SliverToBoxAdapter(
+          // Título de Configuración
+          SliverToBoxAdapter(
             child: Padding(
-              padding: EdgeInsets.only(left: 28, bottom: 12, top: 40),
+              padding: const EdgeInsets.only(left: 28, bottom: 12, top: 40),
               child: FadeInLeft(
-                child: Text('Configuración', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: kMuted)),
+                child: Text(
+                  isEs ? 'Configuración' : 'Settings',
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: kMuted),
+                ),
               ),
             ),
           ),
                 
           // Opciones animadas on-scroll
-          SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            sliver: SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (context, index) {
-                  // Definimos las opciones de configuración
-                  final List<Map<String, dynamic>> configOptions = [
-                    {'icon': Icons.language, 'title': l10n.profileLanguage, 'isPremium': false, 'onTap': () => _showLanguageDialog(context, localeProvider, l10n)},
-                    {'icon': Icons.bar_chart, 'title': 'Reportes y Exportación', 'isPremium': false, 'onTap': () {}},
-                    {'icon': Icons.payment, 'title': 'Planes y Facturación', 'isPremium': true, 'onTap': () {
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => const PremiumSubscriptionScreen()));
-                    }},
-                    {'icon': Icons.people_outline, 'title': 'Equipo y Permisos', 'isPremium': false, 'onTap': () {}},
-                    {'icon': Icons.settings_outlined, 'title': 'Preferencias de Cuenta', 'isPremium': false, 'onTap': () {}},
-                  ];
+          Builder(
+            builder: (context) {
+              final List<Map<String, dynamic>> configOptions = [
+                {
+                  'icon': Icons.language,
+                  'title': l10n.profileLanguage,
+                  'isPremium': false,
+                  'onTap': () => _showLanguageDialog(context, localeProvider, l10n),
+                },
+                {
+                  'icon': Icons.bar_chart,
+                  'title': isEs ? 'Reportes y Exportación' : 'Reports & Export',
+                  'isPremium': false,
+                  'onTap': () => _showReportsModal(context, isEs, misVacantes, totalPostulaciones),
+                },
+                {
+                  'icon': Icons.payment,
+                  'title': isEs ? 'Planes y Facturación' : 'Plans & Billing',
+                  'isPremium': true,
+                  'onTap': () {
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const PremiumSubscriptionScreen()));
+                  },
+                },
+                {
+                  'icon': Icons.people_outline,
+                  'title': isEs ? 'Equipo y Permisos' : 'Team & Permissions',
+                  'isPremium': false,
+                  'onTap': () => _showTeamModal(context, isEs, auth.session?.email),
+                },
+                {
+                  'icon': Icons.settings_outlined,
+                  'title': isEs ? 'Preferencias de Cuenta' : 'Account Preferences',
+                  'isPremium': false,
+                  'onTap': () => _showEditCompanyModal(context, isEs),
+                },
+                {
+                  'icon': Icons.gavel_outlined,
+                  'title': isEs ? 'Marco Legal y Privacidad' : 'Legal Terms & Privacy',
+                  'isPremium': false,
+                  'onTap': () => LegalScreen.showModal(context),
+                },
+              ];
 
-                  if (index < configOptions.length) {
-                    final opt = configOptions[index];
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: FadeInUp(
-                        // Eliminamos el delay fijo grande, ahora se animan con un ligero retraso de entrada
-                        delay: Duration(milliseconds: 100 * index),
-                        duration: const Duration(milliseconds: 600),
-                        from: 50,
-                        child: _buildConfigTile(
-                          opt['icon'] as IconData,
-                          opt['title'] as String,
-                          isPremium: opt['isPremium'] as bool,
-                          onTap: opt['onTap'] as VoidCallback,
-                        ),
-                      ),
-                    );
-                  } else if (index == configOptions.length) {
-                    return Padding(
-                      padding: const EdgeInsets.only(top: 28, bottom: 100),
-                      child: FadeInUp(
-                        delay: const Duration(milliseconds: 400),
-                        from: 40,
-                        child: SizedBox(
-                          width: double.infinity,
-                          height: 55,
-                          child: OutlinedButton.icon(
-                            icon: const Icon(Icons.logout, color: Colors.redAccent),
-                            label: const Text('Cerrar Sesión Segura', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 15)),
-                            style: OutlinedButton.styleFrom(
-                              side: BorderSide(color: Colors.redAccent.withValues(alpha: 0.3), width: 2),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                              backgroundColor: Colors.redAccent.withValues(alpha: 0.05),
+              return SliverPadding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      if (index < configOptions.length) {
+                        final opt = configOptions[index];
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: FadeInUp(
+                            delay: Duration(milliseconds: 100 * index),
+                            duration: const Duration(milliseconds: 600),
+                            from: 50,
+                            child: _buildConfigTile(
+                              opt['icon'] as IconData,
+                              opt['title'] as String,
+                              isPremium: opt['isPremium'] as bool,
+                              onTap: opt['onTap'] as VoidCallback,
                             ),
-                            onPressed: () => auth.logout(),
+                          ),
+                        );
+                      } else if (index == configOptions.length) {
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 28, bottom: 100),
+                          child: FadeInUp(
+                            delay: const Duration(milliseconds: 400),
+                            from: 40,
+                            child: SizedBox(
+                              width: double.infinity,
+                              height: 55,
+                              child: OutlinedButton.icon(
+                                icon: const Icon(Icons.logout, color: Colors.redAccent),
+                                label: Text(
+                                  isEs ? 'Cerrar Sesión Segura' : 'Secure Logout',
+                                  style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 15),
+                                ),
+                                style: OutlinedButton.styleFrom(
+                                  side: BorderSide(color: Colors.redAccent.withValues(alpha: 0.3), width: 2),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                  backgroundColor: Colors.redAccent.withValues(alpha: 0.05),
+                                ),
+                                onPressed: () => auth.logout(),
+                              ),
+                            ),
+                          ),
+                        );
+                      }
+                      return null;
+                    },
+                    childCount: configOptions.length + 1, // Todas las opciones + botón cerrar sesión
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showEditCompanyModal(BuildContext context, bool isEs) {
+    final nameCtrl = TextEditingController(text: _companyName);
+    final logoCtrl = TextEditingController(text: _companyLogo);
+    String selectedSector = _companySector;
+    String selectedLocation = _companyLocation;
+    int selectedColorIndex = _companyColorIndex;
+
+    final sectors = [
+      'Tecnología',
+      'Salud y Medicina',
+      'Finanzas y Banca',
+      'Educación',
+      'Retail y Comercio',
+      'Manufactura e Industria',
+      'Servicios Profesionales',
+      'Marketing y Medios',
+      'Logística y Transporte',
+      'Construcción e Inmobiliaria',
+      'Otro',
+    ];
+
+    if (!sectors.contains(selectedSector)) {
+      sectors.insert(0, selectedSector);
+    }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (modalCtx, setModalState) {
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.85,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+              ),
+              child: Column(
+                children: [
+                  Center(
+                    child: Container(
+                      width: 44,
+                      height: 4,
+                      margin: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.business_center_rounded, color: kBlue, size: 24),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            isEs ? 'Perfil de la Empresa' : 'Company Profile',
+                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: kNavy),
                           ),
                         ),
+                        IconButton(
+                          icon: const Icon(Icons.close, color: kMuted),
+                          onPressed: () => Navigator.pop(ctx),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Divider(height: 1),
+                  Expanded(
+                    child: ListView(
+                      padding: const EdgeInsets.all(24),
+                      children: [
+                        Text(
+                          isEs ? 'Nombre de la Empresa' : 'Company Name',
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: kNavy),
+                        ),
+                        const SizedBox(height: 6),
+                        TextField(
+                          controller: nameCtrl,
+                          decoration: InputDecoration(
+                            hintText: isEs ? 'Ej. Inversiones Andinas SAS' : 'E.g. Acme Corp',
+                            filled: true,
+                            fillColor: kBg,
+                            prefixIcon: const Icon(Icons.apartment, color: kBlue, size: 20),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: kLine)),
+                            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: kLine)),
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        Text(
+                          isEs ? 'Sector Económico' : 'Industry / Sector',
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: kNavy),
+                        ),
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14),
+                          decoration: BoxDecoration(
+                            color: kBg,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: kLine),
+                          ),
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<String>(
+                              value: selectedSector,
+                              isExpanded: true,
+                              icon: const Icon(Icons.keyboard_arrow_down, color: kBlue),
+                              items: sectors.map((s) => DropdownMenuItem(value: s, child: Text(s, style: const TextStyle(fontSize: 14, color: kNavy)))).toList(),
+                              onChanged: (val) {
+                                if (val != null) {
+                                  setModalState(() => selectedSector = val);
+                                }
+                              },
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        Text(
+                          isEs ? 'Ubicación (Ciudad / Departamento)' : 'Location',
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: kNavy),
+                        ),
+                        const SizedBox(height: 6),
+                        InkWell(
+                          onTap: () async {
+                            final res = await showColombiaLocationPicker(context);
+                            if (res != null) {
+                              setModalState(() {
+                                selectedLocation = res;
+                              });
+                            }
+                          },
+                          borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                            decoration: BoxDecoration(
+                              color: kBg,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: kLine),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.location_on, color: kBlue, size: 20),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    selectedLocation.isNotEmpty ? selectedLocation : (isEs ? 'Seleccionar ciudad' : 'Select city'),
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: selectedLocation.isNotEmpty ? kNavy : kMuted,
+                                    ),
+                                  ),
+                                ),
+                                const Icon(Icons.search, size: 18, color: kMuted),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        Text(
+                          isEs ? 'URL del Logo (Opcional)' : 'Logo Image URL (Optional)',
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: kNavy),
+                        ),
+                        const SizedBox(height: 6),
+                        TextField(
+                          controller: logoCtrl,
+                          decoration: InputDecoration(
+                            hintText: 'https://ejemplo.com/logo.png',
+                            filled: true,
+                            fillColor: kBg,
+                            prefixIcon: const Icon(Icons.image_outlined, color: kBlue, size: 20),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: kLine)),
+                            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: kLine)),
+                          ),
+                          onChanged: (_) => setModalState(() {}),
+                        ),
+                        const SizedBox(height: 18),
+                        Text(
+                          isEs ? 'Color de Identidad' : 'Brand Color Accent',
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: kNavy),
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: List.generate(_brandColors.length, (idx) {
+                            final c = _brandColors[idx];
+                            final isSel = selectedColorIndex == idx;
+                            return GestureDetector(
+                              onTap: () => setModalState(() => selectedColorIndex = idx),
+                              child: Container(
+                                margin: const EdgeInsets.only(right: 12),
+                                width: 38,
+                                height: 38,
+                                decoration: BoxDecoration(
+                                  color: c,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: isSel ? kNavy : Colors.transparent,
+                                    width: 3,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: c.withValues(alpha: 0.35),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 3),
+                                    ),
+                                  ],
+                                ),
+                                child: isSel ? const Icon(Icons.check, color: Colors.white, size: 20) : null,
+                              ),
+                            );
+                          }),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      boxShadow: [
+                        BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, -4)),
+                      ],
+                    ),
+                    child: SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.save_rounded, color: Colors.white),
+                        label: Text(
+                          isEs ? 'Guardar Cambios' : 'Save Changes',
+                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: kBlue,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          elevation: 0,
+                        ),
+                        onPressed: () async {
+                          final newName = nameCtrl.text.trim();
+                          if (newName.isEmpty) {
+                            AppToast.show(context, message: isEs ? 'El nombre no puede estar vacío' : 'Name cannot be empty', type: ToastType.error);
+                            return;
+                          }
+                          final auth = context.read<AuthProvider>();
+                          final uid = auth.session?.userId ?? auth.session?.email ?? '';
+                          final prefs = await SharedPreferences.getInstance();
+                          await prefs.setString('company_name_$uid', newName);
+                          await prefs.setString('company_name_active', newName);
+                          await prefs.setString('company_sector_$uid', selectedSector);
+                          await prefs.setString('company_location_$uid', selectedLocation);
+                          await prefs.setString('company_logo_$uid', logoCtrl.text.trim());
+                          await prefs.setInt('company_color_$uid', selectedColorIndex);
+
+                          try {
+                            final client = ApiClient(SecureStorage());
+                            await client.patch(
+                              '/auth/empresa/perfil',
+                              {'nombre': newName},
+                            );
+                          } catch (_) {}
+
+                          if (!mounted) return;
+                          setState(() {
+                            _companyName = newName;
+                            _companySector = selectedSector;
+                            _companyLocation = selectedLocation;
+                            _companyLogo = logoCtrl.text.trim();
+                            _companyColorIndex = selectedColorIndex;
+                          });
+                          if (modalCtx.mounted) {
+                            Navigator.pop(modalCtx);
+                          }
+                          AppToast.show(this.context, message: isEs ? 'Perfil de empresa actualizado' : 'Company profile updated', type: ToastType.success);
+                        },
                       ),
-                    );
-                  }
-                  return null;
-                },
-                childCount: 6, // 5 opciones + 1 botón salir
+                    ),
+                  ),
+                ],
               ),
-            ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showReportsModal(BuildContext context, bool isEs, List<Vacante> misVacantes, int totalPostulaciones) {
+    final activas = misVacantes.where((v) => v.estado == VacanteEstado.activa).length;
+    final pausadas = misVacantes.where((v) => v.estado == VacanteEstado.pausada).length;
+    final cerradas = misVacantes.where((v) => v.estado == VacanteEstado.cerrada).length;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          height: MediaQuery.of(context).size.height * 0.75,
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          child: Column(
+            children: [
+              Center(
+                child: Container(
+                  width: 44,
+                  height: 4,
+                  margin: const EdgeInsets.symmetric(vertical: 12),
+                  decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                child: Row(
+                  children: [
+                    const Icon(Icons.bar_chart_rounded, color: kBlue, size: 24),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        isEs ? 'Reportes y Métricas' : 'Reports & Analytics',
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: kNavy),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, color: kMuted),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.all(24),
+                  children: [
+                    Text(
+                      isEs ? 'Resumen Ejecutivo en Tiempo Real' : 'Real-time Executive Summary',
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: kNavy),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildMetricTile(isEs ? 'Total Vacantes' : 'Total Jobs', '${misVacantes.length}', Icons.work_outline, kBlue),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildMetricTile(isEs ? 'Postulaciones' : 'Applicants', '$totalPostulaciones', Icons.people_outline, const Color(0xFF10B981)),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildMetricTile(isEs ? 'Activas' : 'Active', '$activas', Icons.check_circle_outline, Colors.orangeAccent),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildMetricTile(isEs ? 'Pausadas/Cerradas' : 'Paused/Closed', '${pausadas + cerradas}', Icons.pause_circle_outline, Colors.grey),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      isEs ? 'Detalle por Vacante' : 'Breakdown by Job Opening',
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: kNavy),
+                    ),
+                    const SizedBox(height: 8),
+                    if (misVacantes.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 20),
+                        child: Center(
+                          child: Text(
+                            isEs ? 'Aún no tienes vacantes creadas.' : 'No jobs created yet.',
+                            style: const TextStyle(color: kMuted, fontSize: 13),
+                          ),
+                        ),
+                      )
+                    else
+                      ...misVacantes.map((v) {
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: kBg,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: kLine),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(v.titulo, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: kNavy)),
+                                    Text(v.ubicacion, style: const TextStyle(fontSize: 11, color: kMuted)),
+                                  ],
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: kBlue.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  '${v.totalPostulaciones} ${isEs ? 'candidatos' : 'candidates'}',
+                                  style: const TextStyle(color: kBlue, fontWeight: FontWeight.w700, fontSize: 12),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, -4))],
+                ),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.file_download_outlined, color: Colors.white),
+                    label: Text(
+                      isEs ? 'Copiar Reporte CSV al Portapapeles' : 'Copy CSV Report to Clipboard',
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: kBlue,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      elevation: 0,
+                    ),
+                    onPressed: () {
+                      final buffer = StringBuffer();
+                      buffer.writeln('ID,Título,Ubicación,Estado,Postulados');
+                      for (final v in misVacantes) {
+                        buffer.writeln('"${v.id}","${v.titulo}","${v.ubicacion}","${v.estado.name}",${v.totalPostulaciones}');
+                      }
+                      Clipboard.setData(ClipboardData(text: buffer.toString()));
+                      Navigator.pop(ctx);
+                      AppToast.show(context, message: isEs ? 'Reporte CSV copiado al portapapeles' : 'CSV Report copied to clipboard', type: ToastType.success);
+                    },
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showTeamModal(BuildContext context, bool isEs, String? ownerEmail) {
+    final inviteCtrl = TextEditingController();
+    String selectedRole = 'Reclutador';
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (modalCtx, setModalState) {
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.7,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+              ),
+              child: Column(
+                children: [
+                  Center(
+                    child: Container(
+                      width: 44,
+                      height: 4,
+                      margin: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.people_alt_rounded, color: kBlue, size: 24),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            isEs ? 'Equipo y Permisos' : 'Team & Permissions',
+                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: kNavy),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close, color: kMuted),
+                          onPressed: () => Navigator.pop(ctx),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Divider(height: 1),
+                  Expanded(
+                    child: ListView(
+                      padding: const EdgeInsets.all(24),
+                      children: [
+                        Text(
+                          isEs ? 'Miembros Activos' : 'Active Members',
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: kNavy),
+                        ),
+                        const SizedBox(height: 10),
+                        ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: CircleAvatar(
+                            backgroundColor: kBlue.withValues(alpha: 0.1),
+                            child: const Icon(Icons.person, color: kBlue),
+                          ),
+                          title: Text(ownerEmail ?? 'empresa@talentmatch.com', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: kNavy)),
+                          subtitle: Text(isEs ? 'Propietario de la cuenta' : 'Account Owner', style: const TextStyle(fontSize: 11, color: kMuted)),
+                          trailing: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF10B981).withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              isEs ? 'Admin' : 'Owner',
+                              style: const TextStyle(color: Color(0xFF10B981), fontWeight: FontWeight.bold, fontSize: 11),
+                            ),
+                          ),
+                        ),
+                        const Divider(height: 24),
+                        Text(
+                          isEs ? 'Invitar Nuevo Reclutador' : 'Invite Recruiter / Teammate',
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: kNavy),
+                        ),
+                        const SizedBox(height: 8),
+                        TextField(
+                          controller: inviteCtrl,
+                          keyboardType: TextInputType.emailAddress,
+                          decoration: InputDecoration(
+                            hintText: 'colega@empresa.com',
+                            filled: true,
+                            fillColor: kBg,
+                            prefixIcon: const Icon(Icons.mail_outline, color: kBlue, size: 20),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: kLine)),
+                            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: kLine)),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Text(isEs ? 'Rol: ' : 'Role: ', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: kNavy)),
+                            const SizedBox(width: 8),
+                            ChoiceChip(
+                              label: Text(isEs ? 'Reclutador' : 'Recruiter'),
+                              selected: selectedRole == 'Reclutador',
+                              onSelected: (_) => setModalState(() => selectedRole = 'Reclutador'),
+                            ),
+                            const SizedBox(width: 8),
+                            ChoiceChip(
+                              label: Text(isEs ? 'Visualizador' : 'Viewer'),
+                              selected: selectedRole == 'Visualizador',
+                              onSelected: (_) => setModalState(() => selectedRole = 'Visualizador'),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 18),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 46,
+                          child: ElevatedButton.icon(
+                            icon: const Icon(Icons.send_rounded, color: Colors.white, size: 18),
+                            label: Text(
+                              isEs ? 'Enviar Invitación' : 'Send Invitation',
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.white),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: kBlue,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              elevation: 0,
+                            ),
+                            onPressed: () {
+                              final email = inviteCtrl.text.trim();
+                              if (email.isEmpty || !email.contains('@')) {
+                                AppToast.show(context, message: isEs ? 'Ingresa un correo electrónico válido' : 'Please enter a valid email', type: ToastType.error);
+                                return;
+                              }
+                              Navigator.pop(ctx);
+                              AppToast.show(
+                                context,
+                                message: isEs
+                                    ? 'Invitación enviada a $email con permisos de $selectedRole'
+                                    : 'Invitation sent to $email with $selectedRole permissions',
+                                type: ToastType.success,
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildMetricTile(String label, String value, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: kBg,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: kLine),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
+            child: Icon(icon, color: color, size: 20),
+          ),
+          const SizedBox(width: 10),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: kNavy)),
+              Text(label, style: const TextStyle(fontSize: 11, color: kMuted, fontWeight: FontWeight.w600)),
+            ],
           ),
         ],
       ),
@@ -329,78 +1202,77 @@ class CompanyProfileScreen extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.all(24),
             child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 20),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(2),
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 20),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
                 ),
-              ),
-              Row(
-                children: [
-                  const Icon(Icons.language, color: kBlue, size: 24),
-                  const SizedBox(width: 10),
-                  Text(
-                    l10n.profileSelectLanguageTitle,
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: kNavy),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              ListTile(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                leading: const Text('🇪🇸', style: TextStyle(fontSize: 26)),
-                title: Text(
-                  l10n.profileLanguageSpanish,
-                  style: TextStyle(
-                    fontWeight: currentCode == 'es' ? FontWeight.w800 : FontWeight.w500,
-                    color: currentCode == 'es' ? kBlue : kNavy,
-                  ),
+                Row(
+                  children: [
+                    const Icon(Icons.language, color: kBlue, size: 24),
+                    const SizedBox(width: 10),
+                    Text(
+                      l10n.profileSelectLanguageTitle,
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: kNavy),
+                    ),
+                  ],
                 ),
-                trailing: currentCode == 'es'
-                    ? const Icon(Icons.check_circle, color: kBlue)
-                    : const Icon(Icons.circle_outlined, color: Colors.grey),
-                onTap: () {
-                  localeProvider.setLocale(const Locale('es'));
-                  Navigator.pop(ctx);
-                },
-              ),
-              const Divider(height: 1),
-              ListTile(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                leading: const Text('🇺🇸', style: TextStyle(fontSize: 26)),
-                title: Text(
-                  l10n.profileLanguageEnglish,
-                  style: TextStyle(
-                    fontWeight: currentCode == 'en' ? FontWeight.w800 : FontWeight.w500,
-                    color: currentCode == 'en' ? kBlue : kNavy,
+                const SizedBox(height: 20),
+                ListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  leading: const Text('🇪🇸', style: TextStyle(fontSize: 26)),
+                  title: Text(
+                    l10n.profileLanguageSpanish,
+                    style: TextStyle(
+                      fontWeight: currentCode == 'es' ? FontWeight.w800 : FontWeight.w500,
+                      color: currentCode == 'es' ? kBlue : kNavy,
+                    ),
                   ),
+                  trailing: currentCode == 'es'
+                      ? const Icon(Icons.check_circle, color: kBlue)
+                      : const Icon(Icons.circle_outlined, color: Colors.grey),
+                  onTap: () {
+                    localeProvider.setLocale(const Locale('es'));
+                    Navigator.pop(ctx);
+                  },
                 ),
-                trailing: currentCode == 'en'
-                    ? const Icon(Icons.check_circle, color: kBlue)
-                    : const Icon(Icons.circle_outlined, color: Colors.grey),
-                onTap: () {
-                  localeProvider.setLocale(const Locale('en'));
-                  Navigator.pop(ctx);
-                },
-              ),
-              const SizedBox(height: 16),
-            ],
+                const Divider(height: 1),
+                ListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  leading: const Text('🇺🇸', style: TextStyle(fontSize: 26)),
+                  title: Text(
+                    l10n.profileLanguageEnglish,
+                    style: TextStyle(
+                      fontWeight: currentCode == 'en' ? FontWeight.w800 : FontWeight.w500,
+                      color: currentCode == 'en' ? kBlue : kNavy,
+                    ),
+                  ),
+                  trailing: currentCode == 'en'
+                      ? const Icon(Icons.check_circle, color: kBlue)
+                      : const Icon(Icons.circle_outlined, color: Colors.grey),
+                  onTap: () {
+                    localeProvider.setLocale(const Locale('en'));
+                    Navigator.pop(ctx);
+                  },
+                ),
+                const SizedBox(height: 16),
+              ],
+            ),
           ),
-        ),
-      );
-    },
-  );
+        );
+      },
+    );
   }
 
-  // Widget para la dona analítica
   Widget _buildDonutChart(String label, String value, double percent, Color color, int delayMs) {
     return ElasticIn(
       delay: Duration(milliseconds: delayMs),
@@ -409,7 +1281,6 @@ class CompanyProfileScreen extends StatelessWidget {
           Stack(
             alignment: Alignment.center,
             children: [
-              // Efecto de sombra para volumen
               Container(
                 height: 55,
                 width: 55,
@@ -431,11 +1302,8 @@ class CompanyProfileScreen extends StatelessWidget {
                     return Stack(
                       alignment: Alignment.center,
                       children: [
-                        // Fondo de la dona (gris claro transparente)
                         CircularProgressIndicator(value: 1.0, strokeWidth: 8, color: Colors.white.withValues(alpha: 0.5)),
-                        // Progreso animado (líquido)
                         CircularProgressIndicator(value: val, strokeWidth: 8, color: color, strokeCap: StrokeCap.round),
-                        // Texto central animado (Contador)
                         Text('${(val * 100).toInt()}%', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: kNavy)),
                       ],
                     );
@@ -452,11 +1320,10 @@ class CompanyProfileScreen extends StatelessWidget {
     );
   }
 
-  // Tarjetas de Opciones interactivas con efecto de pulsación y escala física
   Widget _buildConfigTile(IconData icon, String title, {bool isPremium = false, required VoidCallback onTap}) {
     return BouncyTap(
       onPressed: onTap,
-      scaleFactor: 0.95, // 5% de hundimiento
+      scaleFactor: 0.95,
       child: Material(
         color: Colors.transparent,
         child: Container(

@@ -15,6 +15,7 @@ class VacanteModel {
   final double? latitud;
   final double? longitud;
   final String creadoEn;
+  final int totalPostulaciones;
 
   const VacanteModel({
     required this.id,
@@ -30,6 +31,7 @@ class VacanteModel {
     this.salarioMax,
     this.latitud,
     this.longitud,
+    this.totalPostulaciones = 0,
   });
 
   factory VacanteModel.fromJson(Map<String, dynamic> json) => VacanteModel(
@@ -46,6 +48,7 @@ class VacanteModel {
         latitud: (json['latitud'] as num?)?.toDouble(),
         longitud: (json['longitud'] as num?)?.toDouble(),
         creadoEn: json['creado_en'] as String,
+        totalPostulaciones: (json['total_postulaciones'] as num?)?.toInt() ?? 0,
       );
 
   /// Convierte el DTO a la entidad de dominio.
@@ -63,6 +66,7 @@ class VacanteModel {
         latitud: latitud,
         longitud: longitud,
         creadoEn: DateTime.parse(creadoEn),
+        totalPostulaciones: totalPostulaciones,
       );
 
   static VacanteEstado _parseEstado(String s) {

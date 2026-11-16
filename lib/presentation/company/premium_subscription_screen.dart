@@ -28,7 +28,7 @@ class _PremiumSubscriptionScreenState extends State<PremiumSubscriptionScreen> {
 
       final body = {
         "empresa_id": session.userId,
-        "email": "contacto@tuempresa.com", // Modificable por el usuario en MercadoPago
+        "email": session.email ?? "contacto@empresa.com",
       };
 
       final response = await ApiClient(SecureStorage()).post('/pagos/crear-preferencia-pro', body);
