@@ -33,6 +33,7 @@ class CandidatosVacanteScreen extends StatefulWidget {
 class _CandidatosVacanteScreenState extends State<CandidatosVacanteScreen> {
   bool _isLoading = true;
   bool _sortByMatch = true;
+  String? _errorMessage;
   List<Map<String, dynamic>> _candidatos = [];
 
   List<Map<String, dynamic>> get _sortedCandidatos {
@@ -54,7 +55,10 @@ class _CandidatosVacanteScreenState extends State<CandidatosVacanteScreen> {
   }
 
   Future<void> _cargarPostulaciones() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
     try {
       final repo = context.read<PostulacionesProvider>();
       final postulaciones = await repo.listarPorVacante(widget.vacante.id);
@@ -96,8 +100,9 @@ class _CandidatosVacanteScreenState extends State<CandidatosVacanteScreen> {
           'candidato_cv_text': p.candidatoCvText,
         };
       }).toList();
-    } catch (_) {
+    } catch (e) {
       _candidatos = [];
+      _errorMessage = e.toString();
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -505,9 +510,13 @@ class _CandidatosVacanteScreenState extends State<CandidatosVacanteScreen> {
       backgroundColor: kBg,
       body: Stack(
         children: [
-          CustomScrollView(
-            slivers: [
-              SliverAppBar(
+          RefreshIndicator(
+            onRefresh: _cargarPostulaciones,
+            color: kBlue,
+            child: CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                SliverAppBar(
                 expandedHeight: 220,
                 pinned: false,
                 backgroundColor: Colors.transparent,
@@ -710,24 +719,47 @@ class _CandidatosVacanteScreenState extends State<CandidatosVacanteScreen> {
                           Container(
                             padding: const EdgeInsets.all(22),
                             decoration: BoxDecoration(
-                              color: kBlue.withValues(alpha: 0.1),
+                              color: (_errorMessage != null ? Colors.redAccent : kBlue).withValues(alpha: 0.1),
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(Icons.people_outline, size: 56, color: kBlue),
+                            child: Icon(
+                              _errorMessage != null ? Icons.error_outline_rounded : Icons.people_outline,
+                              size: 56,
+                              color: _errorMessage != null ? Colors.redAccent : kBlue,
+                            ),
                           ),
                           const SizedBox(height: 20),
                           Text(
-                            isEs ? 'Aún no hay postulaciones' : 'No applications yet',
+                            _errorMessage != null
+                                ? (isEs ? 'Error al cargar candidatos' : 'Error loading candidates')
+                                : (isEs ? 'Aún no hay postulaciones' : 'No applications yet'),
                             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: kNavy),
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            isEs
-                                ? 'Los candidatos que se postulen a esta vacante aparecerán aquí con sus datos y compatibilidad.'
-                                : 'Candidates who apply to this vacancy will appear here with profile and match info.',
+                            _errorMessage != null
+                                ? (isEs
+                                    ? 'No se pudo sincronizar la lista de candidatos. Desliza hacia abajo o presiona el botón para reintentar.'
+                                    : 'Could not sync candidate list. Pull down or tap the button to retry.')
+                                : (isEs
+                                    ? 'Los candidatos que se postulen a esta vacante aparecerán aquí con sus datos y compatibilidad.'
+                                    : 'Candidates who apply to this vacancy will appear here with profile and match info.'),
                             textAlign: TextAlign.center,
                             style: const TextStyle(fontSize: 13, color: kMuted, height: 1.4),
                           ),
+                          if (_errorMessage != null) ...[
+                            const SizedBox(height: 20),
+                            ElevatedButton.icon(
+                              onPressed: _cargarPostulaciones,
+                              icon: const Icon(Icons.refresh_rounded, size: 18),
+                              label: Text(isEs ? 'Reintentar' : 'Retry'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: kBlue,
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -761,6 +793,7 @@ class _CandidatosVacanteScreenState extends State<CandidatosVacanteScreen> {
                   ),
                 ),
             ],
+          ),
           ),
 
           Positioned(
