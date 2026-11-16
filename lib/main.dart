@@ -43,6 +43,14 @@ void main() async {
   await initializeDateFormatting('es', null);
   await initializeDateFormatting('en', null);
 
+  // Manejo elegante y defensivo de errores de renderizado para evitar franjas amarillas en producción
+  ErrorWidget.builder = (FlutterErrorDetails details) {
+    if (kReleaseMode) {
+      return const SizedBox.shrink();
+    }
+    return ErrorWidget(details.exception);
+  };
+
   if (kSentryDsn.isNotEmpty) {
     await SentryFlutter.init(
       (options) {
@@ -160,6 +168,20 @@ class _TalentMatchAppState extends State<TalentMatchApp> {
             localizationsDelegates: AppLocalizations.localizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,
             navigatorObservers: [SentryNavigatorObserver()],
+            builder: (context, widget) {
+              final mediaQuery = MediaQuery.of(context);
+              return MediaQuery(
+                // Limita el factor de escala de fuente entre 0.85 y 1.15x
+                // para mantener accesibilidad sin desbordar layouts en pantallas pequeñas
+                data: mediaQuery.copyWith(
+                  textScaler: mediaQuery.textScaler.clamp(
+                    minScaleFactor: 0.85,
+                    maxScaleFactor: 1.15,
+                  ),
+                ),
+                child: widget ?? const SizedBox.shrink(),
+              );
+            },
             home: child,
           );
         },

@@ -178,9 +178,13 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
                                       children: [
                                         const Icon(Icons.location_on, color: Colors.white70, size: 12),
                                         const SizedBox(width: 4),
-                                        Text(
-                                          vacante.ubicacionLocalized(isEs),
-                                          style: const TextStyle(color: Colors.white70, fontSize: 13),
+                                        Expanded(
+                                          child: Text(
+                                            vacante.ubicacionLocalized(isEs),
+                                            style: const TextStyle(color: Colors.white70, fontSize: 13),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
                                         ),
                                       ],
                                     ),
@@ -414,9 +418,13 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
                             children: [
                               const Icon(Icons.auto_awesome, size: 12, color: kBlue),
                               const SizedBox(width: 5),
-                              Text(
-                                isEs ? 'Traducido por TalentMatch IA' : 'Translated by TalentMatch AI',
-                                style: const TextStyle(fontSize: 11, color: kBlue, fontWeight: FontWeight.w600),
+                              Expanded(
+                                child: Text(
+                                  isEs ? 'Traducido por TalentMatch IA' : 'Translated by TalentMatch AI',
+                                  style: const TextStyle(fontSize: 11, color: kBlue, fontWeight: FontWeight.w600),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
                             ],
                           ),
@@ -450,9 +458,11 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
                               child: const Icon(Icons.star_outline_rounded, color: kBlue, size: 16),
                             ),
                             const SizedBox(width: 10),
-                            Text(
-                              isEs ? 'Requisitos' : 'Requirements',
-                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: kNavy),
+                            Expanded(
+                              child: Text(
+                                isEs ? 'Requisitos' : 'Requirements',
+                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: kNavy),
+                              ),
                             ),
                           ],
                         ),

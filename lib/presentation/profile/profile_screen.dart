@@ -399,9 +399,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 children: [
                   const Icon(Icons.language, color: kBlue, size: 24),
                   const SizedBox(width: 10),
-                  Text(
-                    l10n.profileSelectLanguageTitle,
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: kNavy),
+                  Expanded(
+                    child: Text(
+                      l10n.profileSelectLanguageTitle,
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: kNavy),
+                    ),
                   ),
                 ],
               ),

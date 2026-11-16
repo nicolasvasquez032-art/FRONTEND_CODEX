@@ -968,7 +968,12 @@ class _CandidatoCard extends StatelessWidget {
                           ],
                         ),
                         const SizedBox(height: 4),
-                        Text(candidato['profesion'] ?? '', style: const TextStyle(fontSize: 13, color: kMuted, fontWeight: FontWeight.w500)),
+                        Text(
+                          candidato['profesion'] ?? '',
+                          style: const TextStyle(fontSize: 13, color: kMuted, fontWeight: FontWeight.w500),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                         const SizedBox(height: 10),
                         Row(
                           children: [
