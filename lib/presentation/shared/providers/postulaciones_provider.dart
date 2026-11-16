@@ -193,10 +193,6 @@ class PostulacionesProvider extends ChangeNotifier {
   // ─────────────────────────────────────────────
 
   Future<List<Postulacion>> listarPorVacante(String vacanteId) async {
-    try {
-      return await _repo.listarPostulacionesVacante(vacanteId);
-    } catch (_) {
-      return [];
-    }
+    return await _repo.listarPostulacionesVacante(vacanteId);
   }
 }

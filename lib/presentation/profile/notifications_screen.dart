@@ -497,26 +497,54 @@ class _NotificationCard extends StatelessWidget {
     }
   }
 
+  String? _normalizarCvUrl(String? rawUrl) {
+    if (rawUrl == null || rawUrl.trim().isEmpty) return null;
+    final trimmed = rawUrl.trim();
+    if (trimmed.startsWith('http://localhost') || trimmed.startsWith('http://127.0.0.1')) {
+      final uri = Uri.parse(trimmed);
+      return '$kBaseUrl${uri.path}${uri.hasQuery ? '?${uri.query}' : ''}';
+    }
+    if (trimmed.startsWith('/')) {
+      return '$kBaseUrl$trimmed';
+    }
+    if (trimmed.startsWith('cvs/')) {
+      final fileName = trimmed.split('/').last;
+      return '$kBaseUrl/api/v1/cvs/download/$fileName';
+    }
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      return trimmed;
+    }
+    return null;
+  }
+
   Future<void> _descargarCvDesdeNotificacion(BuildContext context, String candidateId) async {
     final isEs = context.read<LocaleProvider>().isSpanish;
     try {
       final client = ApiClient(SecureStorage());
       final res = await client.get('/perfiles/$candidateId/cv-url');
-      final fetchedUrl = res['cv_url']?.toString();
+      final fetchedUrl = _normalizarCvUrl(res['cv_url']?.toString());
       final fetchedText = res['cv_text']?.toString();
       final candName = res['full_name']?.toString() ?? 'Candidato';
 
-      if (fetchedUrl != null && fetchedUrl.isNotEmpty && (fetchedUrl.startsWith('http://') || fetchedUrl.startsWith('https://'))) {
+      if (fetchedUrl != null && fetchedUrl.isNotEmpty) {
         final uri = Uri.parse(fetchedUrl);
-        if (await canLaunchUrl(uri)) {
+        try {
           await launchUrl(uri, mode: LaunchMode.externalApplication);
+          if (context.mounted) {
+            AppToast.success(
+              context,
+              isEs ? 'Abriendo documento PDF...' : 'Opening PDF document...',
+            );
+          }
           return;
+        } catch (_) {
+          // Si falla abrir directo, muestra el modal con el texto y la opción de descarga
         }
       }
 
       if (fetchedText != null && fetchedText.trim().isNotEmpty) {
         if (context.mounted) {
-          _mostrarModalCvTexto(context, candName, fetchedText);
+          _mostrarModalCvTexto(context, candName, fetchedText, fetchedUrl);
         }
         return;
       }
@@ -539,14 +567,15 @@ class _NotificationCard extends StatelessWidget {
     }
   }
 
-  void _mostrarModalCvTexto(BuildContext context, String candidateName, String cvText) {
+  void _mostrarModalCvTexto(BuildContext context, String candidateName, String cvText, [String? cvUrl]) {
     final isEs = context.read<LocaleProvider>().isSpanish;
+    final hasPdf = cvUrl != null && cvUrl.isNotEmpty;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => DraggableScrollableSheet(
-        initialChildSize: 0.75,
+        initialChildSize: 0.8,
         maxChildSize: 0.95,
         minChildSize: 0.45,
         builder: (_, scrollController) => Container(
@@ -601,6 +630,45 @@ class _NotificationCard extends StatelessWidget {
                   ),
                 ],
               ),
+              if (hasPdf) ...[
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () async {
+                      final uri = Uri.parse(cvUrl);
+                      try {
+                        await launchUrl(uri, mode: LaunchMode.externalApplication);
+                        if (context.mounted) {
+                          AppToast.success(
+                            context,
+                            isEs ? 'Abriendo documento PDF...' : 'Opening PDF document...',
+                          );
+                        }
+                      } catch (_) {
+                        if (context.mounted) {
+                          AppToast.error(
+                            context,
+                            isEs ? 'No se pudo abrir el enlace de descarga' : 'Could not open download link',
+                          );
+                        }
+                      }
+                    },
+                    icon: const Icon(Icons.file_download_outlined, size: 20),
+                    label: Text(
+                      isEs ? 'Descargar Archivo PDF Original' : 'Download Original PDF File',
+                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: kBlue,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ),
+              ],
               const Divider(height: 24),
               Expanded(
                 child: SingleChildScrollView(

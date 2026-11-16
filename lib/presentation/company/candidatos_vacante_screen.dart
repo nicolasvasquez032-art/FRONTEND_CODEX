@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -33,6 +34,7 @@ class CandidatosVacanteScreen extends StatefulWidget {
 class _CandidatosVacanteScreenState extends State<CandidatosVacanteScreen> {
   bool _isLoading = true;
   bool _sortByMatch = true;
+  String? _errorMessage;
   List<Map<String, dynamic>> _candidatos = [];
 
   List<Map<String, dynamic>> get _sortedCandidatos {
@@ -54,7 +56,10 @@ class _CandidatosVacanteScreenState extends State<CandidatosVacanteScreen> {
   }
 
   Future<void> _cargarPostulaciones() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
     try {
       final repo = context.read<PostulacionesProvider>();
       final postulaciones = await repo.listarPorVacante(widget.vacante.id);
@@ -96,8 +101,9 @@ class _CandidatosVacanteScreenState extends State<CandidatosVacanteScreen> {
           'candidato_cv_text': p.candidatoCvText,
         };
       }).toList();
-    } catch (_) {
+    } catch (e) {
       _candidatos = [];
+      _errorMessage = e.toString();
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -352,77 +358,337 @@ class _CandidatosVacanteScreenState extends State<CandidatosVacanteScreen> {
     }
   }
 
+  String? _normalizarCvUrl(String? rawUrl) {
+    if (rawUrl == null || rawUrl.trim().isEmpty) return null;
+    final trimmed = rawUrl.trim();
+    if (trimmed.startsWith('http://localhost') || trimmed.startsWith('http://127.0.0.1')) {
+      final uri = Uri.parse(trimmed);
+      return '$kBaseUrl${uri.path}${uri.hasQuery ? '?${uri.query}' : ''}';
+    }
+    if (trimmed.startsWith('/')) {
+      return '$kBaseUrl$trimmed';
+    }
+    if (trimmed.startsWith('cvs/')) {
+      final fileName = trimmed.split('/').last;
+      return '$kBaseUrl/api/v1/cvs/download/$fileName';
+    }
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      return trimmed;
+    }
+    return null;
+  }
+
   Future<void> _descargarCvCandidato(Map<String, dynamic> cand) async {
-    final isEs = context.read<LocaleProvider>().isSpanish;
-    final candName = cand['nombre']?.toString() ?? 'Candidato';
-    final cvUrl = cand['candidato_cv_url']?.toString() ?? cand['cv_url']?.toString();
-    final cvText = cand['candidato_cv_text']?.toString() ?? cand['cv_text']?.toString();
+    final candName = cand['candidato_nombre']?.toString() ??
+        cand['nombre']?.toString() ??
+        'Candidato';
     final candidateId = cand['candidato_id']?.toString() ?? cand['id']?.toString();
 
-    // 1. Si ya viene una URL directa válida (S3 o web)
-    if (cvUrl != null && cvUrl.isNotEmpty && (cvUrl.startsWith('http://') || cvUrl.startsWith('https://'))) {
-      final uri = Uri.parse(cvUrl);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-        return;
-      }
-    }
+    // Resolver URL directa si ya viene en el payload
+    String? cvUrl = _normalizarCvUrl(cand['candidato_cv_url']?.toString() ?? cand['cv_url']?.toString());
+    String? cvText = cand['candidato_cv_text']?.toString() ?? cand['cv_text']?.toString();
 
-    // 2. Intentar consultar endpoint GET /perfiles/{candidateId}/cv-url para obtener link S3 firmado o extracto
-    if (candidateId != null && candidateId.isNotEmpty) {
+    // Si aún no tenemos la URL completa de descarga o el extracto, consultamos el backend
+    if ((cvUrl == null || cvText == null) && candidateId != null && candidateId.isNotEmpty) {
       try {
         final client = ApiClient(SecureStorage());
         final res = await client.get('/perfiles/$candidateId/cv-url');
-        final fetchedUrl = res['cv_url']?.toString();
+        final fetchedUrl = _normalizarCvUrl(res['cv_url']?.toString());
         final fetchedText = res['cv_text']?.toString();
-
-        if (fetchedUrl != null && fetchedUrl.isNotEmpty && (fetchedUrl.startsWith('http://') || fetchedUrl.startsWith('https://'))) {
-          final uri = Uri.parse(fetchedUrl);
-          if (await canLaunchUrl(uri)) {
-            await launchUrl(uri, mode: LaunchMode.externalApplication);
-            return;
-          }
-        }
-
-        if (fetchedText != null && fetchedText.trim().isNotEmpty) {
-          if (mounted) {
-            _mostrarModalCvTexto(candName, fetchedText);
-          }
-          return;
-        }
-      } catch (_) {
-        // En caso de que falle la petición continúa con fallbacks
+        if (fetchedUrl != null && fetchedUrl.isNotEmpty) cvUrl = fetchedUrl;
+        if (fetchedText != null && fetchedText.isNotEmpty) cvText = fetchedText;
+      } catch (e) {
+        debugPrint('Error al consultar CV del candidato: $e');
       }
     }
 
-    // 3. Fallback: Si hay extracto de texto parseado por IA
-    if (cvText != null && cvText.trim().isNotEmpty) {
-      if (mounted) {
-        _mostrarModalCvTexto(candName, cvText);
-      }
-      return;
-    }
+    if (!mounted) return;
 
-    if (mounted) {
-      AppToast.info(
-        context,
-        isEs
-            ? 'El candidato $candName tiene perfil digital verificado pero no adjuntó un documento PDF descargable.'
-            : 'Candidate $candName has a verified digital profile but no attached downloadable PDF.',
-      );
-    }
+    _mostrarModalOpcionesCv(
+      candidateName: candName,
+      cvUrl: cvUrl,
+      cvText: cvText,
+    );
   }
 
-  void _mostrarModalCvTexto(String candidateName, String cvText) {
+  void _mostrarModalOpcionesCv({
+    required String candidateName,
+    required String? cvUrl,
+    required String? cvText,
+  }) {
     final isEs = context.read<LocaleProvider>().isSpanish;
+    final hasPdf = cvUrl != null && cvUrl.isNotEmpty;
+    final hasText = cvText != null && cvText.trim().isNotEmpty;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Row(
+                children: [
+                  Container(
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(
+                      color: kBlue.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Icon(Icons.description_rounded, color: kBlue, size: 24),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          isEs ? 'Currículum Vitae' : 'Curriculum Vitae',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: kNavy),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          candidateName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(color: kMuted, fontSize: 13),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(ctx),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+
+              // Opción 1: Descargar archivo PDF
+              InkWell(
+                onTap: hasPdf
+                    ? () async {
+                        Navigator.pop(ctx);
+                        final uri = Uri.parse(cvUrl);
+                        try {
+                          await launchUrl(uri, mode: LaunchMode.externalApplication);
+                          if (mounted) {
+                            AppToast.success(
+                              context,
+                              isEs ? 'Abriendo documento PDF...' : 'Opening PDF document...',
+                            );
+                          }
+                        } catch (_) {
+                          if (mounted) {
+                            AppToast.error(
+                              context,
+                              isEs ? 'No se pudo abrir el enlace de descarga' : 'Could not open download link',
+                            );
+                          }
+                        }
+                      }
+                    : null,
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: hasPdf ? kBlue.withValues(alpha: 0.06) : Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: hasPdf ? kBlue.withValues(alpha: 0.3) : Colors.grey.shade300,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: hasPdf ? kBlue : Colors.grey.shade400,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Icons.file_download_rounded, color: Colors.white, size: 22),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              isEs ? 'Descargar Documento PDF' : 'Download PDF Document',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                                color: hasPdf ? kNavy : Colors.grey.shade600,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              hasPdf
+                                  ? (isEs
+                                      ? 'Abrir o descargar el archivo original en tu celular'
+                                      : 'Open or download the original file on your phone')
+                                  : (isEs
+                                      ? 'El candidato no adjuntó archivo PDF descargable'
+                                      : 'Candidate did not attach a downloadable PDF'),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: hasPdf ? kMuted : Colors.grey.shade500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        color: hasPdf ? kBlue : Colors.grey.shade400,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              // Opción 2: Ver extracto de texto parseado por IA
+              InkWell(
+                onTap: hasText
+                    ? () {
+                        Navigator.pop(ctx);
+                        _mostrarModalCvTexto(candidateName, cvText, cvUrl);
+                      }
+                    : null,
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: hasText ? const Color(0xFFF8FAFC) : Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: hasText ? kLine : Colors.grey.shade300,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: hasText ? const Color(0xFF6366F1) : Colors.grey.shade400,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 22),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              isEs ? 'Ver Extracto de Texto IA' : 'View AI Text Summary',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                                color: hasText ? kNavy : Colors.grey.shade600,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              hasText
+                                  ? (isEs
+                                      ? 'Leer el texto analizado por la Inteligencia Artificial'
+                                      : 'Read the text parsed by Artificial Intelligence')
+                                  : (isEs
+                                      ? 'Sin extracto de texto disponible'
+                                      : 'No text summary available'),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: hasText ? kMuted : Colors.grey.shade500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        color: hasText ? const Color(0xFF6366F1) : Colors.grey.shade400,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              if (hasPdf) ...[
+                const SizedBox(height: 12),
+                // Opción 3: Copiar enlace
+                InkWell(
+                  onTap: () {
+                    Clipboard.setData(ClipboardData(text: cvUrl));
+                    Navigator.pop(ctx);
+                    AppToast.success(
+                      context,
+                      isEs ? 'Enlace del CV copiado al portapapeles' : 'CV link copied to clipboard',
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: kLine),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.link_rounded, color: kNavy, size: 20),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            isEs ? 'Copiar enlace directo de descarga' : 'Copy direct download link',
+                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: kNavy),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _mostrarModalCvTexto(String candidateName, String cvText, [String? cvUrl]) {
+    final isEs = context.read<LocaleProvider>().isSpanish;
+    final hasPdf = cvUrl != null && cvUrl.isNotEmpty;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => DraggableScrollableSheet(
-        initialChildSize: 0.75,
+        initialChildSize: 0.8,
         maxChildSize: 0.95,
-        minChildSize: 0.45,
+        minChildSize: 0.5,
         builder: (_, scrollController) => Container(
           decoration: const BoxDecoration(
             color: Colors.white,
@@ -464,6 +730,8 @@ class _CandidatosVacanteScreenState extends State<CandidatosVacanteScreen> {
                         ),
                         Text(
                           candidateName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(color: kMuted, fontSize: 13),
                         ),
                       ],
@@ -475,6 +743,45 @@ class _CandidatosVacanteScreenState extends State<CandidatosVacanteScreen> {
                   ),
                 ],
               ),
+              if (hasPdf) ...[
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () async {
+                      final uri = Uri.parse(cvUrl);
+                      try {
+                        await launchUrl(uri, mode: LaunchMode.externalApplication);
+                        if (mounted) {
+                          AppToast.success(
+                            context,
+                            isEs ? 'Abriendo documento PDF...' : 'Opening PDF document...',
+                          );
+                        }
+                      } catch (_) {
+                        if (mounted) {
+                          AppToast.error(
+                            context,
+                            isEs ? 'No se pudo abrir el enlace de descarga' : 'Could not open download link',
+                          );
+                        }
+                      }
+                    },
+                    icon: const Icon(Icons.file_download_outlined, size: 20),
+                    label: Text(
+                      isEs ? 'Descargar Archivo PDF Original' : 'Download Original PDF File',
+                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: kBlue,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ),
+              ],
               const Divider(height: 24),
               Expanded(
                 child: SingleChildScrollView(
@@ -505,9 +812,13 @@ class _CandidatosVacanteScreenState extends State<CandidatosVacanteScreen> {
       backgroundColor: kBg,
       body: Stack(
         children: [
-          CustomScrollView(
-            slivers: [
-              SliverAppBar(
+          RefreshIndicator(
+            onRefresh: _cargarPostulaciones,
+            color: kBlue,
+            child: CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                SliverAppBar(
                 expandedHeight: 220,
                 pinned: false,
                 backgroundColor: Colors.transparent,
@@ -710,24 +1021,47 @@ class _CandidatosVacanteScreenState extends State<CandidatosVacanteScreen> {
                           Container(
                             padding: const EdgeInsets.all(22),
                             decoration: BoxDecoration(
-                              color: kBlue.withValues(alpha: 0.1),
+                              color: (_errorMessage != null ? Colors.redAccent : kBlue).withValues(alpha: 0.1),
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(Icons.people_outline, size: 56, color: kBlue),
+                            child: Icon(
+                              _errorMessage != null ? Icons.error_outline_rounded : Icons.people_outline,
+                              size: 56,
+                              color: _errorMessage != null ? Colors.redAccent : kBlue,
+                            ),
                           ),
                           const SizedBox(height: 20),
                           Text(
-                            isEs ? 'Aún no hay postulaciones' : 'No applications yet',
+                            _errorMessage != null
+                                ? (isEs ? 'Error al cargar candidatos' : 'Error loading candidates')
+                                : (isEs ? 'Aún no hay postulaciones' : 'No applications yet'),
                             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: kNavy),
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            isEs
-                                ? 'Los candidatos que se postulen a esta vacante aparecerán aquí con sus datos y compatibilidad.'
-                                : 'Candidates who apply to this vacancy will appear here with profile and match info.',
+                            _errorMessage != null
+                                ? (isEs
+                                    ? 'No se pudo sincronizar la lista de candidatos. Desliza hacia abajo o presiona el botón para reintentar.'
+                                    : 'Could not sync candidate list. Pull down or tap the button to retry.')
+                                : (isEs
+                                    ? 'Los candidatos que se postulen a esta vacante aparecerán aquí con sus datos y compatibilidad.'
+                                    : 'Candidates who apply to this vacancy will appear here with profile and match info.'),
                             textAlign: TextAlign.center,
                             style: const TextStyle(fontSize: 13, color: kMuted, height: 1.4),
                           ),
+                          if (_errorMessage != null) ...[
+                            const SizedBox(height: 20),
+                            ElevatedButton.icon(
+                              onPressed: _cargarPostulaciones,
+                              icon: const Icon(Icons.refresh_rounded, size: 18),
+                              label: Text(isEs ? 'Reintentar' : 'Retry'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: kBlue,
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -761,6 +1095,7 @@ class _CandidatosVacanteScreenState extends State<CandidatosVacanteScreen> {
                   ),
                 ),
             ],
+          ),
           ),
 
           Positioned(
@@ -968,7 +1303,12 @@ class _CandidatoCard extends StatelessWidget {
                           ],
                         ),
                         const SizedBox(height: 4),
-                        Text(candidato['profesion'] ?? '', style: const TextStyle(fontSize: 13, color: kMuted, fontWeight: FontWeight.w500)),
+                        Text(
+                          candidato['profesion'] ?? '',
+                          style: const TextStyle(fontSize: 13, color: kMuted, fontWeight: FontWeight.w500),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                         const SizedBox(height: 10),
                         Row(
                           children: [
@@ -1145,25 +1485,35 @@ class _CandidatoCard extends StatelessWidget {
             // Botón Ver / Descargar CV
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 10, 12, 2),
-              child: SizedBox(
-                width: double.infinity,
-                height: 38,
-                child: OutlinedButton.icon(
-                  onPressed: onDescargarCv,
-                  icon: const Icon(Icons.file_download_outlined, size: 18, color: kBlue),
-                  label: Text(
-                    isEs ? 'Ver / Descargar CV del Candidato' : 'View / Download Candidate CV',
-                    style: const TextStyle(
-                      color: kBlue,
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w700,
+              child: OutlinedButton(
+                onPressed: onDescargarCv,
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 46),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  side: BorderSide(color: kBlue.withValues(alpha: 0.4), width: 1.2),
+                  backgroundColor: kBlue.withValues(alpha: 0.05),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.file_download_outlined, size: 20, color: kBlue),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        isEs ? 'Ver / Descargar CV del Candidato' : 'View / Download Candidate CV',
+                        style: const TextStyle(
+                          color: kBlue,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          height: 1.25,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    side: BorderSide(color: kBlue.withValues(alpha: 0.35), width: 1.2),
-                    backgroundColor: kBlue.withValues(alpha: 0.04),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
+                  ],
                 ),
               ),
             ),
