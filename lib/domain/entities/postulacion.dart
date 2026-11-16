@@ -36,6 +36,8 @@ class Postulacion {
   final double? vacanteSalarioMax;
   final String? vacanteDescripcion;
   final List<String>? vacanteRequisitos;
+  final String? candidatoCvUrl;
+  final String? candidatoCvText;
 
   const Postulacion({
     required this.id,
@@ -60,5 +62,7 @@ class Postulacion {
     this.vacanteSalarioMax,
     this.vacanteDescripcion,
     this.vacanteRequisitos,
+    this.candidatoCvUrl,
+    this.candidatoCvText,
   });
 }

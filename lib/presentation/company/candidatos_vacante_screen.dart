@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/network/api_client.dart';
@@ -91,6 +92,8 @@ class _CandidatosVacanteScreenState extends State<CandidatosVacanteScreen> {
           'location': p.candidatoLocation ?? 'Colombia',
           'experiencia': p.candidatoExperienceYears ?? 0,
           'phone': p.candidatoPhone,
+          'candidato_cv_url': p.candidatoCvUrl,
+          'candidato_cv_text': p.candidatoCvText,
         };
       }).toList();
     } catch (_) {
@@ -349,6 +352,150 @@ class _CandidatosVacanteScreenState extends State<CandidatosVacanteScreen> {
     }
   }
 
+  Future<void> _descargarCvCandidato(Map<String, dynamic> cand) async {
+    final isEs = context.read<LocaleProvider>().isSpanish;
+    final candName = cand['nombre']?.toString() ?? 'Candidato';
+    final cvUrl = cand['candidato_cv_url']?.toString() ?? cand['cv_url']?.toString();
+    final cvText = cand['candidato_cv_text']?.toString() ?? cand['cv_text']?.toString();
+    final candidateId = cand['candidato_id']?.toString() ?? cand['id']?.toString();
+
+    // 1. Si ya viene una URL directa válida (S3 o web)
+    if (cvUrl != null && cvUrl.isNotEmpty && (cvUrl.startsWith('http://') || cvUrl.startsWith('https://'))) {
+      final uri = Uri.parse(cvUrl);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+        return;
+      }
+    }
+
+    // 2. Intentar consultar endpoint GET /perfiles/{candidateId}/cv-url para obtener link S3 firmado o extracto
+    if (candidateId != null && candidateId.isNotEmpty) {
+      try {
+        final client = ApiClient(SecureStorage());
+        final res = await client.get('/perfiles/$candidateId/cv-url');
+        final fetchedUrl = res['cv_url']?.toString();
+        final fetchedText = res['cv_text']?.toString();
+
+        if (fetchedUrl != null && fetchedUrl.isNotEmpty && (fetchedUrl.startsWith('http://') || fetchedUrl.startsWith('https://'))) {
+          final uri = Uri.parse(fetchedUrl);
+          if (await canLaunchUrl(uri)) {
+            await launchUrl(uri, mode: LaunchMode.externalApplication);
+            return;
+          }
+        }
+
+        if (fetchedText != null && fetchedText.trim().isNotEmpty) {
+          if (mounted) {
+            _mostrarModalCvTexto(candName, fetchedText);
+          }
+          return;
+        }
+      } catch (_) {
+        // En caso de que falle la petición continúa con fallbacks
+      }
+    }
+
+    // 3. Fallback: Si hay extracto de texto parseado por IA
+    if (cvText != null && cvText.trim().isNotEmpty) {
+      if (mounted) {
+        _mostrarModalCvTexto(candName, cvText);
+      }
+      return;
+    }
+
+    if (mounted) {
+      AppToast.info(
+        context,
+        isEs
+            ? 'El candidato $candName tiene perfil digital verificado pero no adjuntó un documento PDF descargable.'
+            : 'Candidate $candName has a verified digital profile but no attached downloadable PDF.',
+      );
+    }
+  }
+
+  void _mostrarModalCvTexto(String candidateName, String cvText) {
+    final isEs = context.read<LocaleProvider>().isSpanish;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.75,
+        maxChildSize: 0.95,
+        minChildSize: 0.45,
+        builder: (_, scrollController) => Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: kBlue.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.description_rounded, color: kBlue, size: 24),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          isEs ? 'Currículum Vitae (Extracto IA)' : 'Curriculum Vitae (AI Summary)',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: kNavy),
+                        ),
+                        Text(
+                          candidateName,
+                          style: const TextStyle(color: kMuted, fontSize: 13),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(ctx),
+                  ),
+                ],
+              ),
+              const Divider(height: 24),
+              Expanded(
+                child: SingleChildScrollView(
+                  controller: scrollController,
+                  child: SelectableText(
+                    cvText,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF334155),
+                      height: 1.5,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isEs = context.watch<LocaleProvider>().isSpanish;
@@ -604,6 +751,7 @@ class _CandidatosVacanteScreenState extends State<CandidatosVacanteScreen> {
                               isPremium: isPremium,
                               onContactar: () => _contactarPerfil(cand),
                               onDescartar: () => _descartarCandidato(cand),
+                              onDescargarCv: () => _descargarCvCandidato(cand),
                             ),
                           ),
                         );
@@ -651,6 +799,7 @@ class _CandidatoCard extends StatelessWidget {
   final bool isPremium;
   final VoidCallback onContactar;
   final VoidCallback onDescartar;
+  final VoidCallback? onDescargarCv;
 
   const _CandidatoCard({
     required this.candidato,
@@ -658,6 +807,7 @@ class _CandidatoCard extends StatelessWidget {
     this.isPremium = false,
     required this.onContactar,
     required this.onDescartar,
+    this.onDescargarCv,
   });
 
   @override
@@ -989,6 +1139,32 @@ class _CandidatoCard extends StatelessWidget {
                     ),
                   );
                 }).toList(),
+              ),
+            ),
+
+            // Botón Ver / Descargar CV
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 2),
+              child: SizedBox(
+                width: double.infinity,
+                height: 38,
+                child: OutlinedButton.icon(
+                  onPressed: onDescargarCv,
+                  icon: const Icon(Icons.file_download_outlined, size: 18, color: kBlue),
+                  label: Text(
+                    isEs ? 'Ver / Descargar CV del Candidato' : 'View / Download Candidate CV',
+                    style: const TextStyle(
+                      color: kBlue,
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(color: kBlue.withValues(alpha: 0.35), width: 1.2),
+                    backgroundColor: kBlue.withValues(alpha: 0.04),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
               ),
             ),
 

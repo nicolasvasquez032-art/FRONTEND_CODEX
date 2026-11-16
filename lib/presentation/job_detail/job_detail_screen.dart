@@ -509,6 +509,12 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
         yaPostulado: yaPostulado,
         candidatoId: session?.profileId ?? '',
         isSpanish: isEs,
+        matchScore: MatchBreakdownData.calculate(
+          vacante: vacante,
+          profile: candidateProfile,
+          recomendacionML: recomendacionML,
+          isSpanish: isEs,
+        ).matchPercent,
         onSuccess: () => _confettiController.play(),
       ),
     ),
@@ -536,6 +542,7 @@ class _PostularseBar extends StatelessWidget {
   final bool yaPostulado;
   final String candidatoId;
   final bool isSpanish;
+  final int matchScore;
   final VoidCallback onSuccess;
 
   const _PostularseBar({
@@ -543,10 +550,17 @@ class _PostularseBar extends StatelessWidget {
     required this.yaPostulado,
     required this.candidatoId,
     this.isSpanish = true,
+    this.matchScore = 75,
     required this.onSuccess,
   });
 
   Future<void> _postularse(BuildContext context) async {
+    // 0. Validar afinidad mínima generada por IA (mínimo 50%, no se puede postular si es <= 49%)
+    if (matchScore <= 49) {
+      _mostrarDialogoAfinidadBaja(context);
+      return;
+    }
+
     if (candidatoId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(isSpanish ? 'Completa tu perfil antes de postularte.' : 'Complete your profile before applying.')),
@@ -765,6 +779,8 @@ class _PostularseBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool canApply = matchScore >= 50;
+
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.only(left: 20, right: 20, bottom: 20),
@@ -777,9 +793,109 @@ class _PostularseBar extends StatelessWidget {
             duration: const Duration(milliseconds: 300),
             child: yaPostulado
                 ? _doneButton()
-                : _applyButton(context),
+                : (canApply ? _applyButton(context) : _insufficientMatchButton(context)),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _insufficientMatchButton(BuildContext context) => SizedBox(
+        width: double.infinity,
+        height: 56,
+        key: const ValueKey('insufficient_match'),
+        child: InkWell(
+          onTap: () => _mostrarDialogoAfinidadBaja(context),
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1E293B),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.amber.withValues(alpha: 0.6), width: 1.4),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.amber.withValues(alpha: 0.15),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.lock_clock_outlined, color: Colors.amber, size: 22),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      isSpanish
+                          ? 'Afinidad insuficiente ($matchScore%) • Mínimo 50%'
+                          : 'Insufficient AI Match ($matchScore%) • Min 50%',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                const Icon(Icons.info_outline, color: Colors.amber, size: 17),
+              ],
+            ),
+          ),
+        ),
+      );
+
+  void _mostrarDialogoAfinidadBaja(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.amber.withValues(alpha: 0.15),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.auto_awesome, color: Colors.amber, size: 24),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                isSpanish ? 'Afinidad Mínima Requerida' : 'Minimum Match Required',
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: kNavy),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              isSpanish
+                  ? 'Tu compatibilidad calculada por IA para esta vacante es del $matchScore%.\n\nLa empresa requiere un mínimo de 50% de afinidad técnica para recibir postulaciones.\n\nTe sugerimos revisar las competencias en la sección "Por potenciar" de esta vacante y agregarlas a tu perfil una vez las adquieras.'
+                  : 'Your AI compatibility for this job is $matchScore%.\n\nThe company requires at least 50% match to apply.\n\nPlease review the missing skills in the "To Improve" section and add them to your profile.',
+              style: const TextStyle(fontSize: 13.5, color: kMuted, height: 1.45),
+            ),
+          ],
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx),
+            style: FilledButton.styleFrom(
+              backgroundColor: kNavy,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: Text(isSpanish ? 'Entendido' : 'Understood'),
+          ),
+        ],
       ),
     );
   }

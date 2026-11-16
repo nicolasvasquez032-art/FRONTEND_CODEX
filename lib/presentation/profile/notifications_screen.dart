@@ -3,17 +3,22 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:animate_do/animate_do.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/network/api_client.dart';
+import '../../core/storage/secure_storage.dart';
 import '../../core/utils/format_helper.dart';
 import '../../domain/entities/notificacion.dart';
 import '../applications/applications_screen.dart';
 import '../chat/chat_list_screen.dart';
 import '../chat/chat_screen.dart';
+import '../company/mis_vacantes_screen.dart';
 import '../explore/explore_screen.dart';
 import '../shared/providers/auth_provider.dart';
 import '../shared/providers/chat_provider.dart';
 import '../shared/providers/locale_provider.dart';
 import '../shared/providers/notificaciones_provider.dart';
+import '../shared/widgets/app_toast.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -130,7 +135,10 @@ class _NotificationCard extends StatelessWidget {
   );
 
   static String _cleanEmojis(String text) {
-    return text.replaceAll(_emojiRegex, '').trim();
+    var cleaned = text.replaceAll(_emojiRegex, '').trim();
+    cleaned = cleaned.replaceAll(RegExp(r'\[CANDIDATO_ID:[^\]]+\]'), '').trim();
+    cleaned = cleaned.replaceAll(RegExp(r'\[VACANTE_ID:[^\]]+\]'), '').trim();
+    return cleaned;
   }
 
   @override
@@ -158,7 +166,10 @@ class _NotificationCard extends StatelessWidget {
     } else if (tipo.contains('postulacion')) {
       icon = Icons.fact_check_rounded;
       color = const Color(0xFF0284C7);
-      actionHint = isEs ? 'Ver postulación' : 'View application';
+      final isCompany = context.watch<AuthProvider>().session?.isCompany == true;
+      actionHint = isCompany
+          ? (isEs ? 'Ver / Descargar CV' : 'View / Download CV')
+          : (isEs ? 'Ver postulación' : 'View application');
     } else if (tipo == 'nueva_vacante' || tipo == 'recomendacion' || mensajeLower.contains('vacante')) {
       icon = Icons.auto_awesome_rounded;
       color = const Color(0xFFF59E0B);
@@ -338,8 +349,133 @@ class _NotificationCard extends StatelessWidget {
       return;
     }
 
-    // 2. Notificaciones de postulación -> Ir a Mis Postulaciones
+    // 2. Notificaciones de postulación
     if (tipo.contains('postulacion')) {
+      final isCompany = context.read<AuthProvider>().session?.isCompany == true;
+      if (isCompany) {
+        final candMatch = RegExp(r'\[CANDIDATO_ID:([^\]]+)\]').firstMatch(notificacion.mensaje);
+        final candId = candMatch?.group(1);
+        final isEs = context.read<LocaleProvider>().isSpanish;
+
+        showModalBottomSheet(
+          context: context,
+          backgroundColor: Colors.transparent,
+          isScrollControlled: true,
+          builder: (ctx) => Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.15),
+                  blurRadius: 30,
+                  offset: const Offset(0, -5),
+                ),
+              ],
+            ),
+            child: SafeArea(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF0284C7).withValues(alpha: 0.12),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.description_rounded, color: Color(0xFF0284C7), size: 28),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              isEs ? 'Detalle de Postulación' : 'Application Details',
+                              style: const TextStyle(
+                                color: kNavy,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            Text(
+                              isEs ? 'Candidato postulado a tu vacante' : 'Candidate applied to your job',
+                              style: const TextStyle(color: kMuted, fontSize: 13),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                  Text(
+                    _cleanEmojis(notificacion.mensaje),
+                    style: const TextStyle(
+                      color: Color(0xFF334155),
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w500,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  if (candId != null && candId.isNotEmpty) ...[
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          _descargarCvDesdeNotificacion(context, candId);
+                        },
+                        icon: const Icon(Icons.file_download_outlined, size: 22),
+                        label: Text(
+                          isEs ? 'Descargar / Ver CV del Candidato' : 'Download / View Candidate CV',
+                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: kBlue,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const MisVacantesScreen()),
+                        );
+                      },
+                      icon: const Icon(Icons.work_outline_rounded, size: 20, color: kNavy),
+                      label: Text(
+                        isEs ? 'Ver Mis Vacantes y Candidatos' : 'View My Jobs & Candidates',
+                        style: const TextStyle(color: kNavy, fontWeight: FontWeight.w700, fontSize: 14),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: kLine, width: 1.5),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+        return;
+      }
+
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -359,6 +495,131 @@ class _NotificationCard extends StatelessWidget {
       );
       return;
     }
+  }
+
+  Future<void> _descargarCvDesdeNotificacion(BuildContext context, String candidateId) async {
+    final isEs = context.read<LocaleProvider>().isSpanish;
+    try {
+      final client = ApiClient(SecureStorage());
+      final res = await client.get('/perfiles/$candidateId/cv-url');
+      final fetchedUrl = res['cv_url']?.toString();
+      final fetchedText = res['cv_text']?.toString();
+      final candName = res['full_name']?.toString() ?? 'Candidato';
+
+      if (fetchedUrl != null && fetchedUrl.isNotEmpty && (fetchedUrl.startsWith('http://') || fetchedUrl.startsWith('https://'))) {
+        final uri = Uri.parse(fetchedUrl);
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+          return;
+        }
+      }
+
+      if (fetchedText != null && fetchedText.trim().isNotEmpty) {
+        if (context.mounted) {
+          _mostrarModalCvTexto(context, candName, fetchedText);
+        }
+        return;
+      }
+
+      if (context.mounted) {
+        AppToast.info(
+          context,
+          isEs
+              ? 'El candidato tiene su perfil digital verificado pero no adjuntó archivo PDF descargable.'
+              : 'Candidate has verified digital profile but no attached downloadable PDF.',
+        );
+      }
+    } catch (_) {
+      if (context.mounted) {
+        AppToast.error(
+          context,
+          isEs ? 'No se pudo obtener el CV del candidato' : 'Could not retrieve candidate CV',
+        );
+      }
+    }
+  }
+
+  void _mostrarModalCvTexto(BuildContext context, String candidateName, String cvText) {
+    final isEs = context.read<LocaleProvider>().isSpanish;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.75,
+        maxChildSize: 0.95,
+        minChildSize: 0.45,
+        builder: (_, scrollController) => Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: kBlue.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.description_rounded, color: kBlue, size: 24),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          isEs ? 'Currículum Vitae (Extracto IA)' : 'Curriculum Vitae (AI Summary)',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: kNavy),
+                        ),
+                        Text(
+                          candidateName,
+                          style: const TextStyle(color: kMuted, fontSize: 13),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(ctx),
+                  ),
+                ],
+              ),
+              const Divider(height: 24),
+              Expanded(
+                child: SingleChildScrollView(
+                  controller: scrollController,
+                  child: SelectableText(
+                    cvText,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF334155),
+                      height: 1.5,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   String _formatDate(DateTime date, {bool isSpanish = true}) {

@@ -110,6 +110,13 @@ class _PremiumSubscriptionScreenState extends State<PremiumSubscriptionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final auth = context.watch<AuthProvider>();
+    final isPremium = auth.session?.isEffectivelyPremium == true;
+
+    if (isPremium) {
+      return _buildActivePremiumView(context);
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFF0F172A), // Fondo oscuro súper premium
       body: Stack(
@@ -341,6 +348,370 @@ class _PremiumSubscriptionScreenState extends State<PremiumSubscriptionScreen> {
             )),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Vista exclusiva para cuentas que ya son PRO / Premium
+  Widget _buildActivePremiumView(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF0A0E1A), // Obsidian profunda
+      body: Stack(
+        children: [
+          // Resplandores dorados difusos de lujo
+          Positioned(
+            top: -100,
+            right: -80,
+            child: ImageFiltered(
+              imageFilter: ImageFilter.blur(sigmaX: 90, sigmaY: 90),
+              child: Container(
+                width: 320,
+                height: 320,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: kGold.withValues(alpha: 0.22),
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: -50,
+            left: -80,
+            child: ImageFiltered(
+              imageFilter: ImageFilter.blur(sigmaX: 90, sigmaY: 90),
+              child: Container(
+                width: 280,
+                height: 280,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: kGoldDark.withValues(alpha: 0.18),
+                ),
+              ),
+            ),
+          ),
+
+          SafeArea(
+            child: Column(
+              children: [
+                // Barra superior
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      BouncyTap(
+                        onPressed: () => Navigator.pop(context),
+                        child: Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.08),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.close, color: Colors.white, size: 22),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: kGold.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: kGold.withValues(alpha: 0.4)),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.verified, color: kGoldLight, size: 14),
+                            SizedBox(width: 6),
+                            Text(
+                              'PLAN ACTIVO',
+                              style: TextStyle(
+                                color: kGoldLight,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 1.2,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                Expanded(
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // Cabecera de estado
+                        FadeInDown(
+                          child: Column(
+                            children: [
+                              Container(
+                                width: 72,
+                                height: 72,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  gradient: const LinearGradient(
+                                    colors: [kGoldLight, kGoldDark],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: kGold.withValues(alpha: 0.45),
+                                      blurRadius: 20,
+                                      spreadRadius: 2,
+                                    ),
+                                  ],
+                                ),
+                                child: const Icon(Icons.workspace_premium, color: Colors.white, size: 38),
+                              ),
+                              const SizedBox(height: 18),
+                              const Text(
+                                'Plan Empresa Pro Activo',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 26,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: -0.5,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                'Suscripción corporativa activa con beneficios de IA sin límites.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(color: Colors.white.withValues(alpha: 0.65), fontSize: 14),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 28),
+
+                        // Métricas del plan: Días restantes y Próxima renovación
+                        FadeInUp(
+                          delay: const Duration(milliseconds: 150),
+                          child: Container(
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF131B2E),
+                              borderRadius: BorderRadius.circular(22),
+                              border: Border.all(color: kGold.withValues(alpha: 0.35), width: 1.2),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: kGold.withValues(alpha: 0.08),
+                                  blurRadius: 20,
+                                  offset: const Offset(0, 8),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      width: 10,
+                                      height: 10,
+                                      decoration: const BoxDecoration(
+                                        color: Color(0xFF10B981),
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    const Text(
+                                      'Estado: Activo • Facturación recurrente',
+                                      style: TextStyle(
+                                        color: Color(0xFF10B981),
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 18),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: _buildMetricTile(
+                                        title: 'Días Restantes',
+                                        value: '28 días',
+                                        subtitle: 'Del ciclo actual',
+                                        icon: Icons.hourglass_top_rounded,
+                                        color: kGoldLight,
+                                      ),
+                                    ),
+                                    Container(width: 1, height: 50, color: Colors.white12),
+                                    Expanded(
+                                      child: _buildMetricTile(
+                                        title: 'Renovación',
+                                        value: '16 Dic 2026',
+                                        subtitle: '\$49.00 USD/mes',
+                                        icon: Icons.event_repeat_rounded,
+                                        color: Colors.blueAccent.shade100,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        // Beneficios incluidos
+                        FadeInUp(
+                          delay: const Duration(milliseconds: 300),
+                          child: Container(
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.04),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Row(
+                                  children: [
+                                    Icon(Icons.auto_awesome, color: kGoldLight, size: 18),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      'Tus Beneficios Pro Incluidos',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 14),
+                                _buildBenefitRow('Vacantes destacadas ilimitadas con insignia dorada ⭐'),
+                                _buildBenefitRow('Filtrado inteligente y clasificación automática con IA'),
+                                _buildBenefitRow('Descarga y visualización ilimitada de CVs en PDF'),
+                                _buildBenefitRow('Salas de chat en tiempo real con candidatos y videollamadas'),
+                                _buildBenefitRow('Soporte corporativo prioritario 24/7'),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 32),
+
+                        // Botón de retorno al panel
+                        FadeInUp(
+                          delay: const Duration(milliseconds: 400),
+                          child: BouncyTap(
+                            onPressed: () => Navigator.pop(context),
+                            child: Container(
+                              height: 56,
+                              decoration: BoxDecoration(
+                                gradient: kPremiumGoldButtonGradient,
+                                borderRadius: BorderRadius.circular(16),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: kGold.withValues(alpha: 0.35),
+                                    blurRadius: 16,
+                                    offset: const Offset(0, 6),
+                                  ),
+                                ],
+                              ),
+                              child: const Center(
+                                child: Text(
+                                  'Volver a Mi Panel de Empresa',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        Center(
+                          child: Text(
+                            'Gestionado a través de Mercado Pago',
+                            style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 12),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMetricTile({
+    required String title,
+    required String value,
+    required String subtitle,
+    required IconData icon,
+    required Color color,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: color, size: 16),
+              const SizedBox(width: 6),
+              Text(
+                title,
+                style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            subtitle,
+            style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 11),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBenefitRow(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.check_circle_rounded, color: kGoldLight, size: 16),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(color: Color(0xFFE2E8F0), fontSize: 13, height: 1.3),
+            ),
+          ),
+        ],
       ),
     );
   }

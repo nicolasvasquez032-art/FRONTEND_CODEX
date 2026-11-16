@@ -24,6 +24,8 @@ class PostulacionModel {
   final double? vacanteSalarioMax;
   final String? vacanteDescripcion;
   final List<String>? vacanteRequisitos;
+  final String? candidatoCvUrl;
+  final String? candidatoCvText;
 
   const PostulacionModel({
     required this.id,
@@ -48,6 +50,8 @@ class PostulacionModel {
     this.vacanteSalarioMax,
     this.vacanteDescripcion,
     this.vacanteRequisitos,
+    this.candidatoCvUrl,
+    this.candidatoCvText,
   });
 
   factory PostulacionModel.fromJson(Map<String, dynamic> json) =>
@@ -78,6 +82,8 @@ class PostulacionModel {
         vacanteRequisitos: (json['vacante_requisitos'] as List<dynamic>?)
             ?.map((e) => e.toString())
             .toList(),
+        candidatoCvUrl: json['candidato_cv_url'] as String?,
+        candidatoCvText: json['candidato_cv_text'] as String?,
       );
 
   factory PostulacionModel.fromEntity(Postulacion p) => PostulacionModel(
@@ -103,6 +109,8 @@ class PostulacionModel {
         vacanteSalarioMax: p.vacanteSalarioMax,
         vacanteDescripcion: p.vacanteDescripcion,
         vacanteRequisitos: p.vacanteRequisitos,
+        candidatoCvUrl: p.candidatoCvUrl,
+        candidatoCvText: p.candidatoCvText,
       );
 
   Map<String, dynamic> toJson() => {
@@ -128,6 +136,8 @@ class PostulacionModel {
         'vacante_salario_max': vacanteSalarioMax,
         'vacante_descripcion': vacanteDescripcion,
         'vacante_requisitos': vacanteRequisitos,
+        'candidato_cv_url': candidatoCvUrl,
+        'candidato_cv_text': candidatoCvText,
       };
 
   /// Convierte el DTO a la entidad de dominio.
@@ -154,6 +164,8 @@ class PostulacionModel {
         vacanteSalarioMax: vacanteSalarioMax,
         vacanteDescripcion: vacanteDescripcion,
         vacanteRequisitos: vacanteRequisitos,
+        candidatoCvUrl: candidatoCvUrl,
+        candidatoCvText: candidatoCvText,
       );
 
   static PostulacionEstado _parseEstado(String s) {
