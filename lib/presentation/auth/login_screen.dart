@@ -124,7 +124,7 @@ class _LoginScreenState extends State<LoginScreen>
       }
     }
 
-    final sessionId = 'tm_${DateTime.now().millisecondsSinceEpoch}_${math.Random().nextInt(99999)}';
+    final sessionId = 'tm_${DateTime.now().millisecondsSinceEpoch}_${math.Random.secure().nextInt(99999)}';
     final queryParams = <String, String>{
       'session_id': sessionId,
     };

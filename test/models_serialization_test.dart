@@ -97,6 +97,36 @@ void main() {
       expect(PostulacionModel.fromJson({...json, 'estado': 'contratado'}).toEntity().estado, PostulacionEstado.contratado);
       expect(PostulacionModel.fromJson({...json, 'estado': 'postulado'}).toEntity().estado, PostulacionEstado.postulado);
       expect(PostulacionModel.fromJson({...json, 'estado': 'desconocido'}).toEntity().estado, PostulacionEstado.postulado);
+
+      // Enriched fields mapping
+      final jsonEnriched = {
+        'id': 'p-301',
+        'candidato_id': 'cand-1',
+        'vacante_id': 'v-100',
+        'estado': 'en_revision',
+        'fecha': '2026-10-30T12:00:00.000Z',
+        'score_match': 0.95,
+        'vacante_titulo': 'Full Stack Dev',
+        'empresa_nombre': 'Tech Corp',
+        'vacante_ubicacion': 'Remoto',
+        'vacante_categoria': 'Tecnología',
+        'vacante_salario_min': 5000000,
+        'vacante_salario_max': 7000000,
+        'vacante_descripcion': 'Gran puesto',
+        'vacante_requisitos': ['Flutter', 'Python'],
+      };
+      final enrichedModel = PostulacionModel.fromJson(jsonEnriched);
+      expect(enrichedModel.vacanteTitulo, 'Full Stack Dev');
+      expect(enrichedModel.empresaNombre, 'Tech Corp');
+      final enrichedEntity = enrichedModel.toEntity();
+      expect(enrichedEntity.vacanteTitulo, 'Full Stack Dev');
+      expect(enrichedEntity.empresaNombre, 'Tech Corp');
+      expect(enrichedEntity.vacanteUbicacion, 'Remoto');
+      expect(enrichedEntity.vacanteCategoria, 'Tecnología');
+      expect(enrichedEntity.vacanteSalarioMin, 5000000);
+      expect(enrichedEntity.vacanteSalarioMax, 7000000);
+      expect(enrichedEntity.vacanteDescripcion, 'Gran puesto');
+      expect(enrichedEntity.vacanteRequisitos?.length, 2);
     });
 
     test('NotificacionModel.fromJson maneja valores por defecto y nulos', () {
@@ -162,6 +192,12 @@ void main() {
         'empresa_id': 'emp-888',
         'score_similitud': 0.95,
         'explicacion': '95% de compatibilidad con tus habilidades en Python y PyTorch',
+        'descripcion': 'Buscamos ing de ML',
+        'requisitos': ['Python', 'Docker'],
+        'ubicacion': 'Remoto',
+        'categoria': 'IA',
+        'salario_min': 5000000,
+        'salario_max': 8000000,
       };
 
       final rec = RecomendacionModel.fromJson(json);
@@ -169,6 +205,12 @@ void main() {
       expect(rec.titulo, 'Python Machine Learning Engineer');
       expect(rec.scoreSimilitud, 0.95);
       expect(rec.explicacion, contains('95% de compatibilidad'));
+      expect(rec.descripcion, 'Buscamos ing de ML');
+      expect(rec.requisitos?.length, 2);
+      expect(rec.ubicacion, 'Remoto');
+      expect(rec.categoria, 'IA');
+      expect(rec.salarioMin, 5000000);
+      expect(rec.salarioMax, 8000000);
     });
   });
 }

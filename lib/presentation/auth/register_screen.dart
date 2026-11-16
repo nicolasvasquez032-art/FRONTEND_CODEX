@@ -1421,7 +1421,7 @@ class _RegisterScreenState extends State<RegisterScreen>
       }
     }
 
-    final sessionId = 'tm_reg_${DateTime.now().millisecondsSinceEpoch}_${math.Random().nextInt(99999)}';
+    final sessionId = 'tm_reg_${DateTime.now().millisecondsSinceEpoch}_${math.Random.secure().nextInt(99999)}';
     final queryParams = <String, String>{
       'session_id': sessionId,
     };

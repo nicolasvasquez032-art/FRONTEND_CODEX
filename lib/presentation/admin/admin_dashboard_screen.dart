@@ -221,9 +221,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
       padding: const EdgeInsets.all(18),
       children: [
-        FadeInDown(
-          duration: const Duration(milliseconds: 400),
-          child: const Column(
+        const FadeInDown(
+          duration: Duration(milliseconds: 400),
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(

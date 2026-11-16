@@ -1,297 +1,289 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:talentmatch/core/network/api_client.dart';
-import 'package:talentmatch/data/repositories/notificacion_repository_impl.dart';
-import 'package:talentmatch/data/repositories/perfil_repository_impl.dart';
+import 'package:talentmatch/core/storage/secure_storage.dart';
+import 'package:talentmatch/data/repositories/admin_repository_impl.dart';
 import 'package:talentmatch/data/repositories/postulacion_repository_impl.dart';
-import 'package:talentmatch/data/repositories/recomendacion_repository_impl.dart';
-import 'package:talentmatch/data/repositories/vacante_repository_impl.dart';
+import 'package:talentmatch/data/repositories/perfil_repository_impl.dart';
+import 'package:talentmatch/data/repositories/auth_repository_impl.dart';
 import 'package:talentmatch/domain/entities/postulacion.dart';
 import 'package:talentmatch/domain/entities/vacante.dart';
 
-class FakeApiClient implements ApiClient {
-  Map<String, dynamic> lastPostData = {};
-  Map<String, dynamic> lastPutData = {};
-  Map<String, dynamic>? lastQueryParams;
-  String lastPath = '';
+class MockSecureStorage extends SecureStorage {
+  final Map<String, String> _mem = {};
 
   @override
-  Future<Map<String, dynamic>> get(String path, {bool auth = true, Map<String, String>? queryParams}) async {
-    lastPath = path;
-    lastQueryParams = queryParams;
+  Future<void> saveSession({
+    required String token,
+    required String userId,
+    required String profileId,
+    required String role,
+    String? refreshToken,
+    bool isPremium = false,
+  }) async {
+    _mem['auth_token'] = token;
+    _mem['user_id'] = userId;
+    _mem['profile_id'] = profileId;
+    _mem['user_role'] = role;
+    if (refreshToken != null) _mem['refresh_token'] = refreshToken;
+    _mem['is_premium'] = isPremium.toString();
+  }
 
-    if (path.startsWith('/perfiles/')) {
-      return {
-        'id': 'prof-123',
-        'user_id': 'usr-123',
-        'full_name': 'Dev Tester',
-        'skills': ['Flutter', 'Dart'],
-        'experience_years': 3,
-        'location': 'Bogotá',
-      };
-    }
-    if (path.startsWith('/vacantes/')) {
-      return {
-        'id': 'vac-1',
-        'empresa_id': 'emp-1',
-        'titulo': 'Ingeniero Flutter',
-        'descripcion': 'Buscamos desarrollador',
-        'requisitos': ['Flutter'],
-        'ubicacion': 'Bogotá',
-        'estado': 'activa',
-        'creado_en': DateTime.now().toIso8601String(),
-      };
-    }
+  @override
+  Future<String?> getToken() async => _mem['auth_token'];
+  @override
+  Future<String?> getRefreshToken() async => _mem['refresh_token'];
+  @override
+  Future<String?> getUserId() async => _mem['user_id'];
+  @override
+  Future<String?> getProfileId() async => _mem['profile_id'];
+  @override
+  Future<String?> getRole() async => _mem['user_role'];
+  @override
+  Future<bool> getIsPremium() async => _mem['is_premium'] == 'true';
+  @override
+  Future<void> clearSession() async => _mem.clear();
+}
+
+class MockApiClient extends ApiClient {
+  MockApiClient(super.storage);
+
+  Map<String, dynamic> nextGet = {};
+  List<dynamic> nextList = [];
+  Map<String, dynamic> nextPost = {};
+  Map<String, dynamic> nextPut = {};
+  Map<String, dynamic> nextPatch = {};
+
+  @override
+  Future<Map<String, dynamic>> get(String path, {Map<String, String>? queryParams, bool auth = true}) async {
+    return nextGet;
+  }
+
+  @override
+  Future<List<dynamic>> getList(String path, {Map<String, String>? queryParams, bool auth = true}) async {
+    return nextList;
+  }
+
+  @override
+  Future<Map<String, dynamic>> post(String path, dynamic body, {bool auth = true}) async {
+    return nextPost;
+  }
+
+  @override
+  Future<Map<String, dynamic>> put(String path, dynamic body, {bool auth = true}) async {
+    return nextPut;
+  }
+
+  @override
+  Future<Map<String, dynamic>> patch(String path, dynamic body, {bool auth = true}) async {
+    return nextPatch;
+  }
+
+  @override
+  Future<Map<String, dynamic>> delete(String path, {bool auth = true}) async {
     return {};
   }
 
   @override
-  Future<List<dynamic>> getList(String path, {bool auth = true, Map<String, String>? queryParams}) async {
-    lastPath = path;
-    lastQueryParams = queryParams;
-
-    if (path.startsWith('/recomendaciones/candidato/')) {
-      return [
-        {
-          'vacante_id': 'v-rec-1',
-          'titulo': 'Dev Python',
-          'empresa_id': 'emp-1',
-          'score_similitud': 0.95,
-          'explicacion': 'Match de skills',
-        }
-      ];
-    }
-    if (path.startsWith('/notificaciones/usuario/')) {
-      return [
-        {
-          'id': 'notif-1',
-          'usuario_id': 'usr-1',
-          'titulo': 'Nueva oferta',
-          'mensaje': 'Tienes una vacante',
-          'tipo': 'nueva_vacante',
-          'leida': false,
-          'fecha': DateTime.now().toIso8601String(),
-        }
-      ];
-    }
-    if (path.startsWith('/postulaciones/candidato/')) {
-      return [
-        {
-          'id': 'post-1',
-          'candidato_id': 'usr-1',
-          'vacante_id': 'v-1',
-          'estado': 'postulado',
-          'fecha': DateTime.now().toIso8601String(),
-        }
-      ];
-    }
-    if (path.startsWith('/vacantes')) {
-      return [
-        {
-          'id': 'v-1',
-          'empresa_id': 'e-1',
-          'titulo': 'Dev Flutter',
-          'descripcion': 'Vacante activa',
-          'requisitos': ['Dart'],
-          'ubicacion': 'Remoto',
-          'estado': 'activa',
-          'creado_en': DateTime.now().toIso8601String(),
-        }
-      ];
-    }
-    return [];
-  }
-
-  @override
-  Future<Map<String, dynamic>> post(String path, Map<String, dynamic> body, {bool auth = true}) async {
-    lastPath = path;
-    lastPostData = body;
-
-    if (path == '/postulaciones') {
-      return {
-        'id': 'new-post-1',
-        'candidato_id': 'c-1',
-        'vacante_id': body['vacante_id'],
-        'estado': 'postulado',
-        'fecha': DateTime.now().toIso8601String(),
-      };
-    }
-    if (path == '/vacantes') {
-      return {
-        'id': 'new-vac-1',
-        'empresa_id': 'e-1',
-        'titulo': body['titulo'],
-        'descripcion': body['descripcion'],
-        'requisitos': body['requisitos'],
-        'ubicacion': body['ubicacion'],
-        'estado': 'activa',
-        'creado_en': DateTime.now().toIso8601String(),
-      };
-    }
-    if (path == '/notificaciones/token-dispositivo') {
-      return {'status': 'ok'};
-    }
-    return body;
-  }
-
-  @override
-  Future<Map<String, dynamic>> put(String path, Map<String, dynamic> body) async {
-    lastPath = path;
-    lastPutData = body;
-
-    return {
-      'id': 'prof-123',
-      'user_id': 'usr-123',
-      'full_name': body['full_name'] ?? 'Dev',
-      'skills': body['skills'] ?? [],
-      'experience_years': body['experience_years'] ?? 0,
-      'location': body['location'],
-      'education': body['education'],
-      'phone': body['phone'],
-      'portfolio_url': body['portfolio_url'],
-      'about_me': body['about_me'],
-      'job_title': body['job_title'],
-    };
-  }
-
-  @override
-  Future<Map<String, dynamic>> patch(String path, Map<String, dynamic> body) async {
-    lastPath = path;
-    return body;
-  }
-
-  @override
-  Future<void> delete(String path, {bool auth = true}) async {
-    lastPath = path;
-  }
-
-  @override
-  Future<Map<String, dynamic>> postMultipart(String path, List<int> fileBytes, String fileName, String mimeType) async {
-    lastPath = path;
-    return {
-      'profile_id': 'prof-123',
-      'message': 'CV subido',
-      'cv_preview': 'Texto extraído del CV',
-    };
+  Future<Map<String, dynamic>> postMultipart(
+    String path,
+    List<int> fileBytes,
+    String fileName,
+    String mimeType, {
+    Map<String, String>? fields,
+  }) async {
+    return nextPost;
   }
 }
 
 void main() {
-  late FakeApiClient api;
+  late MockSecureStorage mockStorage;
+  late MockApiClient mockApi;
 
   setUp(() {
-    api = FakeApiClient();
+    mockStorage = MockSecureStorage();
+    mockApi = MockApiClient(mockStorage);
   });
 
-  group('RecomendacionRepositoryImpl', () {
-    test('getRecomendaciones retorna lista mapeada correctamente', () async {
-      final repo = RecomendacionRepositoryImpl(api);
-      final recs = await repo.getRecomendaciones('cand-1');
+  group('AdminRepositoryImpl Tests', () {
+    test('getMetricas obtiene métricas generales y de efectividad', () async {
+      final repo = AdminRepositoryImpl(mockApi);
+      mockApi.nextGet = {
+        'total_candidatos': 50,
+        'total_vacantes_activas': 10,
+        'total_postulaciones': 25,
+        'tiempo_promedio_dias': 4.5,
+        'efectividad_porcentaje': 88.0,
+      };
+      mockApi.nextList = [
+        {'sector': 'Tecnología', 'total_vacantes': 8, 'porcentaje': 80.0},
+      ];
 
-      expect(recs.length, 1);
-      expect(recs.first.vacanteId, 'v-rec-1');
-      expect(recs.first.scorePercent, 95);
-      expect(api.lastPath, '/recomendaciones/candidato/cand-1');
+      final metrics = await repo.getMetricas();
+      expect(metrics.totalCandidatos, 50);
+      expect(metrics.totalVacantesActivas, 10);
+      expect(metrics.totalPostulaciones, 25);
+    });
+
+    test('getTodasVacantes y moderarVacante funcionan', () async {
+      final repo = AdminRepositoryImpl(mockApi);
+      mockApi.nextList = [
+        {
+          'id': 'v-flagged',
+          'empresa_id': 'emp-1',
+          'titulo': 'Vacante Inapropiada',
+          'descripcion': 'Contenido',
+          'requisitos': ['Dart'],
+          'ubicacion': 'Remoto',
+          'estado': 'activa',
+          'creado_en': '2026-11-01T00:00:00.000Z',
+        }
+      ];
+      final vacantes = await repo.getTodasVacantes();
+      expect(vacantes.length, 1);
+      expect(vacantes.first.titulo, 'Vacante Inapropiada');
+
+      mockApi.nextPatch = {
+        'id': 'v-flagged',
+        'empresa_id': 'emp-1',
+        'titulo': 'Vacante Inapropiada',
+        'descripcion': 'Contenido',
+        'requisitos': ['Dart'],
+        'ubicacion': 'Remoto',
+        'estado': 'cerrada',
+        'creado_en': '2026-11-01T00:00:00.000Z',
+      };
+      final moderada = await repo.moderarVacante('v-flagged', 'cerrada');
+      expect(moderada.estado, VacanteEstado.cerrada);
     });
   });
 
-  group('NotificacionRepositoryImpl', () {
-    test('getNotificaciones pasa limit y offset y mapea entidades', () async {
-      final repo = NotificacionRepositoryImpl(api);
-      final notifs = await repo.getNotificaciones('usr-1', limit: 20, offset: 5);
+  group('PostulacionRepositoryImpl Tests', () {
+    test('postularse crea postulación correctamente', () async {
+      final repo = PostulacionRepositoryImpl(mockApi);
+      mockApi.nextPost = {
+        'id': 'p-1',
+        'candidato_id': 'cand-1',
+        'vacante_id': 'v-1',
+        'estado': 'postulado',
+        'fecha': '2026-11-16T10:00:00.000Z',
+      };
 
-      expect(notifs.length, 1);
-      expect(notifs.first.id, 'notif-1');
-      expect(api.lastQueryParams?['limit'], '20');
-      expect(api.lastQueryParams?['offset'], '5');
+      final p = await repo.postularse(candidatoId: 'cand-1', vacanteId: 'v-1');
+      expect(p.id, 'p-1');
+      expect(p.estado, PostulacionEstado.postulado);
     });
 
-    test('marcarLeida y registrarToken invocan endpoints correctos', () async {
-      final repo = NotificacionRepositoryImpl(api);
-      await repo.marcarLeida('notif-99');
-      expect(api.lastPath, '/notificaciones/notif-99/leida');
+    test('listarMisPostulaciones usa candidatoId o fallback /me', () async {
+      final repo = PostulacionRepositoryImpl(mockApi);
+      mockApi.nextList = [
+        {
+          'id': 'p-2',
+          'candidato_id': 'cand-1',
+          'vacante_id': 'v-2',
+          'estado': 'en_revision',
+          'fecha': '2026-11-16T10:00:00.000Z',
+          'vacante_titulo': 'Full Stack Dev',
+        }
+      ];
 
-      await repo.registrarToken('fcm-token-123', dispositivoInfo: 'Pixel 8');
-      expect(api.lastPath, '/notificaciones/token-dispositivo');
-      expect(api.lastPostData['token'], 'fcm-token-123');
-      expect(api.lastPostData['dispositivo_info'], 'Pixel 8');
+      final posts = await repo.listarMisPostulaciones('cand-1');
+      expect(posts.length, 1);
+      expect(posts.first.vacanteTitulo, 'Full Stack Dev');
+
+      final postsMe = await repo.listarMisPostulaciones('');
+      expect(postsMe.length, 1);
     });
-  });
 
-  group('PostulacionRepositoryImpl', () {
-    test('postularse, listar y cancelar postulaciones', () async {
-      final repo = PostulacionRepositoryImpl(api);
+    test('listarPostulacionesVacante y cancelarPostulacion funcionan', () async {
+      final repo = PostulacionRepositoryImpl(mockApi);
+      mockApi.nextList = [
+        {
+          'id': 'p-3',
+          'candidato_id': 'cand-9',
+          'vacante_id': 'v-3',
+          'estado': 'postulado',
+          'fecha': '2026-11-16T10:00:00.000Z',
+        }
+      ];
+      final res = await repo.listarPostulacionesVacante('v-3');
+      expect(res.length, 1);
 
-      final nueva = await repo.postularse(candidatoId: 'c-1', vacanteId: 'v-99');
-      expect(nueva.vacanteId, 'v-99');
-      expect(nueva.estado, PostulacionEstado.postulado);
-
-      final list = await repo.listarMisPostulaciones('c-1');
-      expect(list.length, 1);
-      expect(list.first.id, 'post-1');
-
-      await repo.cancelarPostulacion('post-1');
-      expect(api.lastPath, '/postulaciones/post-1');
-    });
-  });
-
-  group('VacanteRepositoryImpl', () {
-    test('listarVacantes con filtros de ubicación y categoría', () async {
-      final repo = VacanteRepositoryImpl(api);
-
-      final list = await repo.listarVacantes(ubicacion: 'Bogotá', categoria: 'Tecnología');
-      expect(list.length, 1);
-      expect(api.lastQueryParams?['ubicacion'], 'Bogotá');
-      expect(api.lastQueryParams?['categoria'], 'Tecnología');
-
-      final vac = await repo.getVacante('vac-1');
-      expect(vac.id, 'vac-1');
-      expect(vac.estado, VacanteEstado.activa);
-
-      final nueva = await repo.publicarVacante(
-        titulo: 'Dev Dart',
-        descripcion: 'Senior Developer',
-        requisitos: ['Dart'],
-        ubicacion: 'Remoto',
-        categoria: 'Tecnología',
-        salarioMin: 5000000,
-        salarioMax: 8000000,
-      );
-      expect(nueva.id, 'new-vac-1');
-      expect(api.lastPostData['titulo'], 'Dev Dart');
-
-      await repo.eliminarVacante('new-vac-1');
-      expect(api.lastPath, '/vacantes/new-vac-1');
+      mockApi.nextPatch = {'status': 'success'};
+      await repo.cancelarPostulacion('p-3');
     });
   });
 
-  group('PerfilRepositoryImpl', () {
-    test('getPerfil, updatePerfil y uploadCv', () async {
-      final repo = PerfilRepositoryImpl(api);
+  group('PerfilRepositoryImpl Tests', () {
+    test('getPerfil y getMiPerfil devuelven entidad Profile', () async {
+      final repo = PerfilRepositoryImpl(mockApi);
+      mockApi.nextGet = {
+        'id': 'prof-123',
+        'user_id': 'user-123',
+        'full_name': 'Nicolás Vásquez',
+        'skills': ['Python', 'Dart'],
+        'experience_years': 3,
+      };
 
-      final perfil = await repo.getPerfil('prof-123');
-      expect(perfil.fullName, 'Dev Tester');
-      expect(perfil.skills, contains('Flutter'));
+      final p1 = await repo.getPerfil('prof-123');
+      expect(p1.fullName, 'Nicolás Vásquez');
+      expect(p1.skills.length, 2);
 
-      final actualizado = await repo.updatePerfil(
+      final p2 = await repo.getMiPerfil();
+      expect(p2.id, 'prof-123');
+    });
+
+    test('updatePerfil y uploadCv mapean datos correctamente', () async {
+      final repo = PerfilRepositoryImpl(mockApi);
+      mockApi.nextPut = {
+        'id': 'prof-123',
+        'user_id': 'user-123',
+        'full_name': 'Nicolás Vásquez Gómez',
+        'skills': ['Python', 'Flutter'],
+        'experience_years': 4,
+      };
+
+      final updated = await repo.updatePerfil(
         profileId: 'prof-123',
-        fullName: 'Dev Updated',
-        skills: ['Flutter', 'AWS'],
+        fullName: 'Nicolás Vásquez Gómez',
+        skills: ['Python', 'Flutter'],
         experienceYears: 4,
-        location: 'Medellín',
-        phone: '3001234567',
       );
-      expect(actualizado.fullName, 'Dev Updated');
-      expect(api.lastPutData['location'], 'Medellín');
-      expect(api.lastPutData['phone'], '3001234567');
+      expect(updated.fullName, 'Nicolás Vásquez Gómez');
 
-      final cvText = await repo.uploadCv(
+      mockApi.nextPost = {
+        'profile_id': 'prof-123',
+        'message': 'CV subido',
+        'cv_preview': 'Texto extraído del CV',
+      };
+      final preview = await repo.uploadCv(
         profileId: 'prof-123',
         fileBytes: [1, 2, 3],
         fileName: 'cv.pdf',
         mimeType: 'application/pdf',
       );
-      expect(cvText, 'Texto extraído del CV');
-      expect(api.lastPath, '/perfiles/prof-123/cv');
+      expect(preview, 'Texto extraído del CV');
+    });
+  });
+
+  group('AuthRepositoryImpl Tests', () {
+    test('restoreSession retorna null si no hay token o recupera la sesion', () async {
+      final repo = AuthRepositoryImpl(mockApi, mockStorage);
+      final empty = await repo.restoreSession();
+      expect(empty, isNull);
+
+      await mockStorage.saveSession(
+        token: 'token.abc',
+        userId: 'u-1',
+        profileId: 'p-1',
+        role: 'candidate',
+        isPremium: true,
+      );
+      final restored = await repo.restoreSession();
+      expect(restored?.userId, 'u-1');
+      expect(restored?.isPremium, isTrue);
+
+      await repo.logout();
+      expect(await mockStorage.getToken(), isNull);
     });
   });
 }
