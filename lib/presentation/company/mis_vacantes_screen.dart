@@ -12,6 +12,7 @@ import '../shared/widgets/shimmer_cards.dart';
 import 'package:liquid_pull_to_refresh/liquid_pull_to_refresh.dart';
 import '../shared/providers/locale_provider.dart';
 import '../shared/providers/postulaciones_provider.dart';
+import '../shared/widgets/app_toast.dart';
 import '../shared/widgets/glass_card.dart';
 
 class MisVacantesScreen extends StatefulWidget {
@@ -167,6 +168,7 @@ class _MisVacantesScreenState extends State<MisVacantesScreen> {
 
   Widget _buildDashboardHeader(List<Vacante> misVacantes) {
     final isEs = context.watch<LocaleProvider>().isSpanish;
+    final isPremium = context.watch<AuthProvider>().session?.isEffectivelyPremium == true;
     final activas = misVacantes.where((v) => v.estado == VacanteEstado.activa).length;
     final totalCandidatos = misVacantes.fold<int>(0, (sum, v) => sum + v.totalPostulaciones);
     final matchScoreStr = totalCandidatos == 0
@@ -174,21 +176,23 @@ class _MisVacantesScreenState extends State<MisVacantesScreen> {
         : (_promedioMatch != null ? '${_promedioMatch!.toInt()}%' : '...');
 
     return SizedBox(
-      height: 330,
+      height: 360,
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          // Fondo azul premium con curvas
+          // Fondo azul premium con curvas (o dorado/obsidiana en modo premium)
           Container(
             height: 260,
             width: double.infinity,
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFF0F172A), Color(0xFF1E3A8A)], // Slate 900 a Blue 900
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.only(
+            decoration: BoxDecoration(
+              gradient: isPremium
+                  ? kPremiumBannerGradient
+                  : const LinearGradient(
+                      colors: [Color(0xFF0F172A), Color(0xFF1E3A8A)], // Slate 900 a Blue 900
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+              borderRadius: const BorderRadius.only(
                 bottomLeft: Radius.circular(40),
                 bottomRight: Radius.circular(40),
               ),
@@ -219,7 +223,34 @@ class _MisVacantesScreenState extends State<MisVacantesScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(isEs ? 'RECURSOS HUMANOS' : 'HUMAN RESOURCES', style: TextStyle(color: Colors.blueAccent.shade100, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+                                Row(
+                                  children: [
+                                    Text(
+                                      isEs ? 'RECURSOS HUMANOS' : 'HUMAN RESOURCES',
+                                      style: TextStyle(
+                                        color: isPremium ? kGoldLight : Colors.blueAccent.shade100,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: 1.5,
+                                      ),
+                                    ),
+                                    if (isPremium) ...[
+                                      const SizedBox(width: 6),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: kGold.withValues(alpha: 0.2),
+                                          borderRadius: BorderRadius.circular(6),
+                                          border: Border.all(color: kGoldLight.withValues(alpha: 0.4)),
+                                        ),
+                                        child: const Text(
+                                          'PRO',
+                                          style: TextStyle(color: kGoldLight, fontSize: 9, fontWeight: FontWeight.w900),
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
                                 const SizedBox(height: 6),
                                 const Text('Dashboard', style: TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.w900, letterSpacing: -0.5)),
                               ],
@@ -230,10 +261,10 @@ class _MisVacantesScreenState extends State<MisVacantesScreen> {
                               decoration: BoxDecoration(
                                 color: Colors.white.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(14),
-                                border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                                border: Border.all(color: isPremium ? kGold.withValues(alpha: 0.4) : Colors.white.withValues(alpha: 0.2)),
                               ),
                               child: IconButton(
-                                icon: const Icon(Icons.sync, color: Colors.white),
+                                icon: Icon(Icons.sync, color: isPremium ? kGoldLight : Colors.white),
                                 onPressed: () => context.read<VacantesProvider>().cargar(),
                               ),
                             ),
@@ -263,17 +294,17 @@ class _MisVacantesScreenState extends State<MisVacantesScreen> {
             left: 0,
             right: 0,
             child: SizedBox(
-              height: 125, // Altura de las tarjetas
+              height: 148, // Altura optimizada para evitar cualquier overflow vertical
               child: ListView(
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 clipBehavior: Clip.none,
                 children: [
-                  FadeInUp(delay: const Duration(milliseconds: 200), child: _buildStatCard(isEs ? 'Activas' : 'Active', activas.toString(), Icons.work, Colors.blueAccent)),
+                  FadeInUp(delay: const Duration(milliseconds: 200), child: _buildStatCard(isEs ? 'Activas' : 'Active', activas.toString(), Icons.work, Colors.blueAccent, isPremium: isPremium)),
                   const SizedBox(width: 16),
-                  FadeInUp(delay: const Duration(milliseconds: 300), child: _buildStatCard(isEs ? 'Candidatos' : 'Candidates', totalCandidatos.toString(), Icons.people, const Color(0xFF10B981))),
+                  FadeInUp(delay: const Duration(milliseconds: 300), child: _buildStatCard(isEs ? 'Candidatos' : 'Candidates', totalCandidatos.toString(), Icons.people, const Color(0xFF10B981), isPremium: isPremium)),
                   const SizedBox(width: 16),
-                  FadeInUp(delay: const Duration(milliseconds: 400), child: _buildStatCard(isEs ? 'Match Score' : 'Match Score', matchScoreStr, Icons.auto_awesome, const Color(0xFFF59E0B))),
+                  FadeInUp(delay: const Duration(milliseconds: 400), child: _buildStatCard(isEs ? 'Match Score' : 'Match Score', matchScoreStr, Icons.auto_awesome, const Color(0xFFF59E0B), isPremium: isPremium)),
                 ],
               ),
             ),
@@ -283,13 +314,20 @@ class _MisVacantesScreenState extends State<MisVacantesScreen> {
     );
   }
 
-  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
+  Widget _buildStatCard(String title, String value, IconData icon, Color color, {bool isPremium = false}) {
     return GlassCard(
       width: 140,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       borderRadius: 24,
+      customBorder: isPremium
+          ? Border.all(color: kGold.withValues(alpha: 0.4), width: 1.2)
+          : null,
       customShadows: [
-        BoxShadow(color: color.withValues(alpha: 0.12), blurRadius: 16, offset: const Offset(0, 8)),
+        BoxShadow(
+          color: isPremium ? kGold.withValues(alpha: 0.15) : color.withValues(alpha: 0.12),
+          blurRadius: 16,
+          offset: const Offset(0, 8),
+        ),
       ],
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -299,19 +337,40 @@ class _MisVacantesScreenState extends State<MisVacantesScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10)),
-                child: Icon(icon, color: color, size: 20),
+                padding: const EdgeInsets.all(7),
+                decoration: BoxDecoration(
+                  color: isPremium ? kGold.withValues(alpha: 0.15) : color.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: isPremium ? kGoldLight : color, size: 20),
               ),
-              Icon(Icons.trending_up, color: color.withValues(alpha: 0.5), size: 18),
+              Icon(Icons.trending_up, color: isPremium ? kGold : color.withValues(alpha: 0.5), size: 18),
             ],
           ),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Text(value, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: kNavy, height: 1.1)),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w900,
+                    color: isPremium ? kGoldLight : kNavy,
+                    height: 1.1,
+                  ),
+                ),
+              ),
               const SizedBox(height: 2),
-              Text(title, style: const TextStyle(fontSize: 12, color: kMuted, fontWeight: FontWeight.w700)),
+              Text(
+                title,
+                style: const TextStyle(fontSize: 12, color: kMuted, fontWeight: FontWeight.w700),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ],
           ),
         ],
@@ -423,9 +482,28 @@ class _VacanteCardState extends State<_VacanteCard> with SingleTickerProviderSta
     }
   }
 
+  Future<void> _handleDestacar(bool isEs) async {
+    final success = await context.read<VacantesProvider>().destacarVacante(widget.vacante.id);
+    if (!mounted) return;
+    if (success) {
+      AppToast.success(
+        context,
+        isEs
+            ? '⭐ ¡Vacante destacada! Ahora aparece al inicio del feed.'
+            : '⭐ Job featured! It now appears at the top of the feed.',
+      );
+    } else {
+      AppToast.info(
+        context,
+        isEs ? 'La vacante ya se encuentra destacada' : 'Job is already featured',
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isEs = context.watch<LocaleProvider>().isSpanish;
+    final isPremium = context.watch<AuthProvider>().session?.isEffectivelyPremium == true;
     final bool isActiva = widget.vacante.estado == VacanteEstado.activa;
     
     return AnimatedBuilder(
@@ -477,7 +555,34 @@ class _VacanteCardState extends State<_VacanteCard> with SingleTickerProviderSta
                     ],
                   ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 8),
+                if (widget.vacante.esDestacada) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: kGold.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: kGoldLight.withValues(alpha: 0.6)),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.star_rounded, color: kGold, size: 12),
+                        SizedBox(width: 3),
+                        Text(
+                          'DESTACADA',
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w900,
+                            color: kGoldDark,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                ],
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
@@ -509,14 +614,33 @@ class _VacanteCardState extends State<_VacanteCard> with SingleTickerProviderSta
                     ],
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
+                InkWell(
+                  borderRadius: BorderRadius.circular(20),
+                  onTap: () => _handleDestacar(isEs),
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: widget.vacante.esDestacada
+                          ? kGold.withValues(alpha: 0.18)
+                          : Colors.amber.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      widget.vacante.esDestacada ? Icons.star_rounded : Icons.star_border_rounded,
+                      color: kGold,
+                      size: 18,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6),
                 InkWell(
                   borderRadius: BorderRadius.circular(20),
                   onTap: () => _handleDelete(isEs),
                 child: Container(
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(color: Colors.red.withValues(alpha: 0.1), shape: BoxShape.circle),
-                  child: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                  child: const Icon(Icons.delete_outline, color: Colors.red, size: 18),
                 ),
               ),
             ],
@@ -563,9 +687,14 @@ class _VacanteCardState extends State<_VacanteCard> with SingleTickerProviderSta
                 children: [
                   const Icon(Icons.monetization_on_outlined, size: 16, color: kBlue),
                   const SizedBox(width: 4),
-                  Text(
-                    widget.vacante.salarioDisplayLocalized(isEs),
-                    style: const TextStyle(fontSize: 13, color: kNavy, fontWeight: FontWeight.w800),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 180),
+                    child: Text(
+                      widget.vacante.salarioDisplayLocalized(isEs),
+                      style: const TextStyle(fontSize: 13, color: kNavy, fontWeight: FontWeight.w800),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ],
               ),
@@ -588,15 +717,31 @@ class _VacanteCardState extends State<_VacanteCard> with SingleTickerProviderSta
                     child: OutlinedButton(
                       onPressed: null,
                       style: OutlinedButton.styleFrom(
-                        side: BorderSide(color: kBlue.withValues(alpha: 0.5), width: 1.5),
+                        padding: const EdgeInsets.symmetric(horizontal: 6),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        side: BorderSide(
+                          color: isPremium ? kGold : kBlue.withValues(alpha: 0.5),
+                          width: 1.5,
+                        ),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                       ),
-                      child: Text(isEs ? 'Vista Previa' : 'Preview', style: const TextStyle(color: kBlue, fontSize: 13, fontWeight: FontWeight.bold)),
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          isEs ? 'Detalle' : 'Preview',
+                          style: TextStyle(
+                            color: isPremium ? kGoldDark : kBlue,
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Expanded(
                 flex: 2,
                 child: BouncyTap(
@@ -608,28 +753,54 @@ class _VacanteCardState extends State<_VacanteCard> with SingleTickerProviderSta
                   },
                   child: SizedBox(
                     height: 44,
-                    child: FilledButton(
-                      onPressed: null,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: kBlue,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                        disabledBackgroundColor: kBlue,
-                        disabledForegroundColor: Colors.white,
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(isEs ? 'Ver Candidatos ' : 'View Candidates ', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(10)),
-                            child: Text(
-                              '${widget.vacante.totalPostulaciones}',
-                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900),
-                            ),
-                          )
-                        ],
+                    child: Container(
+                      decoration: isPremium
+                          ? BoxDecoration(
+                              gradient: kPremiumGoldButtonGradient,
+                              borderRadius: BorderRadius.circular(14),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: kGold.withValues(alpha: 0.3),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
+                            )
+                          : null,
+                      child: FilledButton(
+                        onPressed: null,
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          backgroundColor: isPremium ? Colors.transparent : kBlue,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          disabledBackgroundColor: isPremium ? Colors.transparent : kBlue,
+                          disabledForegroundColor: Colors.white,
+                        ),
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                isEs ? 'Ver Candidatos' : 'Candidates',
+                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white),
+                              ),
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(10)),
+                                child: Text(
+                                  '${widget.vacante.totalPostulaciones}',
+                                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Colors.white),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                   ),

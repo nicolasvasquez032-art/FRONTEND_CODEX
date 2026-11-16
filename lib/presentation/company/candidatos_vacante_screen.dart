@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/network/api_client.dart';
@@ -31,7 +32,20 @@ class CandidatosVacanteScreen extends StatefulWidget {
 
 class _CandidatosVacanteScreenState extends State<CandidatosVacanteScreen> {
   bool _isLoading = true;
+  bool _sortByMatch = true;
   List<Map<String, dynamic>> _candidatos = [];
+
+  List<Map<String, dynamic>> get _sortedCandidatos {
+    final list = List<Map<String, dynamic>>.from(_candidatos);
+    if (_sortByMatch) {
+      list.sort((a, b) {
+        final aScore = (a['match'] as num?) ?? -1;
+        final bScore = (b['match'] as num?) ?? -1;
+        return bScore.compareTo(aScore);
+      });
+    }
+    return list;
+  }
 
   @override
   void initState() {
@@ -78,6 +92,8 @@ class _CandidatosVacanteScreenState extends State<CandidatosVacanteScreen> {
           'location': p.candidatoLocation ?? 'Colombia',
           'experiencia': p.candidatoExperienceYears ?? 0,
           'phone': p.candidatoPhone,
+          'candidato_cv_url': p.candidatoCvUrl,
+          'candidato_cv_text': p.candidatoCvText,
         };
       }).toList();
     } catch (_) {
@@ -336,9 +352,154 @@ class _CandidatosVacanteScreenState extends State<CandidatosVacanteScreen> {
     }
   }
 
+  Future<void> _descargarCvCandidato(Map<String, dynamic> cand) async {
+    final isEs = context.read<LocaleProvider>().isSpanish;
+    final candName = cand['nombre']?.toString() ?? 'Candidato';
+    final cvUrl = cand['candidato_cv_url']?.toString() ?? cand['cv_url']?.toString();
+    final cvText = cand['candidato_cv_text']?.toString() ?? cand['cv_text']?.toString();
+    final candidateId = cand['candidato_id']?.toString() ?? cand['id']?.toString();
+
+    // 1. Si ya viene una URL directa válida (S3 o web)
+    if (cvUrl != null && cvUrl.isNotEmpty && (cvUrl.startsWith('http://') || cvUrl.startsWith('https://'))) {
+      final uri = Uri.parse(cvUrl);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+        return;
+      }
+    }
+
+    // 2. Intentar consultar endpoint GET /perfiles/{candidateId}/cv-url para obtener link S3 firmado o extracto
+    if (candidateId != null && candidateId.isNotEmpty) {
+      try {
+        final client = ApiClient(SecureStorage());
+        final res = await client.get('/perfiles/$candidateId/cv-url');
+        final fetchedUrl = res['cv_url']?.toString();
+        final fetchedText = res['cv_text']?.toString();
+
+        if (fetchedUrl != null && fetchedUrl.isNotEmpty && (fetchedUrl.startsWith('http://') || fetchedUrl.startsWith('https://'))) {
+          final uri = Uri.parse(fetchedUrl);
+          if (await canLaunchUrl(uri)) {
+            await launchUrl(uri, mode: LaunchMode.externalApplication);
+            return;
+          }
+        }
+
+        if (fetchedText != null && fetchedText.trim().isNotEmpty) {
+          if (mounted) {
+            _mostrarModalCvTexto(candName, fetchedText);
+          }
+          return;
+        }
+      } catch (_) {
+        // En caso de que falle la petición continúa con fallbacks
+      }
+    }
+
+    // 3. Fallback: Si hay extracto de texto parseado por IA
+    if (cvText != null && cvText.trim().isNotEmpty) {
+      if (mounted) {
+        _mostrarModalCvTexto(candName, cvText);
+      }
+      return;
+    }
+
+    if (mounted) {
+      AppToast.info(
+        context,
+        isEs
+            ? 'El candidato $candName tiene perfil digital verificado pero no adjuntó un documento PDF descargable.'
+            : 'Candidate $candName has a verified digital profile but no attached downloadable PDF.',
+      );
+    }
+  }
+
+  void _mostrarModalCvTexto(String candidateName, String cvText) {
+    final isEs = context.read<LocaleProvider>().isSpanish;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.75,
+        maxChildSize: 0.95,
+        minChildSize: 0.45,
+        builder: (_, scrollController) => Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: kBlue.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.description_rounded, color: kBlue, size: 24),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          isEs ? 'Currículum Vitae (Extracto IA)' : 'Curriculum Vitae (AI Summary)',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: kNavy),
+                        ),
+                        Text(
+                          candidateName,
+                          style: const TextStyle(color: kMuted, fontSize: 13),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(ctx),
+                  ),
+                ],
+              ),
+              const Divider(height: 24),
+              Expanded(
+                child: SingleChildScrollView(
+                  controller: scrollController,
+                  child: SelectableText(
+                    cvText,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF334155),
+                      height: 1.5,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isEs = context.watch<LocaleProvider>().isSpanish;
+    final isPremium = context.watch<AuthProvider>().session?.isEffectivelyPremium == true;
 
     return Scaffold(
       backgroundColor: kBg,
@@ -354,12 +515,14 @@ class _CandidatosVacanteScreenState extends State<CandidatosVacanteScreen> {
                 automaticallyImplyLeading: false,
                 flexibleSpace: FlexibleSpaceBar(
                   background: Container(
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [Color(0xFF0F172A), Color(0xFF1E3A8A)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
+                    decoration: BoxDecoration(
+                      gradient: isPremium
+                          ? kPremiumBannerGradient
+                          : const LinearGradient(
+                              colors: [Color(0xFF0F172A), Color(0xFF1E3A8A)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
                     ),
                     child: Stack(
                       children: [
@@ -390,12 +553,24 @@ class _CandidatosVacanteScreenState extends State<CandidatosVacanteScreen> {
                                 delay: const Duration(milliseconds: 400),
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                  decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(20)),
+                                  decoration: BoxDecoration(
+                                    color: isPremium
+                                        ? kGold.withValues(alpha: 0.2)
+                                        : Colors.white.withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: isPremium
+                                        ? Border.all(color: kGoldLight.withValues(alpha: 0.5))
+                                        : null,
+                                  ),
                                   child: Text(
                                     _isLoading
                                         ? (isEs ? 'Cargando...' : 'Loading...')
                                         : '${_candidatos.length} ${isEs ? 'postulantes en total' : 'total applicants'}',
-                                    style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                                    style: TextStyle(
+                                      color: isPremium ? kGoldLight : Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -407,6 +582,110 @@ class _CandidatosVacanteScreenState extends State<CandidatosVacanteScreen> {
                   ),
                 ),
               ),
+              if (!_isLoading && _candidatos.isNotEmpty)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: isPremium ? kGold.withValues(alpha: 0.3) : kLine),
+                        boxShadow: [
+                          BoxShadow(
+                            color: (isPremium ? kGold : kNavy).withValues(alpha: 0.04),
+                            blurRadius: 10,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(12),
+                              onTap: () => setState(() => _sortByMatch = true),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 9),
+                                decoration: BoxDecoration(
+                                  color: _sortByMatch
+                                      ? (isPremium ? kGold.withValues(alpha: 0.2) : kBlue.withValues(alpha: 0.1))
+                                      : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: _sortByMatch
+                                        ? (isPremium ? kGold : kBlue)
+                                        : Colors.transparent,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.auto_awesome_rounded,
+                                      size: 15,
+                                      color: _sortByMatch ? (isPremium ? kGoldDark : kBlue) : kMuted,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      isEs ? 'Mayor Afinidad IA' : 'Highest AI Match',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: _sortByMatch ? FontWeight.w800 : FontWeight.w500,
+                                        color: _sortByMatch ? (isPremium ? kGoldDark : kBlue) : kNavy,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(12),
+                              onTap: () => setState(() => _sortByMatch = false),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 9),
+                                decoration: BoxDecoration(
+                                  color: !_sortByMatch
+                                      ? (isPremium ? kGold.withValues(alpha: 0.2) : kBlue.withValues(alpha: 0.1))
+                                      : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: !_sortByMatch
+                                        ? (isPremium ? kGold : kBlue)
+                                        : Colors.transparent,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.schedule_rounded,
+                                      size: 15,
+                                      color: !_sortByMatch ? (isPremium ? kGoldDark : kBlue) : kMuted,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      isEs ? 'Más Recientes' : 'Most Recent',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: !_sortByMatch ? FontWeight.w800 : FontWeight.w500,
+                                        color: !_sortByMatch ? (isPremium ? kGoldDark : kBlue) : kNavy,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
               if (_isLoading)
                 SliverPadding(
                   padding: const EdgeInsets.all(20),
@@ -460,21 +739,24 @@ class _CandidatosVacanteScreenState extends State<CandidatosVacanteScreen> {
                   sliver: SliverList(
                     delegate: SliverChildBuilderDelegate(
                       (context, index) {
-                        final cand = _candidatos[index];
+                        final cand = _sortedCandidatos[index];
                         return FadeInUp(
-                          duration: const Duration(milliseconds: 600),
-                          delay: Duration(milliseconds: 150 * index),
+                          duration: const Duration(milliseconds: 500),
+                          delay: Duration(milliseconds: 80 * index.clamp(0, 10)),
                           child: Padding(
                             padding: const EdgeInsets.only(bottom: 16),
                             child: _CandidatoCard(
                               candidato: cand,
+                              vacanteRequisitos: widget.vacante.requisitos,
+                              isPremium: isPremium,
                               onContactar: () => _contactarPerfil(cand),
                               onDescartar: () => _descartarCandidato(cand),
+                              onDescargarCv: () => _descargarCvCandidato(cand),
                             ),
                           ),
                         );
                       },
-                      childCount: _candidatos.length,
+                      childCount: _sortedCandidatos.length,
                     ),
                   ),
                 ),
@@ -513,13 +795,19 @@ class _CandidatosVacanteScreenState extends State<CandidatosVacanteScreen> {
 
 class _CandidatoCard extends StatelessWidget {
   final Map<String, dynamic> candidato;
+  final List<String> vacanteRequisitos;
+  final bool isPremium;
   final VoidCallback onContactar;
   final VoidCallback onDescartar;
+  final VoidCallback? onDescargarCv;
 
   const _CandidatoCard({
     required this.candidato,
+    this.vacanteRequisitos = const [],
+    this.isPremium = false,
     required this.onContactar,
     required this.onDescartar,
+    this.onDescargarCv,
   });
 
   @override
@@ -530,6 +818,25 @@ class _CandidatoCard extends StatelessWidget {
         : <String>[];
     final String estado = candidato['estado']?.toString() ?? 'Postulado';
     final isEs = context.watch<LocaleProvider>().isSpanish;
+
+    // Desglose de Requisitos Cumplidos vs Pendientes por la IA
+    final candSkillsLower = skills.map((s) => s.toLowerCase().trim()).toSet();
+    final List<String> cumple = [];
+    final List<String> falta = [];
+
+    for (final r in vacanteRequisitos) {
+      final rTrim = r.trim();
+      if (rTrim.isEmpty) continue;
+      final rLower = rTrim.toLowerCase();
+      final match = candSkillsLower.any((s) => s.contains(rLower) || rLower.contains(s));
+      if (match) {
+        cumple.add(rTrim);
+      } else {
+        falta.add(rTrim);
+      }
+    }
+
+    final bool isTopMatch = matchScore != null && matchScore >= 85;
 
     Color estadoColor = Colors.blueAccent;
     if (estado.toLowerCase().contains('nuevo') || estado.toLowerCase().contains('postulado')) {
@@ -554,8 +861,40 @@ class _CandidatoCard extends StatelessWidget {
       child: GlassCard(
         padding: EdgeInsets.zero,
         borderRadius: 24,
+        customBorder: (isPremium && isTopMatch)
+            ? Border.all(color: kGold.withValues(alpha: 0.6), width: 1.6)
+            : null,
         child: Column(
           children: [
+            // Insignia Top Candidato IA para empresas premium
+            if (isPremium && isTopMatch)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 12),
+                decoration: const BoxDecoration(
+                  gradient: kGoldGradient,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.stars_rounded, color: Colors.white, size: 14),
+                    const SizedBox(width: 5),
+                    Text(
+                      isEs
+                          ? 'CANDIDATO TOP IA (AFINIDAD $matchScore%)'
+                          : 'TOP AI MATCH CANDIDATE ($matchScore%)',
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
             Padding(
               padding: const EdgeInsets.all(16),
               child: Row(
@@ -568,7 +907,18 @@ class _CandidatoCard extends StatelessWidget {
                       height: 65,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        boxShadow: [BoxShadow(color: kBlue.withValues(alpha: 0.2), blurRadius: 10, offset: const Offset(0, 4))],
+                        border: (isPremium && isTopMatch)
+                            ? Border.all(color: kGoldLight, width: 2)
+                            : null,
+                        boxShadow: [
+                          BoxShadow(
+                            color: (isPremium && isTopMatch)
+                                ? kGold.withValues(alpha: 0.35)
+                                : kBlue.withValues(alpha: 0.2),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                       ),
                       child: ClipOval(
                         child: Hero(
@@ -648,6 +998,125 @@ class _CandidatoCard extends StatelessWidget {
               ),
             ),
 
+            // Desglose de Compatibilidad IA (Requisitos Cumplidos / Por Evaluar)
+            if (cumple.isNotEmpty || falta.isNotEmpty)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                decoration: BoxDecoration(
+                  color: isPremium ? const Color(0xFFFAF5EC) : const Color(0xFFF8FAFC),
+                  border: Border.symmetric(
+                    horizontal: BorderSide(
+                      color: isPremium ? kGold.withValues(alpha: 0.25) : kLine.withValues(alpha: 0.6),
+                    ),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.psychology_outlined,
+                          size: 14,
+                          color: isPremium ? kGoldDark : kBlue,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          isEs ? 'Desglose de Compatibilidad IA:' : 'AI Fit Breakdown:',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            color: isPremium ? kGoldDark : kNavy,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    if (cumple.isNotEmpty)
+                      Wrap(
+                        spacing: 4,
+                        runSpacing: 4,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF10B981).withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              isEs ? 'Cumple:' : 'Meets:',
+                              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF047857)),
+                            ),
+                          ),
+                          ...cumple.take(4).map(
+                                (c) => Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFECFDF5),
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(color: const Color(0xFFA7F3D0)),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.check, size: 10, color: Color(0xFF059669)),
+                                      const SizedBox(width: 3),
+                                      Text(
+                                        c,
+                                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Color(0xFF065F46)),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                        ],
+                      ),
+                    if (cumple.isNotEmpty && falta.isNotEmpty) const SizedBox(height: 4),
+                    if (falta.isNotEmpty)
+                      Wrap(
+                        spacing: 4,
+                        runSpacing: 4,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF59E0B).withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              isEs ? 'Por evaluar:' : 'To assess:',
+                              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFFB45309)),
+                            ),
+                          ),
+                          ...falta.take(3).map(
+                                (f) => Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFFFBEB),
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(color: const Color(0xFFFDE68A)),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.help_outline_rounded, size: 10, color: Color(0xFFD97706)),
+                                      const SizedBox(width: 3),
+                                      Text(
+                                        f,
+                                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Color(0xFF92400E)),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                        ],
+                      ),
+                  ],
+                ),
+              ),
+
+            // Skills chips
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -673,6 +1142,33 @@ class _CandidatoCard extends StatelessWidget {
               ),
             ),
 
+            // Botón Ver / Descargar CV
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 2),
+              child: SizedBox(
+                width: double.infinity,
+                height: 38,
+                child: OutlinedButton.icon(
+                  onPressed: onDescargarCv,
+                  icon: const Icon(Icons.file_download_outlined, size: 18, color: kBlue),
+                  label: Text(
+                    isEs ? 'Ver / Descargar CV del Candidato' : 'View / Download Candidate CV',
+                    style: const TextStyle(
+                      color: kBlue,
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(color: kBlue.withValues(alpha: 0.35), width: 1.2),
+                    backgroundColor: kBlue.withValues(alpha: 0.04),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ),
+            ),
+
+            // Acciones de contacto
             Padding(
               padding: const EdgeInsets.all(12),
               child: Row(
@@ -686,10 +1182,19 @@ class _CandidatoCard extends StatelessWidget {
                         child: OutlinedButton(
                           onPressed: onDescartar,
                           style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 6),
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             side: BorderSide(color: Colors.redAccent.withValues(alpha: 0.3)),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                           ),
-                          child: Text(isEs ? 'Descartar' : 'Reject', style: const TextStyle(color: Colors.redAccent, fontSize: 13, fontWeight: FontWeight.bold)),
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              isEs ? 'Descartar' : 'Reject',
+                              style: const TextStyle(color: Colors.redAccent, fontSize: 13, fontWeight: FontWeight.bold),
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -701,16 +1206,40 @@ class _CandidatoCard extends StatelessWidget {
                       onPressed: onContactar,
                       child: SizedBox(
                         height: 44,
-                        child: FilledButton.icon(
-                          onPressed: onContactar,
-                          icon: const Icon(Icons.mail_outline, size: 18),
-                          label: Text(isEs ? 'Contactar Perfil' : 'Contact Profile', style: const TextStyle(fontWeight: FontWeight.bold)),
-                          style: FilledButton.styleFrom(
-                            backgroundColor: kBlue,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                            disabledBackgroundColor: kBlue,
-                            disabledForegroundColor: Colors.white,
+                        child: Container(
+                          decoration: isPremium
+                              ? BoxDecoration(
+                                  gradient: kPremiumGoldButtonGradient,
+                                  borderRadius: BorderRadius.circular(14),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: kGold.withValues(alpha: 0.3),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 3),
+                                    ),
+                                  ],
+                                )
+                              : null,
+                          child: FilledButton.icon(
+                            onPressed: onContactar,
+                            icon: const Icon(Icons.mail_outline, size: 18),
+                            label: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                isEs ? 'Contactar Perfil' : 'Contact Profile',
+                                style: const TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            style: FilledButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 8),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              backgroundColor: isPremium ? Colors.transparent : kBlue,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                              disabledBackgroundColor: isPremium ? Colors.transparent : kBlue,
+                              disabledForegroundColor: Colors.white,
+                            ),
                           ),
                         ),
                       ),

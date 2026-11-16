@@ -153,7 +153,7 @@ class AuthProvider extends ChangeNotifier {
       );
       onSessionReset?.call();
       if (session != null && session!.isCandidate) {
-        needsProfileCompletion = session!.isNewUser || isNewUser;
+        needsProfileCompletion = true;
       }
       status = AuthStatus.authenticated;
       error = null;

@@ -93,10 +93,19 @@ class FakeVacanteRepo implements VacanteRepository {
   ApiException? apiException;
 
   @override
-  Future<List<Vacante>> listarVacantes({String? ubicacion, String? categoria}) async {
+  Future<List<Vacante>> listarVacantes({String? ubicacion, String? categoria, String? query}) async {
     if (apiException != null) throw apiException!;
     if (shouldFail) throw Exception('fail');
     return vacantes;
+  }
+
+  @override
+  Future<bool> destacarVacante(String vacanteId) async {
+    final idx = vacantes.indexWhere((v) => v.id == vacanteId);
+    if (idx != -1) {
+      vacantes[idx] = vacantes[idx].copyWith(esDestacada: true);
+    }
+    return true;
   }
 
   @override

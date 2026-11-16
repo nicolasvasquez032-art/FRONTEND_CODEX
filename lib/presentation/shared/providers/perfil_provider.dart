@@ -27,7 +27,8 @@ class PerfilProvider extends ChangeNotifier {
   String? saveError;
 
   bool get hasCv =>
-      profile?.cvText != null && profile!.cvText!.trim().isNotEmpty;
+      (profile?.cvText != null && profile!.cvText!.trim().isNotEmpty) ||
+      (profile?.cvFileUrl != null && profile!.cvFileUrl!.trim().isNotEmpty);
 
   // ──────────────────────────────────────────────
   // Resetear estado al cerrar o cambiar de sesión

@@ -7,7 +7,11 @@ abstract class VacanteRepository {
   Future<List<Vacante>> listarVacantes({
     String? ubicacion,
     String? categoria,
+    String? query,
   });
+
+  /// Destaca una vacante en el feed principal (⭐ Featured Job).
+  Future<bool> destacarVacante(String vacanteId);
 
   /// Obtiene una vacante por su ID.
   Future<Vacante> getVacante(String id);

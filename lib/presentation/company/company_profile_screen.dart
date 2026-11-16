@@ -103,6 +103,8 @@ class _CompanyProfileScreenState extends State<CompanyProfileScreen> {
         ? _brandColors[_companyColorIndex]
         : _brandColors.first;
 
+    final isPremium = auth.session?.isEffectivelyPremium == true;
+
     final initial = _companyName.isNotEmpty ? _companyName[0].toUpperCase() : 'E';
 
     return Scaffold(
@@ -121,13 +123,15 @@ class _CompanyProfileScreenState extends State<CompanyProfileScreen> {
                   Container(
                     height: 280,
                     width: double.infinity,
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [Color(0xFF0F172A), Color(0xFF1E3A8A)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.only(
+                    decoration: BoxDecoration(
+                      gradient: isPremium
+                          ? kPremiumBannerGradient
+                          : const LinearGradient(
+                              colors: [Color(0xFF0F172A), Color(0xFF1E3A8A)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                      borderRadius: const BorderRadius.only(
                         bottomLeft: Radius.circular(40),
                         bottomRight: Radius.circular(40),
                       ),
@@ -222,9 +226,13 @@ class _CompanyProfileScreenState extends State<CompanyProfileScreen> {
                                               const SizedBox(width: 8),
                                               Icon(Icons.location_on_outlined, size: 13, color: Colors.blueAccent.shade100),
                                               const SizedBox(width: 2),
-                                              Text(
-                                                _companyLocation,
-                                                style: TextStyle(color: Colors.blueAccent.shade100, fontSize: 11, fontWeight: FontWeight.w500),
+                                              Flexible(
+                                                child: Text(
+                                                  _companyLocation,
+                                                  style: TextStyle(color: Colors.blueAccent.shade100, fontSize: 11, fontWeight: FontWeight.w500),
+                                                  maxLines: 1,
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
                                               ),
                                             ],
                                           ),
@@ -248,12 +256,15 @@ class _CompanyProfileScreenState extends State<CompanyProfileScreen> {
                                                 decoration: BoxDecoration(
                                                   color: brandColor,
                                                   shape: BoxShape.circle,
-                                                  border: Border.all(color: Colors.white.withValues(alpha: 0.8), width: 1.5),
+                                                  border: Border.all(
+                                                    color: isPremium ? kGoldLight : Colors.white.withValues(alpha: 0.8),
+                                                    width: isPremium ? 2.5 : 1.5,
+                                                  ),
                                                   boxShadow: [
                                                     BoxShadow(
-                                                      color: brandColor.withValues(alpha: 0.4),
-                                                      blurRadius: 12,
-                                                      spreadRadius: 1,
+                                                      color: isPremium ? kGold.withValues(alpha: 0.45) : brandColor.withValues(alpha: 0.4),
+                                                      blurRadius: isPremium ? 16 : 12,
+                                                      spreadRadius: isPremium ? 2 : 1,
                                                     ),
                                                   ],
                                                 ),
@@ -304,14 +315,34 @@ class _CompanyProfileScreenState extends State<CompanyProfileScreen> {
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                                   decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.15), 
+                                    color: isPremium
+                                        ? kGold.withValues(alpha: 0.2)
+                                        : Colors.white.withValues(alpha: 0.15),
                                     borderRadius: BorderRadius.circular(20),
-                                    border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                                    border: Border.all(
+                                      color: isPremium
+                                          ? kGoldLight.withValues(alpha: 0.6)
+                                          : Colors.white.withValues(alpha: 0.2),
+                                      width: isPremium ? 1.4 : 1.0,
+                                    ),
                                   ),
                                   child: Builder(
                                     builder: (context) {
                                       final id = auth.session?.userId;
                                       final shortId = (id != null && id.length > 8) ? id.substring(0, 8) : '001';
+                                      if (isPremium) {
+                                        return Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Icon(Icons.stars_rounded, color: kGoldLight, size: 14),
+                                            const SizedBox(width: 5),
+                                            Text(
+                                              'ID: $shortId... • PRO ✦ DESTACADA',
+                                              style: const TextStyle(fontSize: 12, color: kGoldLight, fontWeight: FontWeight.w900),
+                                            ),
+                                          ],
+                                        );
+                                      }
                                       final planDisplay = auth.session?.isPremium == true
                                           ? 'Plan Pro'
                                           : _companyPlan;
@@ -367,34 +398,45 @@ class _CompanyProfileScreenState extends State<CompanyProfileScreen> {
                             ),
                             // Tarjeta de Cristal
                             GlassCard(
+                              width: double.infinity,
                               borderRadius: BorderRadius.circular(28),
                               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+                              customBorder: isPremium
+                                  ? Border.all(color: kGold.withValues(alpha: 0.45), width: 1.5)
+                                  : null,
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Row(
                                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                     children: [
-                                      Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            isEs ? 'Rendimiento de publicaciones' : 'Listing Performance',
-                                            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: kNavy),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            misVacantes.isEmpty
-                                                ? (isEs ? 'Sin vacantes publicadas aún' : 'No vacancies published yet')
-                                                : (isEs ? '$activas vacantes activas en curso' : '$activas active listings running'),
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w700,
-                                              color: misVacantes.isEmpty ? kMuted : const Color(0xFF10B981),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              isEs ? 'Rendimiento de publicaciones' : 'Listing Performance',
+                                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: kNavy),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
                                             ),
-                                          ),
-                                        ],
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              misVacantes.isEmpty
+                                                  ? (isEs ? 'Sin vacantes publicadas aún' : 'No vacancies published yet')
+                                                  : (isEs ? '$activas vacantes activas en curso' : '$activas active listings running'),
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w700,
+                                                color: misVacantes.isEmpty ? kMuted : const Color(0xFF10B981),
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ],
+                                        ),
                                       ),
+                                      const SizedBox(width: 8),
                                       Container(
                                         padding: const EdgeInsets.all(10),
                                         decoration: BoxDecoration(
@@ -407,13 +449,16 @@ class _CompanyProfileScreenState extends State<CompanyProfileScreen> {
                                     ],
                                   ),
                                   const SizedBox(height: 28),
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                                    children: [
-                                      _buildDonutChart(isEs ? 'Vacantes' : 'Jobs', '${misVacantes.length}', pctVacantes, kBlue, 600),
-                                      _buildDonutChart(isEs ? 'Postulados' : 'Applicants', '$totalPostulaciones', pctPostulados, const Color(0xFF10B981), 700),
-                                      _buildDonutChart(isEs ? 'Activas' : 'Active', '$activas', pctActivas, Colors.orangeAccent, 800),
-                                    ],
+                                  FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                      children: [
+                                        _buildDonutChart(isEs ? 'Vacantes' : 'Jobs', '${misVacantes.length}', pctVacantes, kBlue, 600),
+                                        _buildDonutChart(isEs ? 'Postulados' : 'Applicants', '$totalPostulaciones', pctPostulados, const Color(0xFF10B981), 700),
+                                        _buildDonutChart(isEs ? 'Activas' : 'Active', '$activas', pctActivas, Colors.orangeAccent, 800),
+                                      ],
+                                    ),
                                   ),
                                 ],
                               ),

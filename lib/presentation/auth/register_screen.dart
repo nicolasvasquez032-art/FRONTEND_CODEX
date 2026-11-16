@@ -2,7 +2,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
-import 'dart:ui' show ImageFilter;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -13,7 +12,6 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/network/api_client.dart';
-import '../../core/utils/validators.dart';
 import '../../l10n/app_localizations.dart';
 import '../legal/legal_screen.dart';
 import '../shared/providers/auth_provider.dart';
@@ -22,6 +20,8 @@ import '../shared/widgets/app_toast.dart';
 import '../shared/widgets/brand_logo.dart';
 import '../shared/widgets/colombia_location_picker.dart';
 import 'social_popup_helper.dart';
+import 'widgets/auth_form_components.dart';
+import 'widgets/social_auth_buttons.dart';
 
 // ──────────────────────────────────────────────
 // REGISTER SCREEN — TalentMatch
@@ -1370,9 +1370,8 @@ class _RegisterScreenState extends State<RegisterScreen>
     return Row(
       children: [
         Expanded(
-          child: _SocialButton(
-            icon: FontAwesomeIcons.google,
-            iconColor: const Color(0xFFDB4437),
+          child: SocialAuthButton(
+            iconWidget: const GoogleGLogo(size: 16),
             label: 'Google',
             onTap: () => _launchRegisterSocialOAuth(
               provider: 'google',
@@ -1382,9 +1381,12 @@ class _RegisterScreenState extends State<RegisterScreen>
         ),
         const SizedBox(width: 8),
         Expanded(
-          child: _SocialButton(
-            icon: FontAwesomeIcons.linkedin,
-            iconColor: const Color(0xFF0077B5),
+          child: SocialAuthButton(
+            iconWidget: const FaIcon(
+              FontAwesomeIcons.linkedin,
+              color: Color(0xFF0077B5),
+              size: 15,
+            ),
             label: 'LinkedIn',
             onTap: () => _launchRegisterSocialOAuth(
               provider: 'linkedin',
@@ -1394,9 +1396,12 @@ class _RegisterScreenState extends State<RegisterScreen>
         ),
         const SizedBox(width: 8),
         Expanded(
-          child: _SocialButton(
-            icon: FontAwesomeIcons.facebook,
-            iconColor: const Color(0xFF1877F2),
+          child: SocialAuthButton(
+            iconWidget: const FaIcon(
+              FontAwesomeIcons.facebook,
+              color: Color(0xFF1877F2),
+              size: 15,
+            ),
             label: 'Facebook',
             onTap: () => _launchRegisterSocialOAuth(
               provider: 'facebook',
@@ -1467,9 +1472,9 @@ class _RegisterScreenState extends State<RegisterScreen>
     }
 
     int attempts = 0;
-    _oauthPollTimer = Timer.periodic(const Duration(milliseconds: 1500), (timer) async {
+    _oauthPollTimer = Timer.periodic(const Duration(milliseconds: 350), (timer) async {
       attempts++;
-      if (attempts > 50) {
+      if (attempts > 180) {
         timer.cancel();
         return;
       }
@@ -1549,404 +1554,11 @@ class _RegisterScreenState extends State<RegisterScreen>
 }
 
 // ──────────────────────────────────────────────
-// ORBITAL PAINTER
+// TYPEDEFS HACIA WIDGETS MODULARES
 // ──────────────────────────────────────────────
-class _OrbitalPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = const Color(0xFF1558D6).withValues(alpha: 0.10)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.2;
+typedef _OrbitalPainter = OrbitalPainter;
+typedef _RoleCard = RoleSelectorCard;
+typedef _FieldLabel = FormFieldLabel;
+typedef _RegTextField = FormTextInputField;
 
-    canvas.save();
-    canvas.translate(size.width * 0.42, size.height * 0.45);
-    canvas.scale(1.0, 0.38);
-    canvas.drawOval(
-      Rect.fromCenter(center: Offset.zero, width: size.width * 0.92, height: size.height * 0.92),
-      paint,
-    );
-    canvas.restore();
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-// ──────────────────────────────────────────────
-// ROLE CARD WIDGET
-// ──────────────────────────────────────────────
-class _RoleCard extends StatelessWidget {
-  final IconData icon;
-  final String   title;
-  final String   subtitle;
-  final bool     selected;
-  final VoidCallback onTap;
-
-  const _RoleCard({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
-        decoration: BoxDecoration(
-          color: selected ? const Color(0xFFEAF2FF) : Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: selected ? kBlue : kLine,
-            width: selected ? 2 : 1.5,
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: selected ? kBlue.withValues(alpha: 0.12) : kLine,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(icon, color: selected ? kBlue : kMuted, size: 18),
-                ),
-                const Spacer(),
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  width: 16,
-                  height: 16,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: selected ? kBlue : kLine, width: 2),
-                    color: selected ? kBlue : Colors.transparent,
-                  ),
-                  child: selected
-                      ? const Icon(Icons.check, size: 10, color: kWhite)
-                      : null,
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w800,
-                color: selected ? kNavy : kText,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              subtitle,
-              style: const TextStyle(fontSize: 11, color: kMuted),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ──────────────────────────────────────────────
-// FIELD LABEL
-// ──────────────────────────────────────────────
-class _FieldLabel extends StatelessWidget {
-  final String text;
-  const _FieldLabel(this.text);
-
-  @override
-  Widget build(BuildContext context) => Text(
-        text,
-        style: const TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w700,
-          color: kNavy,
-        ),
-      );
-}
-
-// ──────────────────────────────────────────────
-// REUSABLE TEXT FIELD
-// ──────────────────────────────────────────────
-class _RegTextField extends StatelessWidget {
-  final TextEditingController controller;
-  final String hint;
-  final IconData prefixIcon;
-  final bool obscureText;
-  final Widget? suffixIcon;
-  final TextInputType keyboardType;
-  final int maxLines;
-  final bool readOnly;
-  final VoidCallback? onTap;
-  final ValueChanged<String>? onChanged;
-
-  const _RegTextField({
-    required this.controller,
-    required this.hint,
-    required this.prefixIcon,
-    this.obscureText = false,
-    this.suffixIcon,
-    this.keyboardType = TextInputType.text,
-    this.maxLines = 1,
-    this.readOnly = false,
-    this.onTap,
-    this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return TextFormField(
-      controller: controller,
-      obscureText: obscureText,
-      keyboardType: keyboardType,
-      maxLines: obscureText ? 1 : maxLines,
-      readOnly: readOnly,
-      onTap: onTap,
-      onChanged: onChanged,
-      style: const TextStyle(fontSize: 14, color: kText),
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: const TextStyle(color: kMuted, fontSize: 13),
-        prefixIcon: Icon(prefixIcon, color: kMuted, size: 20),
-        suffixIcon: suffixIcon,
-        filled: true,
-        fillColor: const Color(0xFFF5F7FB),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFE7EBF2), width: 1),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: kBlue, width: 1.5),
-        ),
-      ),
-    );
-  }
-}
-
-// ──────────────────────────────────────────────
-// PASSWORD REQUIREMENTS
-// ──────────────────────────────────────────────
-class _PasswordRequirements extends StatelessWidget {
-  final TextEditingController controller;
-  const _PasswordRequirements({required this.controller});
-
-  @override
-  Widget build(BuildContext context) {
-    return ValueListenableBuilder<TextEditingValue>(
-      valueListenable: controller,
-      builder: (context, value, _) {
-        final pwd  = value.text;
-        final eval = Validators.evaluatePassword(pwd);
-
-        final Color barColor = pwd.isEmpty
-            ? Colors.grey.shade300
-            : switch (eval.strength) {
-                PasswordStrength.weak => Colors.redAccent,
-                PasswordStrength.medium => Colors.orangeAccent,
-                PasswordStrength.strong => const Color(0xFF10B981),
-              };
-
-        final String strengthLabel = pwd.isEmpty
-            ? ''
-            : switch (eval.strength) {
-                PasswordStrength.weak => 'Seguridad: Débil',
-                PasswordStrength.medium => 'Seguridad: Media',
-                PasswordStrength.strong => 'Seguridad: Fuerte',
-              };
-
-        return Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF5F7FB),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: kLine),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (pwd.isNotEmpty) ...[
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      strengthLabel,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: barColor,
-                      ),
-                    ),
-                    Text(
-                      '${eval.metCount}/4 requisitos',
-                      style: const TextStyle(fontSize: 10, color: kMuted),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: LinearProgressIndicator(
-                    value: eval.fraction,
-                    minHeight: 5,
-                    backgroundColor: Colors.black.withValues(alpha: 0.06),
-                    valueColor: AlwaysStoppedAnimation<Color>(barColor),
-                  ),
-                ),
-                const SizedBox(height: 10),
-              ],
-              const Text(
-                'La contraseña debe tener:',
-                style: TextStyle(fontSize: 11, color: kNavy, fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 6),
-              _Req(text: 'Mínimo 8 caracteres',          met: eval.hasMinLength),
-              _Req(text: 'Una mayúscula y una minúscula', met: eval.hasUpperAndLower),
-              _Req(text: 'Al menos un número',           met: eval.hasNumber),
-              _Req(text: 'Un carácter especial',         met: eval.hasSpecialChar),
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _Req extends StatelessWidget {
-  final String text;
-  final bool met;
-  const _Req({required this.text, required this.met});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 3),
-      child: Row(
-        children: [
-          Icon(
-            met ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
-            size: 13,
-            color: met ? kGreen : kMuted,
-          ),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Text(
-              text,
-              style: TextStyle(
-                fontSize: 11,
-                color: met ? kGreen : kMuted,
-                fontWeight: met ? FontWeight.w600 : FontWeight.normal,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ──────────────────────────────────────────────
-// SOCIAL BUTTON
-// ──────────────────────────────────────────────
-class _SocialButton extends StatelessWidget {
-  final FaIconData icon;
-  final Color      iconColor;
-  final String     label;
-  final VoidCallback onTap;
-
-  const _SocialButton({
-    required this.icon,
-    required this.iconColor,
-    required this.label,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF0F172A).withValues(alpha: 0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-          BoxShadow(
-            color: Colors.white.withValues(alpha: 0.75),
-            blurRadius: 6,
-            offset: const Offset(0, -1),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(14),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: onTap,
-              splashColor: const Color(0xFF38BDF8).withValues(alpha: 0.15),
-              highlightColor: Colors.white.withValues(alpha: 0.35),
-              borderRadius: BorderRadius.circular(14),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 4),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(14),
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Colors.white.withValues(alpha: 0.90),
-                      Colors.white.withValues(alpha: 0.60),
-                    ],
-                  ),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.95),
-                    width: 1.4,
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    FaIcon(icon, color: iconColor, size: 15),
-                    const SizedBox(width: 5),
-                    Flexible(
-                      child: Text(
-                        label,
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 1,
-                        style: const TextStyle(
-                          color: kNavy,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 12,
-                          letterSpacing: -0.1,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
+typedef _PasswordRequirements = PasswordRequirementsBox;

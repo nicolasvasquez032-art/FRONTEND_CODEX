@@ -24,6 +24,8 @@ class PostulacionModel {
   final double? vacanteSalarioMax;
   final String? vacanteDescripcion;
   final List<String>? vacanteRequisitos;
+  final String? candidatoCvUrl;
+  final String? candidatoCvText;
 
   const PostulacionModel({
     required this.id,
@@ -48,6 +50,8 @@ class PostulacionModel {
     this.vacanteSalarioMax,
     this.vacanteDescripcion,
     this.vacanteRequisitos,
+    this.candidatoCvUrl,
+    this.candidatoCvText,
   });
 
   factory PostulacionModel.fromJson(Map<String, dynamic> json) =>
@@ -78,7 +82,63 @@ class PostulacionModel {
         vacanteRequisitos: (json['vacante_requisitos'] as List<dynamic>?)
             ?.map((e) => e.toString())
             .toList(),
+        candidatoCvUrl: json['candidato_cv_url'] as String?,
+        candidatoCvText: json['candidato_cv_text'] as String?,
       );
+
+  factory PostulacionModel.fromEntity(Postulacion p) => PostulacionModel(
+        id: p.id,
+        candidatoId: p.candidatoId,
+        vacanteId: p.vacanteId,
+        estado: p.estado.name,
+        fecha: p.fecha.toIso8601String(),
+        scoreMatch: p.scoreMatch,
+        candidatoNombre: p.candidatoNombre,
+        candidatoEmail: p.candidatoEmail,
+        candidatoJobTitle: p.candidatoJobTitle,
+        candidatoSkills: p.candidatoSkills,
+        candidatoExperienceYears: p.candidatoExperienceYears,
+        candidatoLocation: p.candidatoLocation,
+        candidatoPhone: p.candidatoPhone,
+        candidatoUserId: p.candidatoUserId,
+        vacanteTitulo: p.vacanteTitulo,
+        empresaNombre: p.empresaNombre,
+        vacanteUbicacion: p.vacanteUbicacion,
+        vacanteCategoria: p.vacanteCategoria,
+        vacanteSalarioMin: p.vacanteSalarioMin,
+        vacanteSalarioMax: p.vacanteSalarioMax,
+        vacanteDescripcion: p.vacanteDescripcion,
+        vacanteRequisitos: p.vacanteRequisitos,
+        candidatoCvUrl: p.candidatoCvUrl,
+        candidatoCvText: p.candidatoCvText,
+      );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'candidato_id': candidatoId,
+        'vacante_id': vacanteId,
+        'estado': estado,
+        'fecha': fecha,
+        'score_match': scoreMatch,
+        'candidato_nombre': candidatoNombre,
+        'candidato_email': candidatoEmail,
+        'candidato_job_title': candidatoJobTitle,
+        'candidato_skills': candidatoSkills,
+        'candidato_experience_years': candidatoExperienceYears,
+        'candidato_location': candidatoLocation,
+        'candidato_phone': candidatoPhone,
+        'candidato_user_id': candidatoUserId,
+        'vacante_titulo': vacanteTitulo,
+        'empresa_nombre': empresaNombre,
+        'vacante_ubicacion': vacanteUbicacion,
+        'vacante_categoria': vacanteCategoria,
+        'vacante_salario_min': vacanteSalarioMin,
+        'vacante_salario_max': vacanteSalarioMax,
+        'vacante_descripcion': vacanteDescripcion,
+        'vacante_requisitos': vacanteRequisitos,
+        'candidato_cv_url': candidatoCvUrl,
+        'candidato_cv_text': candidatoCvText,
+      };
 
   /// Convierte el DTO a la entidad de dominio.
   Postulacion toEntity() => Postulacion(
@@ -104,6 +164,8 @@ class PostulacionModel {
         vacanteSalarioMax: vacanteSalarioMax,
         vacanteDescripcion: vacanteDescripcion,
         vacanteRequisitos: vacanteRequisitos,
+        candidatoCvUrl: candidatoCvUrl,
+        candidatoCvText: candidatoCvText,
       );
 
   static PostulacionEstado _parseEstado(String s) {

@@ -18,6 +18,9 @@ import '../shared/widgets/app_toast.dart';
 import 'forgot_password_screen.dart';
 import 'register_screen.dart';
 import 'social_popup_helper.dart';
+import 'widgets/auth_background_decor.dart';
+import 'widgets/auth_language_pill.dart';
+import 'widgets/social_auth_buttons.dart';
 
 /// Pantalla de Inicio de Sesión de TalentMatch.
 ///
@@ -173,10 +176,10 @@ class _LoginScreenState extends State<LoginScreen>
     }
 
     int attempts = 0;
-    _oauthPollTimer = Timer.periodic(const Duration(milliseconds: 1500), (timer) async {
+    _oauthPollTimer = Timer.periodic(const Duration(milliseconds: 350), (timer) async {
       attempts++;
-      if (attempts > 50) {
-        // Detener después de 75 segundos
+      if (attempts > 180) {
+        // Detener después de ~63 segundos
         timer.cancel();
         return;
       }
@@ -211,32 +214,7 @@ class _LoginScreenState extends State<LoginScreen>
     });
   }
 
-  /// Acceso rápido candidato directo para pruebas locales de desarrollo.
-  Future<void> _directQuickLogin({
-    required String provider,
-    required String defaultEmail,
-    required String defaultName,
-  }) async {
-    final auth = context.read<AuthProvider>();
-    await auth.loginWithSocial(
-      provider: provider,
-      email: defaultEmail,
-      fullName: defaultName,
-    );
-    if (mounted && auth.error != null) {
-      AppToast.error(context, auth.error!);
-    } else if (mounted && auth.status == AuthStatus.authenticated) {
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(
-          builder: (_) => const RegisterScreen(
-            initialStep: 1,
-            isSocialOnboarding: true,
-          ),
-        ),
-        (route) => false,
-      );
-    }
-  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -255,7 +233,7 @@ class _LoginScreenState extends State<LoginScreen>
       body: Stack(
         children: [
           // ── 1. Fondo de gradiente suave con orbes difusos ──
-          const _AmbientBackground(),
+          const AmbientBackground(),
 
           // ── 2. Contenido desplazable seguro ante teclado ──
           SafeArea(
@@ -271,7 +249,7 @@ class _LoginScreenState extends State<LoginScreen>
                   const SizedBox(height: 2),
 
                   // ── Hero Decorativo 3D con Flotación Suave de 8 Segundos ──
-                  _FloatingHeroDecor(
+                  FloatingHeroDecor(
                     floatAnimation: _floatCtrl,
                     disableAnimations: disableAnimations,
                   ),
@@ -341,7 +319,7 @@ class _LoginScreenState extends State<LoginScreen>
           const BrandFull(iconSize: 36),
 
           // Selector de Idioma (ES / EN) estilo cápsula limpia Figma
-          _LanguageSegmentedPill(
+          AuthLanguagePill(
             isEs: isEs,
             onSelectEs: () => localeProvider.setLocale(const Locale('es')),
             onSelectEn: () => localeProvider.setLocale(const Locale('en')),
@@ -715,32 +693,22 @@ class _LoginScreenState extends State<LoginScreen>
                   children: [
                     // Botón Google
                     Expanded(
-                      child: _SocialAuthButton(
+                      child: SocialAuthButton(
                         onTap: () => _launchSocialOAuth(
                           provider: 'google',
                           providerName: 'Google',
                         ),
-                        onLongPress: () => _directQuickLogin(
-                          provider: 'google',
-                          defaultEmail: 'candidato.google@gmail.com',
-                          defaultName: 'Candidato Google',
-                        ),
-                        iconWidget: const _GoogleGLogo(size: 16),
+                        iconWidget: const GoogleGLogo(size: 16),
                         label: 'Google',
                       ),
                     ),
                     const SizedBox(width: 8),
                     // Botón LinkedIn
                     Expanded(
-                      child: _SocialAuthButton(
+                      child: SocialAuthButton(
                         onTap: () => _launchSocialOAuth(
                           provider: 'linkedin',
                           providerName: 'LinkedIn',
-                        ),
-                        onLongPress: () => _directQuickLogin(
-                          provider: 'linkedin',
-                          defaultEmail: 'candidato.linkedin@talentmatch.com',
-                          defaultName: 'Candidato LinkedIn',
                         ),
                         iconWidget: const FaIcon(
                           FontAwesomeIcons.linkedin,
@@ -753,15 +721,10 @@ class _LoginScreenState extends State<LoginScreen>
                     const SizedBox(width: 8),
                     // Botón Facebook
                     Expanded(
-                      child: _SocialAuthButton(
+                      child: SocialAuthButton(
                         onTap: () => _launchSocialOAuth(
                           provider: 'facebook',
                           providerName: 'Facebook',
-                        ),
-                        onLongPress: () => _directQuickLogin(
-                          provider: 'facebook',
-                          defaultEmail: 'candidato.facebook@talentmatch.com',
-                          defaultName: 'Candidato Facebook',
                         ),
                         iconWidget: const FaIcon(
                           FontAwesomeIcons.facebook,
@@ -878,672 +841,8 @@ class _LoginScreenState extends State<LoginScreen>
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// COMPONENTES DECORATIVOS & HERO ANIMADO (8 SEGUNDOS DE FLOTACIÓN SUAVE)
-// ─────────────────────────────────────────────────────────────────────────────
 
-/// Hero decorativo con la escultura 3D y elementos flotantes independientes.
-class _FloatingHeroDecor extends StatelessWidget {
-  final Animation<double> floatAnimation;
-  final bool disableAnimations;
 
-  const _FloatingHeroDecor({
-    required this.floatAnimation,
-    required this.disableAnimations,
-  });
 
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 155,
-      width: double.infinity,
-      child: RepaintBoundary(
-        child: AnimatedBuilder(
-          animation: floatAnimation,
-          builder: (context, child) {
-            // Valor normalizado t entre 0.0 y 1.0
-            final double t = disableAnimations ? 0.0 : floatAnimation.value;
 
-            // Oscilación armónica suave compacta
-            final double mainFloatY = disableAnimations
-                ? 0.0
-                : math.sin(t * math.pi * 2) * 6.0;
-            final double mainDriftX = disableAnimations
-                ? 0.0
-                : math.cos(t * math.pi * 2) * 2.5;
-            final double mainRotate = disableAnimations
-                ? 0.0
-                : math.sin(t * math.pi * 2) * 0.035; // ~2 grados
 
-            // Desfase para los elementos secundarios
-            final double userFloatY = disableAnimations
-                ? 0.0
-                : math.sin((t + 0.25) * math.pi * 2) * 5.0;
-            final double userRotate = disableAnimations
-                ? 0.0
-                : math.cos((t + 0.25) * math.pi * 2) * 0.035;
-
-            final double workFloatY = disableAnimations
-                ? 0.0
-                : math.sin((t + 0.60) * math.pi * 2) * 5.5;
-            final double workRotate = disableAnimations
-                ? 0.0
-                : -math.sin((t + 0.60) * math.pi * 2) * 0.035;
-
-            final double sphereFloatY = disableAnimations
-                ? 0.0
-                : math.cos((t + 0.80) * math.pi * 2) * 4.5;
-
-            final double sparkleFloatY = disableAnimations
-                ? 0.0
-                : math.sin((t + 0.40) * math.pi * 2) * 3.5;
-            final double sparkleOpacity = disableAnimations
-                ? 0.9
-                : (0.7 + (math.sin(t * math.pi * 2).abs() * 0.3)).clamp(0.0, 1.0);
-
-            return Stack(
-              alignment: Alignment.center,
-              clipBehavior: Clip.none,
-              children: [
-                // ── Resplandor ambiental cian/azul detrás de la escultura (reemplaza morado) ──
-                Positioned(
-                  child: Container(
-                    width: 175,
-                    height: 125,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: kCyan.withValues(alpha: 0.25),
-                          blurRadius: 40,
-                          spreadRadius: 10,
-                        ),
-                        BoxShadow(
-                          color: kBlue.withValues(alpha: 0.16),
-                          blurRadius: 55,
-                          spreadRadius: 16,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-                // ── 1. Escultura 3D Central (Eslabones Azul Glaciar & Marino - Agrandado un poquito) ──
-                Transform.translate(
-                  offset: Offset(mainDriftX, mainFloatY),
-                  child: Transform.rotate(
-                    angle: mainRotate,
-                    child: Image.asset(
-                      'assets/images/talent_match_3d_chains.png',
-                      width: 150,
-                      height: 150,
-                      fit: BoxFit.contain,
-                      filterQuality: FilterQuality.high,
-                    ),
-                  ),
-                ),
-
-                // ── 2. Tarjeta Flotante Izquierda: Avatar de Usuario ──
-                Positioned(
-                  left: 20,
-                  top: 10,
-                  child: Transform.translate(
-                    offset: Offset(0, userFloatY),
-                    child: Transform.rotate(
-                      angle: userRotate,
-                      child: const _FloatingFrostedTile(
-                        size: 44,
-                        child: Icon(
-                          Icons.person_outline_rounded,
-                          color: kBlue,
-                          size: 22,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-
-                // ── 3. Tarjeta Flotante Derecha: Maletín de Empleo ──
-                Positioned(
-                  right: 20,
-                  bottom: 10,
-                  child: Transform.translate(
-                    offset: Offset(0, workFloatY),
-                    child: Transform.rotate(
-                      angle: workRotate,
-                      child: const _FloatingFrostedTile(
-                        size: 44,
-                        child: Icon(
-                          Icons.business_center_outlined,
-                          color: kBlue,
-                          size: 21,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-
-                // ── 4. Esfera Iridiscente Flotante Azul / Celeste (Superior Derecha) ──
-                Positioned(
-                  right: 48,
-                  top: 8,
-                  child: Transform.translate(
-                    offset: Offset(0, sphereFloatY),
-                    child: const _FloatingSphere(size: 15),
-                  ),
-                ),
-
-                // ── 5. Destello 4 Puntas en Azul Cian (Medio Izquierda) ──
-                Positioned(
-                  left: 42,
-                  bottom: 22,
-                  child: Transform.translate(
-                    offset: Offset(0, sparkleFloatY),
-                    child: Opacity(
-                      opacity: sparkleOpacity,
-                      child: const _SparkleStar(
-                        size: 14,
-                        color: kCyan,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            );
-          },
-        ),
-      ),
-    );
-  }
-}
-
-/// Tarjeta translúcida flotante para los íconos de usuario y maletín.
-class _FloatingFrostedTile extends StatelessWidget {
-  final Widget child;
-  final double size;
-
-  const _FloatingFrostedTile({
-    required this.child,
-    this.size = 46,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.78),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.92),
-          width: 1.3,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF1E293B).withValues(alpha: 0.06),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
-            spreadRadius: -2,
-          ),
-          BoxShadow(
-            color: Colors.white.withValues(alpha: 0.8),
-            blurRadius: 1,
-            offset: const Offset(-0.5, -0.5),
-          ),
-        ],
-      ),
-      child: Center(child: child),
-    );
-  }
-}
-
-/// Esfera perlada decorativa iridiscente en tonos azules oficiales TalentMatch.
-class _FloatingSphere extends StatelessWidget {
-  final double size;
-
-  const _FloatingSphere({this.size = 15});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: const RadialGradient(
-          center: Alignment(-0.35, -0.35),
-          radius: 0.8,
-          colors: [
-            Colors.white,
-            Color(0xFFE0F2FE),
-            Color(0xFF7DD3FC),
-            kBlue,
-          ],
-          stops: [0.0, 0.4, 0.7, 1.0],
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: kBlue.withValues(alpha: 0.35),
-            blurRadius: 8,
-            offset: const Offset(1, 4),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Destello o estrella de 4 puntas en tonos cian/azul.
-class _SparkleStar extends StatelessWidget {
-  final double size;
-  final Color color;
-
-  const _SparkleStar({
-    this.size = 14,
-    this.color = kCyan,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: size,
-      height: size,
-      child: CustomPaint(
-        painter: _SparklePainter(color),
-      ),
-    );
-  }
-}
-
-class _SparklePainter extends CustomPainter {
-  final Color color;
-  _SparklePainter(this.color);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.fill;
-
-    final w = size.width;
-    final h = size.height;
-    final cx = w / 2;
-    final cy = h / 2;
-
-    final path = Path()
-      ..moveTo(cx, 0)
-      ..quadraticBezierTo(cx, cy, w, cy)
-      ..quadraticBezierTo(cx, cy, cx, h)
-      ..quadraticBezierTo(cx, cy, 0, cy)
-      ..quadraticBezierTo(cx, cy, cx, 0)
-      ..close();
-
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-/// Selector de idioma segmentado (ES / EN) estilo cápsula limpia Figma.
-class _LanguageSegmentedPill extends StatelessWidget {
-  final bool isEs;
-  final VoidCallback onSelectEs;
-  final VoidCallback onSelectEn;
-
-  const _LanguageSegmentedPill({
-    required this.isEs,
-    required this.onSelectEs,
-    required this.onSelectEn,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 32,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: const Color(0xFFE2E8F0),
-          width: 1.0,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF1E293B).withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _LanguageSegmentItem(
-            label: 'ES',
-            selected: isEs,
-            onTap: onSelectEs,
-          ),
-          _LanguageSegmentItem(
-            label: 'EN',
-            selected: !isEs,
-            onTap: onSelectEn,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _LanguageSegmentItem extends StatelessWidget {
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _LanguageSegmentItem({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        curve: Curves.easeOut,
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        decoration: BoxDecoration(
-          color: selected ? const Color(0xFFF1F5F9) : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
-            color: selected ? kBlue : const Color(0xFF94A3B8),
-            letterSpacing: 0.2,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Botón de autenticación social (Google, LinkedIn o Facebook).
-class _SocialAuthButton extends StatelessWidget {
-  final VoidCallback onTap;
-  final VoidCallback? onLongPress;
-  final Widget iconWidget;
-  final String label;
-
-  const _SocialAuthButton({
-    required this.onTap,
-    this.onLongPress,
-    required this.iconWidget,
-    required this.label,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF0F172A).withValues(alpha: 0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-          BoxShadow(
-            color: Colors.white.withValues(alpha: 0.75),
-            blurRadius: 6,
-            offset: const Offset(0, -1),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(14),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: onTap,
-              onLongPress: onLongPress,
-              splashColor: const Color(0xFF38BDF8).withValues(alpha: 0.15),
-              highlightColor: Colors.white.withValues(alpha: 0.35),
-              borderRadius: BorderRadius.circular(14),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(14),
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Colors.white.withValues(alpha: 0.90),
-                      Colors.white.withValues(alpha: 0.60),
-                    ],
-                  ),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.95),
-                    width: 1.4,
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    iconWidget,
-                    const SizedBox(width: 5),
-                    Flexible(
-                      child: Text(
-                        label,
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 1,
-                        style: const TextStyle(
-                          color: Color(0xFF0F172A),
-                          fontWeight: FontWeight.w700,
-                          fontSize: 12.0,
-                          letterSpacing: -0.1,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Logo auténtico de Google en 4 colores dibujado vectorialmente.
-class _GoogleGLogo extends StatelessWidget {
-  final double size;
-  const _GoogleGLogo({this.size = 18});
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: size,
-      height: size,
-      child: CustomPaint(
-        painter: _GoogleGPainter(),
-      ),
-    );
-  }
-}
-
-class _GoogleGPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final w = size.width;
-    final h = size.height;
-    final strokeWidth = w * 0.22;
-    final radius = (w - strokeWidth) / 2;
-    final center = Offset(w / 2, h / 2);
-
-    final paint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth;
-
-    // Colores oficiales de la marca Google
-    const blue = Color(0xFF4285F4);
-    const red = Color(0xFFEA4335);
-    const yellow = Color(0xFFFBBC05);
-    const green = Color(0xFF34A853);
-
-    // Arco Rojo (superior)
-    paint.color = red;
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: radius),
-      -2.356,
-      1.57,
-      false,
-      paint,
-    );
-
-    // Arco Amarillo (izquierdo)
-    paint.color = yellow;
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: radius),
-      2.356,
-      1.57,
-      false,
-      paint,
-    );
-
-    // Arco Verde (inferior)
-    paint.color = green;
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: radius),
-      0.785,
-      1.57,
-      false,
-      paint,
-    );
-
-    // Arco Azul (derecho)
-    paint.color = blue;
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: radius),
-      -0.785,
-      1.57,
-      false,
-      paint,
-    );
-
-    // Barra horizontal azul
-    final barPaint = Paint()
-      ..color = blue
-      ..style = PaintingStyle.fill;
-    canvas.drawRect(
-      Rect.fromLTRB(w * 0.45, h * 0.39, w - (strokeWidth / 5), h * 0.61),
-      barPaint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-/// Fondo ambiental con orbes luminosos estilo Glassmorphic moderno.
-class _AmbientBackground extends StatelessWidget {
-  const _AmbientBackground();
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        // Gradiente base suave
-        Positioned.fill(
-          child: Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Color(0xFFEFF5FE),
-                  Color(0xFFF3F6FD),
-                  Color(0xFFFFF7F2),
-                ],
-              ),
-            ),
-          ),
-        ),
-
-        // Orbe superior izquierdo (Azul cian suave TalentMatch - adiós morados)
-        Positioned(
-          top: -60,
-          left: -40,
-          child: Container(
-            width: 320,
-            height: 320,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: RadialGradient(
-                colors: [
-                  const Color(0xFFBAE6FD).withValues(alpha: 0.35),
-                  const Color(0xFFE0F2FE).withValues(alpha: 0.15),
-                  Colors.transparent,
-                ],
-                stops: const [0.0, 0.5, 1.0],
-              ),
-            ),
-          ),
-        ),
-
-        // Orbe medio derecho (Brillo cálido melocotón suave)
-        Positioned(
-          top: 140,
-          right: -80,
-          child: Container(
-            width: 360,
-            height: 360,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: RadialGradient(
-                colors: [
-                  const Color(0xFFFED7AA).withValues(alpha: 0.38),
-                  const Color(0xFFFFEDD5).withValues(alpha: 0.18),
-                  Colors.transparent,
-                ],
-                stops: const [0.0, 0.45, 1.0],
-              ),
-            ),
-          ),
-        ),
-
-        // Orbe inferior (Azul hielo difuso)
-        Positioned(
-          bottom: -100,
-          left: 20,
-          child: Container(
-            width: 380,
-            height: 380,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: RadialGradient(
-                colors: [
-                  const Color(0xFFBAE6FD).withValues(alpha: 0.25),
-                  const Color(0xFFE0F2FE).withValues(alpha: 0.10),
-                  Colors.transparent,
-                ],
-                stops: const [0.0, 0.5, 1.0],
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
