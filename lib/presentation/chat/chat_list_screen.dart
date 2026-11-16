@@ -1,7 +1,9 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:animate_do/animate_do.dart';
+import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
+import '../shared/providers/chat_provider.dart';
+import '../shared/providers/locale_provider.dart';
 import '../shared/widgets/glass_card.dart';
 import '../shared/widgets/glass_background.dart';
 import 'chat_screen.dart';
@@ -14,57 +16,55 @@ class ChatListScreen extends StatefulWidget {
 }
 
 class _ChatListScreenState extends State<ChatListScreen> {
-  // Lista simulada por ahora (luego la conectaremos al backend)
-  final List<Map<String, dynamic>> _chats = [
-    {
-      'roomId': '00000000-0000-0000-0000-000000000000',
-      'name': 'Google LLC',
-      'role': 'Empresa',
-      'lastMessage': '¡Hola! Nos impresionó tu perfil, ¿tienes tiempo para hablar?',
-      'time': '10:42 AM',
-      'unread': 2,
-      'isOnline': true,
-      'color': const Color(0xFFDB4437),
-    },
-    {
-      'roomId': '11111111-1111-1111-1111-111111111111',
-      'name': 'Microsoft Corp',
-      'role': 'Empresa',
-      'lastMessage': 'Tu prueba técnica fue excelente.',
-      'time': 'Ayer',
-      'unread': 0,
-      'isOnline': false,
-      'color': const Color(0xFF0F9D58),
-    },
-    {
-      'roomId': '22222222-2222-2222-2222-222222222222',
-      'name': 'Amazon Web Services',
-      'role': 'Empresa',
-      'lastMessage': 'Por favor envíanos tu portafolio actualizado.',
-      'time': 'Lun',
-      'unread': 0,
-      'isOnline': true,
-      'color': const Color(0xFFF4B400),
-    },
-  ];
+  final TextEditingController _searchCtrl = TextEditingController();
+  String _searchQuery = '';
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<ChatProvider>().loadRooms();
+    });
+    _searchCtrl.addListener(() {
+      setState(() => _searchQuery = _searchCtrl.text.trim().toLowerCase());
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final isEs = context.watch<LocaleProvider>().isSpanish;
+    final chatProvider = context.watch<ChatProvider>();
+    final rooms = chatProvider.rooms;
+
+    final filteredRooms = _searchQuery.isEmpty
+        ? rooms
+        : rooms.where((r) {
+            return r.otherUserName.toLowerCase().contains(_searchQuery) ||
+                (r.lastMessage ?? '').toLowerCase().contains(_searchQuery);
+          }).toList();
+
+    final totalUnread = rooms.fold<int>(0, (sum, r) => sum + r.unreadCount);
+
     return Scaffold(
       extendBodyBehindAppBar: true,
-      backgroundColor: const Color(0xFFF1F5F9), // Fondo base
+      backgroundColor: const Color(0xFFF1F5F9),
       body: Stack(
         children: [
           const GlassBackground(),
-          
           CustomScrollView(
             physics: const BouncingScrollPhysics(),
             slivers: [
-              // ── App Bar con Glassmorphism y Animaciones ──
+              // ── App Bar con Glassmorphism ──
               SliverAppBar(
                 expandedHeight: 140,
                 pinned: true,
-                backgroundColor: Colors.white.withValues(alpha: 0.75),
+                backgroundColor: Colors.white.withValues(alpha: 0.8),
                 elevation: 0,
                 scrolledUnderElevation: 0,
                 shape: Border(
@@ -76,151 +76,167 @@ class _ChatListScreenState extends State<ChatListScreen> {
                 leadingWidth: 70,
                 leading: Padding(
                   padding: const EdgeInsets.only(left: 20, top: 8, bottom: 8),
-                  child: FadeInLeft(
-                    duration: const Duration(milliseconds: 500),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.8),
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 1.2),
-                        boxShadow: [
-                          BoxShadow(
-                            color: kNavy.withValues(alpha: 0.05),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          )
-                        ],
-                      ),
-                      child: IconButton(
-                        icon: const Icon(Icons.arrow_back_ios_new, color: kNavy, size: 20),
-                        onPressed: () => Navigator.pop(context),
-                      ),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.8),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 1.2),
+                      boxShadow: [
+                        BoxShadow(
+                          color: kNavy.withValues(alpha: 0.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        )
+                      ],
+                    ),
+                    child: IconButton(
+                      icon: const Icon(Icons.arrow_back_ios_new, color: kNavy, size: 18),
+                      onPressed: () => Navigator.pop(context),
                     ),
                   ),
                 ),
-                flexibleSpace: ClipRect(
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.white.withValues(alpha: 0.85),
-                            Colors.white.withValues(alpha: 0.45),
-                          ],
+                flexibleSpace: FlexibleSpaceBar(
+                  expandedTitleScale: 1.0,
+                  titlePadding: const EdgeInsets.only(left: 24, bottom: 16),
+                  title: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        isEs ? 'Mensajes' : 'Messages',
+                        style: const TextStyle(
+                          color: kNavy,
+                          fontSize: 24,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -0.5,
                         ),
                       ),
-                      child: FlexibleSpaceBar(
-                        titlePadding: const EdgeInsets.only(left: 24, bottom: 16, right: 24),
-                        title: FadeInUp(
-                          duration: const Duration(milliseconds: 600),
-                          delay: const Duration(milliseconds: 200),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              const Text(
-                                'Mensajes',
-                                style: TextStyle(
-                                  color: kNavy,
-                                  fontSize: 28,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: -1.0,
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              // Badge de notificaciones pulsante
-                              Pulse(
-                                infinite: true,
-                                duration: const Duration(seconds: 2),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    gradient: const LinearGradient(
-                                      colors: [Color(0xFF3B82F6), Color(0xFF2563EB)],
-                                    ),
-                                    borderRadius: BorderRadius.circular(20),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: const Color(0xFF3B82F6).withValues(alpha: 0.4),
-                                        blurRadius: 8,
-                                        offset: const Offset(0, 4),
-                                      )
-                                    ],
-                                  ),
-                                  child: const Text(
-                                    '2 nuevos',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w800,
-                                      letterSpacing: 0.5,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
+                      if (totalUnread > 0) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 4),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(colors: [Color(0xFF2563EB), Color(0xFF08C8DF)]),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            '$totalUnread ${isEs ? 'nuevos' : 'new'}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
                         ),
-                      ),
-                    ),
+                      ],
+                    ],
                   ),
                 ),
               ),
 
               // ── Barra de Búsqueda ──
               SliverToBoxAdapter(
-                child: FadeInDown(
-                  duration: const Duration(milliseconds: 500),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
-                    child: GlassCard(
-                      borderRadius: BorderRadius.circular(20),
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: const TextField(
-                        decoration: InputDecoration(
-                          hintText: 'Buscar conversación...',
-                          hintStyle: TextStyle(color: kMuted, fontSize: 15, fontWeight: FontWeight.w500),
-                          prefixIcon: Icon(Icons.search, color: kMuted, size: 22),
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 16),
-                        ),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+                  child: GlassCard(
+                    borderRadius: BorderRadius.circular(20),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: TextField(
+                      controller: _searchCtrl,
+                      decoration: InputDecoration(
+                        hintText: isEs ? 'Buscar conversación...' : 'Search conversation...',
+                        hintStyle: const TextStyle(color: kMuted, fontSize: 14, fontWeight: FontWeight.w500),
+                        prefixIcon: const Icon(Icons.search, color: kMuted, size: 20),
+                        suffixIcon: _searchQuery.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear, size: 18, color: kMuted),
+                                onPressed: () => _searchCtrl.clear(),
+                              )
+                            : null,
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 14),
                       ),
                     ),
                   ),
                 ),
               ),
 
-              // ── Lista de Chats ──
-              SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                    final chat = _chats[index];
-                    return FadeInUp(
-                      duration: const Duration(milliseconds: 600),
-                      delay: Duration(milliseconds: 100 * index),
-                      child: _ChatListItem(
-                        chat: chat,
+              // ── Contenido de Conversaciones ──
+              if (chatProvider.isLoadingRooms && rooms.isEmpty)
+                const SliverFillRemaining(
+                  child: Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                )
+              else if (filteredRooms.isEmpty)
+                SliverFillRemaining(
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(32),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: kBlue.withValues(alpha: 0.08),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.chat_bubble_outline_rounded, size: 48, color: kBlue),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            isEs ? 'No tienes conversaciones activas' : 'No active conversations',
+                            style: const TextStyle(
+                              color: kNavy,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            isEs
+                                ? 'Cuando una empresa te contacte o te comuniques con un candidato, la conversación aparecerá aquí.'
+                                : 'When a company contacts you or you reach out to a candidate, your conversations will show up here.',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(color: kMuted, fontSize: 13, height: 1.4),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                )
+              else
+                SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      final room = filteredRooms[index];
+                      return _ChatListItem(
+                        room: room,
+                        isEs: isEs,
                         onTap: () {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (_) => ChatScreen(
-                                roomId: chat['roomId'],
-                                otherUserName: chat['name'],
-                                otherUserRole: chat['role'],
+                                roomId: room.id,
+                                otherUserName: room.otherUserName,
+                                otherUserRole: room.otherUserRole,
                               ),
                             ),
-                          );
+                          ).then((_) {
+                            if (context.mounted) {
+                              context.read<ChatProvider>().loadRooms();
+                            }
+                          });
                         },
-                      ),
-                    );
-                  },
-                  childCount: _chats.length,
+                      );
+                    },
+                    childCount: filteredRooms.length,
+                  ),
                 ),
-              ),
+
               const SliverToBoxAdapter(child: SizedBox(height: 60)),
             ],
           ),
@@ -230,78 +246,83 @@ class _ChatListScreenState extends State<ChatListScreen> {
   }
 }
 
-
-
 class _ChatListItem extends StatelessWidget {
-  final Map<String, dynamic> chat;
+  final ChatRoomItem room;
+  final bool isEs;
   final VoidCallback onTap;
 
-  const _ChatListItem({required this.chat, required this.onTap});
+  const _ChatListItem({
+    required this.room,
+    required this.isEs,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final int unread = chat['unread'] ?? 0;
-    final bool isOnline = chat['isOnline'] ?? false;
-    final String initial = (chat['name'] as String).substring(0, 1);
-    final Color bgColor = chat['color'] ?? kBlue;
+    final int unread = room.unreadCount;
+    final String initial = room.otherUserName.isNotEmpty ? room.otherUserName.substring(0, 1).toUpperCase() : 'U';
+
+    String timeStr = '';
+    if (room.lastMessageTime != null) {
+      final now = DateTime.now();
+      final diff = now.difference(room.lastMessageTime!);
+      if (diff.inDays == 0) {
+        timeStr = DateFormat('hh:mm a').format(room.lastMessageTime!);
+      } else if (diff.inDays == 1) {
+        timeStr = isEs ? 'Ayer' : 'Yesterday';
+      } else {
+        timeStr = DateFormat('d MMM').format(room.lastMessageTime!);
+      }
+    }
+
+    final isEmpresaRole = room.otherUserRole.toLowerCase().contains('empresa') ||
+        room.otherUserRole.toLowerCase().contains('company');
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
       child: GlassCard(
-        padding: EdgeInsets.zero,
-        borderRadius: BorderRadius.circular(24),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(18),
+        borderRadius: BorderRadius.circular(18),
+        padding: const EdgeInsets.all(14),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(18),
           child: Row(
             children: [
-              // Avatar con indicador de estado
-              Stack(
-                children: [
-                  Container(
-                    width: 58,
-                    height: 58,
-                    decoration: BoxDecoration(
-                      color: bgColor.withValues(alpha: 0.12),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: bgColor.withValues(alpha: 0.2), width: 1),
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      initial,
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w900,
-                        color: bgColor,
-                      ),
+              // Avatar
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: isEmpresaRole
+                        ? [const Color(0xFF2563EB), const Color(0xFF1D4ED8)]
+                        : [const Color(0xFF0D9488), const Color(0xFF08C8DF)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: (isEmpresaRole ? const Color(0xFF2563EB) : const Color(0xFF0D9488)).withValues(alpha: 0.25),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    )
+                  ],
+                ),
+                child: Center(
+                  child: Text(
+                    initial,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
-                  if (isOnline)
-                    Positioned(
-                      bottom: 2,
-                      right: 2,
-                      child: Container(
-                        width: 14,
-                        height: 14,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF22C55E), // Verde vibrante
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2.5),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFF22C55E).withValues(alpha: 0.4),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
-                            )
-                          ],
-                        ),
-                      ),
-                    ),
-                ],
+                ),
               ),
-              const SizedBox(width: 18),
-              
-              // Textos
+              const SizedBox(width: 14),
+
+              // Detalles
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -309,69 +330,79 @@ class _ChatListItem extends StatelessWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Expanded(
+                        Flexible(
                           child: Text(
-                            chat['name'],
+                            room.otherUserName,
                             style: const TextStyle(
-                              fontSize: 17,
-                              fontWeight: FontWeight.w800,
                               color: kNavy,
-                              letterSpacing: -0.3,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        Text(
-                          chat['time'],
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: unread > 0 ? kBlue : kMuted,
-                            fontWeight: unread > 0 ? FontWeight.w800 : FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            chat['lastMessage'],
+                        if (timeStr.isNotEmpty)
+                          Text(
+                            timeStr,
                             style: TextStyle(
-                              fontSize: 14,
-                              color: unread > 0 ? kNavy : kMuted.withValues(alpha: 0.8),
+                              color: unread > 0 ? kBlue : kMuted,
+                              fontSize: 11,
                               fontWeight: unread > 0 ? FontWeight.w700 : FontWeight.w500,
                             ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: isEmpresaRole
+                                ? const Color(0xFFEFF6FF)
+                                : const Color(0xFFF0FDF4),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            room.otherUserRole,
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: isEmpresaRole ? kBlue : const Color(0xFF059669),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            room.lastMessage ?? (isEs ? 'Conversación creada' : 'Conversation created'),
+                            style: TextStyle(
+                              color: unread > 0 ? kNavy : kMuted,
+                              fontSize: 13,
+                              fontWeight: unread > 0 ? FontWeight.w700 : FontWeight.normal,
+                            ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        if (unread > 0) ...[
-                          const SizedBox(width: 12),
+                        if (unread > 0)
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
+                            margin: const EdgeInsets.only(left: 6),
+                            padding: const EdgeInsets.all(6),
+                            decoration: const BoxDecoration(
                               color: kBlue,
-                              borderRadius: BorderRadius.circular(10),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: kBlue.withValues(alpha: 0.4),
-                                  blurRadius: 6,
-                                  offset: const Offset(0, 3),
-                                )
-                              ],
+                              shape: BoxShape.circle,
                             ),
                             child: Text(
-                              unread > 9 ? '9+' : unread.toString(),
+                              '$unread',
                               style: const TextStyle(
                                 color: Colors.white,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w900,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
                           ),
-                        ],
                       ],
                     ),
                   ],

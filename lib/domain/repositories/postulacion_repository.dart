@@ -12,6 +12,9 @@ abstract class PostulacionRepository {
   /// Lista las postulaciones del candidato autenticado.
   Future<List<Postulacion>> listarMisPostulaciones(String candidatoId);
 
+  /// Lista las postulaciones de una vacante para la empresa.
+  Future<List<Postulacion>> listarPostulacionesVacante(String vacanteId);
+
   /// Elimina (cancela) una postulación existente.
   Future<void> cancelarPostulacion(String postulacionId);
 }

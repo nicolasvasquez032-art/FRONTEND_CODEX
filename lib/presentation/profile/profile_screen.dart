@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:animate_do/animate_do.dart';
@@ -11,6 +12,7 @@ import '../shared/providers/perfil_provider.dart';
 import '../shared/providers/postulaciones_provider.dart';
 import 'cv_upload_widget.dart';
 import 'edit_profile_screen.dart';
+import '../legal/legal_screen.dart';
 import '../shared/widgets/glass_card.dart';
 import '../shared/widgets/talentmatch_top_header.dart';
 
@@ -26,8 +28,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final session = context.read<AuthProvider>().session;
-      if (session != null && session.profileId.isNotEmpty) {
-        context.read<PerfilProvider>().cargar(session.profileId);
+      context.read<PerfilProvider>().cargar(session?.profileId);
+      final userId = session?.userId ?? '';
+      if (userId.isNotEmpty) {
+        context.read<PostulacionesProvider>().cargar(userId);
       }
     });
   }
@@ -52,9 +56,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (pp.profile!.cvText?.isNotEmpty == true) completeness += 20;
     }
 
-    final initial =
-        pp.profile?.initial ?? (session?.userId.isNotEmpty == true ? 'T' : 'T');
-    final name = pp.profile?.fullName ?? l10n.profileTitle;
+    final initial = pp.profile?.initial ??
+        (session?.email?.isNotEmpty == true
+            ? session!.email![0].toUpperCase()
+            : 'C');
+    final name = pp.profile?.fullName ??
+        (session?.email?.isNotEmpty == true
+            ? session!.email!.split('@').first
+            : l10n.profileTitle);
 
     return Scaffold(
       backgroundColor:
@@ -67,12 +76,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Expanded(
               child: RefreshIndicator(
                 onRefresh: () async {
-                  final profileId = session?.profileId ?? '';
-                  if (profileId.isNotEmpty) {
-                    final pp = context.read<PerfilProvider>();
-                    final pop = context.read<PostulacionesProvider>();
-                    final userId = session?.userId ?? '';
-                    await pp.cargar(profileId);
+                  final pp = context.read<PerfilProvider>();
+                  final pop = context.read<PostulacionesProvider>();
+                  final currentSession = context.read<AuthProvider>().session;
+                  final userId = currentSession?.userId ?? '';
+                  await pp.cargar(currentSession?.profileId);
+                  if (userId.isNotEmpty) {
                     await pop.cargar(userId);
                   }
                 },
@@ -123,10 +132,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               duration: const Duration(milliseconds: 500),
                               child: Text(
                                 name,
-                                style: const TextStyle(
+                                style: GoogleFonts.inter(
                                   fontSize: 22,
                                   fontWeight: FontWeight.w800,
-                                  color: kNavy,
+                                  color: const Color(0xFF0F172A),
+                                  letterSpacing: -0.3,
                                 ),
                               ),
                             ),
@@ -136,9 +146,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               duration: const Duration(milliseconds: 500),
                               child: Text(
                                 l10n.profileCandidateRole,
-                                style: TextStyle(
+                                style: GoogleFonts.inter(
                                   fontSize: 13,
-                                  color: kNavy.withValues(alpha: 0.7),
+                                  fontWeight: FontWeight.w600,
+                                  color: const Color(0xFF64748B),
                                 ),
                               ),
                             ),
@@ -176,7 +187,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             height: 40,
                             color: kNavy.withValues(alpha: 0.1),
                           ),
-                          _StatItem(label: l10n.profileStatsViews, value: 12),
+                          _StatItem(
+                            label: l10n.profileStatsViews,
+                            value: pop.postulaciones.isNotEmpty ? (pop.postulaciones.length * 3) : 0,
+                          ),
                         ],
                       ),
                     ),
@@ -192,8 +206,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           const Icon(Icons.error_outline, color: Colors.red),
                           const SizedBox(height: 10),
                           Text(
-                            pp.error ?? 'Error',
+                            pp.error ?? 'Error al cargar perfil',
+                            textAlign: TextAlign.center,
                             style: const TextStyle(color: kNavy),
+                          ),
+                          const SizedBox(height: 12),
+                          ElevatedButton.icon(
+                            onPressed: () {
+                              context.read<PerfilProvider>().cargar();
+                            },
+                            icon: const Icon(Icons.refresh, size: 16),
+                            label: const Text('Reintentar'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: kBlue,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
                           ),
                         ],
                       ),
@@ -304,6 +334,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               icon: Icons.help_outline,
                               title: l10n.profileHelp,
                               onTap: () {},
+                            ),
+                            _Divider(),
+                            _ActionTile(
+                              icon: Icons.gavel_outlined,
+                              title: isEs ? 'Términos y Privacidad (Habeas Data)' : 'Terms & Privacy (Data Protection)',
+                              subtitle: isEs ? 'Ley 1581 de 2012 y condiciones legales' : 'Statutory Law 1581 & legal terms',
+                              onTap: () => LegalScreen.showModal(context),
                             ),
                             _Divider(),
                             _ActionTile(
@@ -453,10 +490,10 @@ class _StatItem extends StatelessWidget {
           builder: (context, val, child) {
             return Text(
               '${val.toInt()}${isPercent ? '%' : ''}',
-              style: const TextStyle(
+              style: GoogleFonts.inter(
                 fontSize: 22,
                 fontWeight: FontWeight.w900,
-                color: kNavy,
+                color: const Color(0xFF0F172A),
               ),
             );
           },
@@ -464,9 +501,9 @@ class _StatItem extends StatelessWidget {
         const SizedBox(height: 4),
         Text(
           label,
-          style: const TextStyle(
+          style: GoogleFonts.inter(
             fontSize: 12,
-            color: kMuted,
+            color: const Color(0xFF64748B),
             fontWeight: FontWeight.w600,
           ),
         ),

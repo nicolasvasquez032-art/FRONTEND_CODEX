@@ -2,7 +2,9 @@ import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
 
@@ -10,6 +12,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_strings.dart';
 import '../../domain/entities/vacante.dart';
 import '../job_detail/job_detail_screen.dart';
+import '../shared/providers/auth_provider.dart';
 import '../shared/providers/locale_provider.dart';
 import '../shared/providers/vacantes_provider.dart';
 import '../shared/widgets/bouncing_card.dart';
@@ -36,6 +39,7 @@ class ExploreScreen extends StatefulWidget {
 
 class _ExploreScreenState extends State<ExploreScreen> {
   final _searchController = TextEditingController();
+  bool _showMapFab = true;
 
   @override
   void initState() {
@@ -57,20 +61,26 @@ class _ExploreScreenState extends State<ExploreScreen> {
   @override
   Widget build(BuildContext context) {
     final vp = context.watch<VacantesProvider>();
+    final auth = context.watch<AuthProvider>();
     final isEs = context.watch<LocaleProvider>().isSpanish;
+    final hasSession = auth.session != null && auth.session!.userId.isNotEmpty;
 
-    // Obtener las vacantes a mostrar (reales o predeterminadas de Figma)
-    final List<Vacante> displayList = vp.filtered.isNotEmpty
-        ? vp.filtered
-        : (_searchController.text.trim().isEmpty &&
-                vp.filtroCategoria == null &&
-                vp.filtroSalarioMin == null
-            ? _getFigmaExploreJobs(isEs)
-            : []);
+    // Si el usuario ha iniciado sesión, siempre mostrar las vacantes reales del backend.
+    // Solo si no hay sesión (modo test / preview de Figma) se usan las de muestra.
+    final List<Vacante> displayList;
+    if (hasSession) {
+      displayList = vp.filtered;
+    } else {
+      displayList = vp.filtered.isNotEmpty
+          ? vp.filtered
+          : (_searchController.text.trim().isEmpty &&
+                  vp.filtroCategoria == null &&
+                  vp.filtroSalarioMin == null
+              ? _getFigmaExploreJobs(isEs)
+              : []);
+    }
 
-    final totalCount = vp.filtered.isNotEmpty
-        ? vp.filtered.length
-        : (displayList.isNotEmpty ? 20 : 0);
+    final totalCount = displayList.length;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -83,113 +93,150 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
             // 2. Contenido deslizable
             Expanded(
-              child: CustomScrollView(
-                physics: const BouncingScrollPhysics(
-                  parent: AlwaysScrollableScrollPhysics(),
-                ),
-                slivers: [
-                  CupertinoSliverRefreshControl(
-                    onRefresh: () => vp.cargar(),
+              child: NotificationListener<ScrollNotification>(
+                onNotification: (notification) {
+                  if (notification is UserScrollNotification) {
+                    if (notification.direction == ScrollDirection.reverse) {
+                      // Desplazamiento hacia abajo: ocultar botón para despejar la vista de tarjetas
+                      if (_showMapFab) {
+                        setState(() => _showMapFab = false);
+                      }
+                    } else if (notification.direction == ScrollDirection.forward) {
+                      // Desplazamiento hacia arriba: reaparecer botón suavemente
+                      if (!_showMapFab) {
+                        setState(() => _showMapFab = true);
+                      }
+                    }
+                  } else if (notification is ScrollUpdateNotification) {
+                    // Si vuelve a la parte superior desplazándose hacia arriba, asegurar que el botón se muestre
+                    if (notification.metrics.pixels <= 10 &&
+                        !_showMapFab &&
+                        (notification.scrollDelta ?? 0) <= 0) {
+                      setState(() => _showMapFab = true);
+                    }
+                  }
+                  return false;
+                },
+                child: CustomScrollView(
+                  physics: const BouncingScrollPhysics(
+                    parent: AlwaysScrollableScrollPhysics(),
                   ),
-
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(18, 10, 18, 120),
-                    sliver: SliverList(
-                      delegate: SliverChildListDelegate([
-                        // ── Hero Section: Titular + Lupa 3D Animada ──
-                        _buildHeroSection(isEs),
-                        const SizedBox(height: 18),
-
-                        // ── Barra de Búsqueda Figma ──
-                        _buildSearchBar(isEs, vp),
-                        const SizedBox(height: 18),
-
-                        // ── Contador de Vacantes Encontradas ──
-                        _buildCountHeader(isEs, totalCount, vp.status == VacantesStatus.loading),
-                        const SizedBox(height: 14),
-
-                        // ── Lista de Tarjetas o Estados de Carga ──
-                        if (vp.status == VacantesStatus.loading && displayList.isEmpty)
-                          const _ShimmerList()
-                        else if (vp.status == VacantesStatus.error && displayList.isEmpty)
-                          _ErrorState(
-                            vp.error ?? (isEs ? 'Error al cargar' : 'Error loading'),
-                            onRetry: () => vp.cargar(),
-                            isSpanish: isEs,
-                          )
-                        else if (displayList.isEmpty)
-                          _EmptyState(isSpanish: isEs)
-                        else
-                          ...displayList.map(
-                            (v) => _ExploreCard(
-                              key: ValueKey(v.id),
-                              vacante: v,
-                              isSpanish: isEs,
-                            ),
-                          ),
-                      ]),
+                  slivers: [
+                    CupertinoSliverRefreshControl(
+                      onRefresh: () => vp.cargar(),
                     ),
-                  ),
-                ],
+
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(18, 10, 18, 120),
+                      sliver: SliverList(
+                        delegate: SliverChildListDelegate([
+                          // ── Hero Section: Titular + Lupa 3D Animada ──
+                          _buildHeroSection(isEs),
+                          const SizedBox(height: 18),
+
+                          // ── Barra de Búsqueda Figma ──
+                          _buildSearchBar(isEs, vp),
+                          const SizedBox(height: 18),
+
+                          // ── Contador de Vacantes Encontradas ──
+                          _buildCountHeader(isEs, totalCount, vp.status == VacantesStatus.loading),
+                          const SizedBox(height: 14),
+
+                          // ── Lista de Tarjetas o Estados de Carga ──
+                          if (vp.status == VacantesStatus.loading && displayList.isEmpty)
+                            const _ShimmerList()
+                          else if (vp.status == VacantesStatus.error && displayList.isEmpty)
+                            _ErrorState(
+                              vp.error ?? (isEs ? 'Error al cargar' : 'Error loading'),
+                              onRetry: () => vp.cargar(),
+                              isSpanish: isEs,
+                            )
+                          else if (displayList.isEmpty)
+                            _EmptyState(isSpanish: isEs)
+                          else
+                            ...displayList.map(
+                              (v) => _ExploreCard(
+                                key: ValueKey(v.id),
+                                vacante: v,
+                                isSpanish: isEs,
+                              ),
+                            ),
+                        ]),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
         ),
       ),
 
-      // ── Botón Flotante "Ver Mapa" ──
+      // ── Botón Flotante "Ver Mapa" (Scroll-to-Hide animado) ──
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       floatingActionButton: Padding(
         padding: const EdgeInsets.only(bottom: 82),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () {
-              HapticFeedback.lightImpact();
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const MapScreen()),
-              );
-            },
-            borderRadius: BorderRadius.circular(26),
-            child: Container(
-              height: 48,
-              padding: const EdgeInsets.symmetric(horizontal: 22),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF3B82F6), Color(0xFF2563EB)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(26),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF2563EB).withValues(alpha: 0.38),
-                    blurRadius: 18,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(
-                    Icons.map_outlined,
-                    color: Colors.white,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    isEs ? 'Ver Mapa' : 'View Map',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14.5,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.2,
-                      fontFamily: 'Inter',
+        child: AnimatedSlide(
+          offset: _showMapFab ? Offset.zero : const Offset(0, 2.5),
+          duration: const Duration(milliseconds: 280),
+          curve: Curves.easeInOutCubic,
+          child: AnimatedOpacity(
+            opacity: _showMapFab ? 1.0 : 0.0,
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeInOut,
+            child: IgnorePointer(
+              ignoring: !_showMapFab,
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const MapScreen()),
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(26),
+                  child: Container(
+                    height: 48,
+                    padding: const EdgeInsets.symmetric(horizontal: 22),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF3B82F6), Color(0xFF2563EB)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(26),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF2563EB).withValues(alpha: 0.38),
+                          blurRadius: 18,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.map_outlined,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          isEs ? 'Ver Mapa' : 'View Map',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.2,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
+                ),
               ),
             ),
           ),
@@ -211,39 +258,36 @@ class _ExploreScreenState extends State<ExploreScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                isEs ? 'Descubre nuevas oportunidades' : 'Discover new opportunities',
-                style: const TextStyle(
-                  color: Color(0xFF64748B),
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w500,
-                  letterSpacing: 0.1,
-                  fontFamily: 'Inter',
+                isEs ? 'DESCUBRE NUEVAS OPORTUNIDADES' : 'DISCOVER NEW OPPORTUNITIES',
+                style: GoogleFonts.inter(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF64748B),
+                  letterSpacing: 0.8,
                 ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 6),
               RichText(
                 text: TextSpan(
                   children: [
                     TextSpan(
                       text: isEs ? 'Explorar\n' : 'Explore\n',
-                      style: const TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.w900,
-                        color: Color(0xFF0F172A),
+                      style: GoogleFonts.inter(
+                        fontSize: 27,
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFF0F172A),
                         height: 1.15,
-                        letterSpacing: -0.6,
-                        fontFamily: 'Inter',
+                        letterSpacing: -0.5,
                       ),
                     ),
                     TextSpan(
                       text: isEs ? 'Empleos' : 'Jobs',
-                      style: const TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.w900,
-                        color: Color(0xFF2563EB),
+                      style: GoogleFonts.inter(
+                        fontSize: 27,
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFF2563EB),
                         height: 1.15,
-                        letterSpacing: -0.6,
-                        fontFamily: 'Inter',
+                        letterSpacing: -0.5,
                       ),
                     ),
                   ],
@@ -301,7 +345,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 color: Color(0xFF0F172A),
                 fontSize: 15,
                 fontWeight: FontWeight.w500,
-                fontFamily: 'Inter',
               ),
               decoration: InputDecoration(
                 hintText: isEs ? 'Buscar empleo...' : 'Search jobs...',
@@ -309,7 +352,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   color: Color(0xFF94A3B8),
                   fontSize: 15,
                   fontWeight: FontWeight.normal,
-                  fontFamily: 'Inter',
                 ),
                 border: InputBorder.none,
                 enabledBorder: InputBorder.none,
@@ -374,12 +416,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
     return Text(
       text,
-      style: const TextStyle(
-        color: Color(0xFF0F172A),
-        fontSize: 15,
-        fontWeight: FontWeight.w700,
+      style: GoogleFonts.inter(
+        color: const Color(0xFF0F172A),
+        fontSize: 16,
+        fontWeight: FontWeight.w800,
         letterSpacing: -0.2,
-        fontFamily: 'Inter',
       ),
     );
   }
@@ -798,7 +839,6 @@ class _ExploreCardState extends State<_ExploreCard> {
                                 fontWeight: FontWeight.w800,
                                 color: Color(0xFF0F172A),
                                 height: 1.2,
-                                fontFamily: 'Inter',
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -821,7 +861,6 @@ class _ExploreCardState extends State<_ExploreCard> {
                                   fontSize: 13,
                                   color: Color(0xFF64748B),
                                   fontWeight: FontWeight.w500,
-                                  fontFamily: 'Inter',
                                 ),
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -879,7 +918,6 @@ class _ExploreCardState extends State<_ExploreCard> {
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
                             color: Color(0xFF475569),
-                            fontFamily: 'Inter',
                           ),
                         ),
                       ],
@@ -909,7 +947,6 @@ class _ExploreCardState extends State<_ExploreCard> {
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
                               color: Color(0xFF2563EB),
-                              fontFamily: 'Inter',
                             ),
                           ),
                         ],
@@ -940,7 +977,6 @@ class _ExploreCardState extends State<_ExploreCard> {
                               fontSize: 12.5,
                               fontWeight: FontWeight.w500,
                               color: Color(0xFF64748B),
-                              fontFamily: 'Inter',
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -965,7 +1001,6 @@ class _ExploreCardState extends State<_ExploreCard> {
                         fontSize: 13,
                         fontWeight: FontWeight.w800,
                         color: Color(0xFF16A34A),
-                        fontFamily: 'Inter',
                       ),
                     ),
                   ),
@@ -1036,7 +1071,7 @@ void _showFilterBottomSheet(BuildContext context, VacantesProvider vp, bool isEs
                           label: cat,
                           isSelected: vp.filtroCategoria == cat,
                           onTap: () {
-                            vp.setCategoriaFiltro(vp.filtroCategoria == cat ? '' : cat);
+                            vp.setCategoriaFiltro(vp.filtroCategoria == cat ? null : cat);
                             Navigator.pop(ctx);
                           },
                         ))
@@ -1075,8 +1110,8 @@ void _showFilterBottomSheet(BuildContext context, VacantesProvider vp, bool isEs
                 child: FilledButton.icon(
                   onPressed: () {
                     vp.clearQuery();
-                    vp.setCategoriaFiltro('');
-                    vp.setSalarioFiltro(0);
+                    vp.setCategoriaFiltro(null);
+                    vp.setSalarioFiltro(null);
                     Navigator.pop(ctx);
                   },
                   style: FilledButton.styleFrom(

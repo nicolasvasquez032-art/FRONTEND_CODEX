@@ -1,20 +1,41 @@
 
+import 'dart:async';
+import 'dart:convert';
+import 'dart:math' as math;
+import 'dart:ui' show ImageFilter;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart';
+
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/network/api_client.dart';
+import '../../core/utils/validators.dart';
 import '../../l10n/app_localizations.dart';
+import '../legal/legal_screen.dart';
 import '../shared/providers/auth_provider.dart';
+import '../shared/providers/perfil_provider.dart';
+import '../shared/widgets/app_toast.dart';
 import '../shared/widgets/brand_logo.dart';
 import '../shared/widgets/colombia_location_picker.dart';
-import '../../core/utils/validators.dart';
+import 'social_popup_helper.dart';
 
 // ──────────────────────────────────────────────
 // REGISTER SCREEN — TalentMatch
 // ──────────────────────────────────────────────
 
 class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({super.key});
+  final int initialStep;
+  final bool isSocialOnboarding;
+
+  const RegisterScreen({
+    super.key,
+    this.initialStep = 0,
+    this.isSocialOnboarding = false,
+  });
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
@@ -33,6 +54,15 @@ class _RegisterScreenState extends State<RegisterScreen>
   final _educationCtrl        = TextEditingController();
   final _expCtrl              = TextEditingController(text: '0');
 
+  // ── Company Form controllers ──
+  final _companyNameCtrl     = TextEditingController();
+  final _companyLocationCtrl = TextEditingController();
+  final _companyWebsiteCtrl  = TextEditingController();
+  final _companyDescCtrl     = TextEditingController();
+  String _companySector      = 'Tecnología';
+  String _companySize        = '11-50';
+  int    _selectedCompanyColorIndex = 0;
+
   // ── State ──
   bool _obscurePassword       = true;
   bool _obscureConfirm        = true;
@@ -46,9 +76,52 @@ class _RegisterScreenState extends State<RegisterScreen>
   late final Animation<double>   _floatAnim;
   late final Animation<double>   _starAnim;
 
+  Timer? _oauthPollTimer;
+
   @override
   void initState() {
     super.initState();
+    _step = widget.initialStep;
+
+    if (kIsWeb) {
+      SocialPopupHelper.onWebMessage((data) async {
+        final token = data['token']?.toString();
+        final refresh = data['refreshToken']?.toString() ?? '';
+        if (token != null && token.isNotEmpty && mounted) {
+          _oauthPollTimer?.cancel();
+          final auth = context.read<AuthProvider>();
+          await auth.handleSocialAuthToken(token: token, refreshToken: refresh, isNewUser: true);
+          if (mounted && auth.status == AuthStatus.authenticated) {
+            AppToast.success(context, '¡Autenticado con éxito! Completa tu perfil.');
+            setState(() {
+              _step = 1;
+              final session = auth.session;
+              final email = session?.email;
+              if (session != null && email != null && email.isNotEmpty) {
+                if (_emailCtrl.text.isEmpty) _emailCtrl.text = email;
+                if (_fullNameCtrl.text.isEmpty) {
+                  _fullNameCtrl.text = email.split('@').first;
+                }
+              }
+            });
+          }
+        }
+      });
+    }
+
+    if (widget.isSocialOnboarding) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final session = context.read<AuthProvider>().session;
+        final email = session?.email;
+        if (session != null && email != null && email.isNotEmpty) {
+          if (_emailCtrl.text.isEmpty) _emailCtrl.text = email;
+          if (_fullNameCtrl.text.isEmpty) {
+            _fullNameCtrl.text = email.split('@').first;
+          }
+        }
+      });
+    }
+
     _floatCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 2800),
@@ -69,6 +142,7 @@ class _RegisterScreenState extends State<RegisterScreen>
 
   @override
   void dispose() {
+    _oauthPollTimer?.cancel();
     _floatCtrl.dispose();
     _starCtrl.dispose();
     _emailCtrl.dispose();
@@ -79,12 +153,16 @@ class _RegisterScreenState extends State<RegisterScreen>
     _skillsCtrl.dispose();
     _educationCtrl.dispose();
     _expCtrl.dispose();
+    _companyNameCtrl.dispose();
+    _companyLocationCtrl.dispose();
+    _companyWebsiteCtrl.dispose();
+    _companyDescCtrl.dispose();
     super.dispose();
   }
 
   // ── Steps ──
   List<String> get _stepLabels =>
-      _isCompany ? ['Cuenta'] : ['Cuenta', 'Perfil', 'Preferencias'];
+      _isCompany ? ['Cuenta', 'Empresa'] : ['Cuenta', 'Perfil', 'Preferencias'];
 
   // ── Navigation ──
   void _nextStep() {
@@ -123,22 +201,98 @@ class _RegisterScreenState extends State<RegisterScreen>
         _snack('Debes aceptar los términos y la política de privacidad.');
         return;
       }
+
+      setState(() => _step = 1);
+      return;
     }
-    if (!_isCompany && _step < 2) {
-      setState(() => _step++);
-    } else {
+
+    if (_isCompany && _step == 1) {
+      if (_companyNameCtrl.text.trim().length < 2) {
+        _snack('Ingresa el nombre o razón social de la empresa.');
+        return;
+      }
+      if (_companyLocationCtrl.text.trim().isEmpty) {
+        _snack('Selecciona o ingresa la ubicación de la empresa.');
+        return;
+      }
       _submit();
+      return;
+    }
+
+    if (!_isCompany && _step == 1) {
+      setState(() => _step = 2);
+      return;
+    }
+
+    if (!_isCompany && _step == 2) {
+      _submit();
+      return;
     }
   }
 
   Future<void> _submit() async {
     final auth = context.read<AuthProvider>();
 
+    if (widget.isSocialOnboarding) {
+      final session = auth.session;
+      var profileId = session?.profileId ?? '';
+      final skills = _skillsCtrl.text
+          .split(',')
+          .map((s) => s.trim())
+          .where((s) => s.isNotEmpty)
+          .toList();
+
+      final perfilProv = context.read<PerfilProvider>();
+      if (profileId.isEmpty) {
+        await perfilProv.cargar();
+        profileId = perfilProv.profile?.id ?? '';
+      }
+
+      if (profileId.isNotEmpty) {
+        await perfilProv.guardar(
+          profileId: profileId,
+          fullName: _fullNameCtrl.text.trim().isNotEmpty
+              ? _fullNameCtrl.text.trim()
+              : (perfilProv.profile?.fullName ?? session?.email ?? 'Candidato'),
+          skills: skills,
+          experienceYears: int.tryParse(_expCtrl.text) ?? 0,
+          location: _locationCtrl.text.trim().isNotEmpty ? _locationCtrl.text.trim() : null,
+          education: _educationCtrl.text.trim().isNotEmpty ? _educationCtrl.text.trim() : null,
+        );
+      }
+      if (mounted) {
+        AppToast.success(context, '¡Perfil completado exitosamente!');
+        auth.markProfileCompleted();
+      }
+      return;
+    }
+
     if (_isCompany) {
       await auth.registerCompany(
         email: _emailCtrl.text.trim(),
         password: _passwordCtrl.text,
+        nombre: _companyNameCtrl.text.trim(),
       );
+
+      if (auth.error == null) {
+        final prefs = await SharedPreferences.getInstance();
+        final email = _emailCtrl.text.trim();
+        final companyName = _companyNameCtrl.text.trim();
+        final session = auth.session;
+        final uid = session?.userId ?? email;
+
+        await prefs.setString('company_name_$uid', companyName);
+        await prefs.setString('company_sector_$uid', _companySector);
+        await prefs.setString('company_location_$uid', _companyLocationCtrl.text.trim());
+        await prefs.setString('company_size_$uid', _companySize);
+        await prefs.setString('company_website_$uid', _companyWebsiteCtrl.text.trim());
+        await prefs.setString('company_desc_$uid', _companyDescCtrl.text.trim());
+        await prefs.setInt('company_color_$uid', _selectedCompanyColorIndex);
+        await prefs.setString('company_plan_$uid', 'Plan Gratuito');
+
+        await prefs.setString('company_name_active', companyName);
+        await prefs.setString('company_location_active', _companyLocationCtrl.text.trim());
+      }
     } else {
       final skills = _skillsCtrl.text
           .split(',')
@@ -160,20 +314,15 @@ class _RegisterScreenState extends State<RegisterScreen>
     if (!mounted) return;
 
     if (auth.error != null) {
-      _snack(auth.error!);
+      _snack(auth.error!, type: ToastType.error);
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('¡Cuenta creada! Por favor inicia sesión.'),
-          backgroundColor: kGreen,
-        ),
-      );
+      AppToast.success(context, '¡Cuenta creada! Por favor inicia sesión.');
       if (mounted) Navigator.of(context).popUntil((r) => r.isFirst);
     }
   }
 
-  void _snack(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  void _snack(String msg, {ToastType type = ToastType.warning}) {
+    AppToast.show(context, message: msg, type: type);
   }
 
   // ──────────────────────────────────────
@@ -425,7 +574,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                 ),
                 child: Text(
                   _isCompany
-                      ? 'PASO 1 DE 1'
+                      ? 'PASO ${_step + 1} DE 2'
                       : 'PASO ${_step + 1} DE 3',
                   style: const TextStyle(
                     fontSize: 10,
@@ -462,9 +611,11 @@ class _RegisterScreenState extends State<RegisterScreen>
               ),
               child: _step == 0
                   ? _buildStep0(l10n)
-                  : _step == 1
-                      ? _buildStep1(l10n)
-                      : _buildStep2(l10n),
+                  : (_isCompany
+                      ? _buildCompanyStep1(l10n)
+                      : (_step == 1
+                          ? _buildStep1(l10n)
+                          : _buildStep2(l10n))),
             ),
           ),
 
@@ -712,7 +863,13 @@ class _RegisterScreenState extends State<RegisterScreen>
                   children: [
                     WidgetSpan(
                       child: GestureDetector(
-                        onTap: () => _snack('Términos y condiciones próximamente'),
+                        onTap: () {
+                          LegalScreen.showModal(
+                            context,
+                            initialTab: 0,
+                            onAccept: () => setState(() => _acceptedTerms = true),
+                          );
+                        },
                         child: const Text(
                           'Términos y condiciones',
                           style: TextStyle(
@@ -727,7 +884,13 @@ class _RegisterScreenState extends State<RegisterScreen>
                     const TextSpan(text: ' y la '),
                     WidgetSpan(
                       child: GestureDetector(
-                        onTap: () => _snack('Política de privacidad próximamente'),
+                        onTap: () {
+                          LegalScreen.showModal(
+                            context,
+                            initialTab: 1,
+                            onAccept: () => setState(() => _acceptedTerms = true),
+                          );
+                        },
                         child: const Text(
                           'Política de privacidad',
                           style: TextStyle(
@@ -744,6 +907,271 @@ class _RegisterScreenState extends State<RegisterScreen>
               ),
             ),
           ],
+        ),
+      ],
+    );
+  }
+
+  // ──────────────────────────────────────
+  // STEP 1 (EMPRESA) — Perfil Corporativo
+  // ──────────────────────────────────────
+  Widget _buildCompanyStep1(AppLocalizations? l10n) {
+    final colors = [
+      const Color(0xFF2563EB), // Azul Royal
+      const Color(0xFF0D9488), // Teal
+      const Color(0xFF7C3AED), // Púrpura
+      const Color(0xFF0284C7), // Cian
+      const Color(0xFF059669), // Esmeralda
+    ];
+
+    final companyInitial = _companyNameCtrl.text.trim().isNotEmpty
+        ? _companyNameCtrl.text.trim()[0].toUpperCase()
+        : 'E';
+
+    return Column(
+      key: const ValueKey(101),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Perfil Corporativo',
+          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: kNavy),
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'Completa los datos de tu empresa para posicionar tu marca empleadora y atraer al mejor talento.',
+          style: TextStyle(fontSize: 12, color: kMuted, height: 1.4),
+        ),
+        const SizedBox(height: 18),
+
+        // ── Logo / Identidad de la Empresa ──
+        Center(
+          child: Column(
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                width: 72,
+                height: 72,
+                decoration: BoxDecoration(
+                  color: colors[_selectedCompanyColorIndex],
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: colors[_selectedCompanyColorIndex].withValues(alpha: 0.35),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  companyInitial,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 30,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                'Color de marca corporativa',
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: kMuted),
+              ),
+              const SizedBox(height: 6),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(colors.length, (idx) {
+                  final isSel = _selectedCompanyColorIndex == idx;
+                  return GestureDetector(
+                    onTap: () => setState(() => _selectedCompanyColorIndex = idx),
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 5),
+                      width: 24,
+                      height: 24,
+                      decoration: BoxDecoration(
+                        color: colors[idx],
+                        shape: BoxShape.circle,
+                        border: isSel
+                            ? Border.all(color: kNavy, width: 2.5)
+                            : Border.all(color: Colors.white, width: 1.5),
+                      ),
+                    ),
+                  );
+                }),
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 20),
+
+        // ── Nombre de la Empresa ──
+        const _FieldLabel('Nombre de la Empresa / Razón Social'),
+        const SizedBox(height: 6),
+        _RegTextField(
+          controller: _companyNameCtrl,
+          hint: 'Ej. TechNova Solutions S.A.S.',
+          prefixIcon: Icons.apartment_rounded,
+          onChanged: (_) => setState(() {}),
+        ),
+
+        const SizedBox(height: 14),
+
+        // ── Sector / Industria ──
+        const _FieldLabel('Sector o Industria'),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            'Tecnología',
+            'Fintech',
+            'Salud',
+            'Comercio',
+            'Educación',
+            'Servicios',
+          ].map((sector) {
+            final isSel = _companySector == sector;
+            return ChoiceChip(
+              label: Text(sector),
+              selected: isSel,
+              onSelected: (_) => setState(() => _companySector = sector),
+              selectedColor: kBlue.withValues(alpha: 0.15),
+              labelStyle: TextStyle(
+                color: isSel ? kBlue : kNavy,
+                fontWeight: isSel ? FontWeight.w800 : FontWeight.w500,
+                fontSize: 12,
+              ),
+              backgroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+                side: BorderSide(color: isSel ? kBlue : kLine),
+              ),
+            );
+          }).toList(),
+        ),
+
+        const SizedBox(height: 14),
+
+        // ── Ubicación de la Empresa ──
+        const _FieldLabel('Ubicación de la Sede Principal'),
+        const SizedBox(height: 6),
+        _RegTextField(
+          controller: _companyLocationCtrl,
+          hint: 'Selecciona ciudad (ej. Bogotá, Colombia)',
+          prefixIcon: Icons.location_on_outlined,
+          readOnly: true,
+          onTap: () async {
+            final result = await showColombiaLocationPicker(context);
+            if (result != null) setState(() => _companyLocationCtrl.text = result);
+          },
+        ),
+
+        const SizedBox(height: 14),
+
+        // ── Tamaño de la Empresa ──
+        const _FieldLabel('Tamaño de la Empresa'),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            '1-10 (Startup)',
+            '11-50 (Pequeña)',
+            '51-200 (Mediana)',
+            '200+ (Corporativa)',
+          ].map((size) {
+            final val = size.split(' ').first;
+            final isSel = _companySize == val;
+            return ChoiceChip(
+              label: Text(size),
+              selected: isSel,
+              onSelected: (_) => setState(() => _companySize = val),
+              selectedColor: kBlue.withValues(alpha: 0.15),
+              labelStyle: TextStyle(
+                color: isSel ? kBlue : kNavy,
+                fontWeight: isSel ? FontWeight.w800 : FontWeight.w500,
+                fontSize: 12,
+              ),
+              backgroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+                side: BorderSide(color: isSel ? kBlue : kLine),
+              ),
+            );
+          }).toList(),
+        ),
+
+        const SizedBox(height: 14),
+
+        // ── Sitio Web Corporativo ──
+        const _FieldLabel('Sitio Web o LinkedIn Corporativo (Opcional)'),
+        const SizedBox(height: 6),
+        _RegTextField(
+          controller: _companyWebsiteCtrl,
+          hint: 'https://miempresa.com',
+          prefixIcon: Icons.language_rounded,
+          keyboardType: TextInputType.url,
+        ),
+
+        const SizedBox(height: 14),
+
+        // ── Breve descripción ──
+        const _FieldLabel('Descripción breve de la empresa (Opcional)'),
+        const SizedBox(height: 6),
+        _RegTextField(
+          controller: _companyDescCtrl,
+          hint: 'Ej. Empresa líder en desarrollo de soluciones cloud...',
+          prefixIcon: Icons.edit_note_rounded,
+        ),
+
+        const SizedBox(height: 18),
+
+        // ── Tarjeta Plan Gratuito ──
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF0FDF4),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFF86EFAC)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: const BoxDecoration(
+                  color: Color(0xFFDCFCE7),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.verified_rounded, color: Color(0xFF16A34A), size: 22),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Plan Gratuito Activo (Free Tier)',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF14532D),
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Tu cuenta incluye publicación de vacantes, postulación de candidatos y entrevistas sin costo.',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFF166534),
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ],
     );
@@ -859,7 +1287,7 @@ class _RegisterScreenState extends State<RegisterScreen>
   // PRIMARY BUTTON
   // ──────────────────────────────────────
   Widget _buildPrimaryButton(AuthProvider auth) {
-    final isLastStep = _isCompany || _step == 2;
+    final isLastStep = (_isCompany && _step == 1) || (!_isCompany && _step == 2);
     final label = isLastStep ? 'Crear cuenta' : 'Continuar';
 
     return SizedBox(
@@ -946,20 +1374,140 @@ class _RegisterScreenState extends State<RegisterScreen>
             icon: FontAwesomeIcons.google,
             iconColor: const Color(0xFFDB4437),
             label: 'Google',
-            onTap: () => _snack('Integración con Google próximamente'),
+            onTap: () => _launchRegisterSocialOAuth(
+              provider: 'google',
+              providerName: 'Google',
+            ),
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 8),
         Expanded(
           child: _SocialButton(
             icon: FontAwesomeIcons.linkedin,
             iconColor: const Color(0xFF0077B5),
             label: 'LinkedIn',
-            onTap: () => _snack('Integración con LinkedIn próximamente'),
+            onTap: () => _launchRegisterSocialOAuth(
+              provider: 'linkedin',
+              providerName: 'LinkedIn',
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _SocialButton(
+            icon: FontAwesomeIcons.facebook,
+            iconColor: const Color(0xFF1877F2),
+            label: 'Facebook',
+            onTap: () => _launchRegisterSocialOAuth(
+              provider: 'facebook',
+              providerName: 'Facebook',
+            ),
           ),
         ),
       ],
     );
+  }
+
+  Future<void> _launchRegisterSocialOAuth({
+    required String provider,
+    required String providerName,
+  }) async {
+    String origin = '';
+    if (kIsWeb) {
+      try {
+        origin = Uri.base.origin;
+      } catch (_) {
+        origin = '';
+      }
+    }
+
+    final sessionId = 'tm_reg_${DateTime.now().millisecondsSinceEpoch}_${math.Random().nextInt(99999)}';
+    final queryParams = <String, String>{
+      'session_id': sessionId,
+    };
+    if (origin.isNotEmpty) {
+      queryParams['redirect_origin'] = origin;
+    }
+
+    final oauthUrl = Uri.parse('$kBaseUrl/auth/oauth/$provider/authorize').replace(
+      queryParameters: queryParams,
+    );
+
+    try {
+      if (kIsWeb) {
+        SocialPopupHelper.openPopup(
+          oauthUrl.toString(),
+          name: 'TalentMatch_${provider}_Register',
+        );
+      } else {
+        final launched = await launchUrl(
+          oauthUrl,
+          mode: LaunchMode.inAppBrowserView,
+        );
+        if (!launched) {
+          await launchUrl(oauthUrl, mode: LaunchMode.platformDefault);
+        }
+      }
+
+      _startRegisterOAuthPolling(sessionId: sessionId, providerName: providerName);
+    } catch (e) {
+      if (mounted) {
+        AppToast.error(context, 'No se pudo abrir la ventana de $providerName: $e');
+      }
+    }
+  }
+
+  void _startRegisterOAuthPolling({
+    required String sessionId,
+    required String providerName,
+  }) {
+    _oauthPollTimer?.cancel();
+    if (mounted) {
+      AppToast.info(context, 'Conectando con $providerName...');
+    }
+
+    int attempts = 0;
+    _oauthPollTimer = Timer.periodic(const Duration(milliseconds: 1500), (timer) async {
+      attempts++;
+      if (attempts > 50) {
+        timer.cancel();
+        return;
+      }
+
+      try {
+        final resp = await http.get(
+          Uri.parse('$kBaseUrl/auth/oauth/session/$sessionId'),
+        ).timeout(const Duration(seconds: 4));
+
+        if (resp.statusCode == 200) {
+          final data = jsonDecode(resp.body) as Map<String, dynamic>;
+          if (data['status'] == 'completed') {
+            timer.cancel();
+            try {
+              await closeInAppWebView();
+            } catch (_) {}
+
+            final token = data['token']?.toString();
+            final refresh = data['refreshToken']?.toString() ?? '';
+            if (token != null && token.isNotEmpty && mounted) {
+              final auth = context.read<AuthProvider>();
+              await auth.handleSocialAuthToken(token: token, refreshToken: refresh, isNewUser: true);
+              if (mounted && auth.status == AuthStatus.authenticated) {
+                AppToast.success(context, '¡Cuenta verificada! Cuéntanos sobre ti.');
+                setState(() {
+                  _step = 1;
+                  final email = data['email']?.toString() ?? '';
+                  if (_emailCtrl.text.isEmpty && email.isNotEmpty) {
+                    _emailCtrl.text = email;
+                    _fullNameCtrl.text = email.split('@').first;
+                  }
+                });
+              }
+            }
+          }
+        }
+      } catch (_) {}
+    });
   }
 
   // ──────────────────────────────────────
@@ -1139,6 +1687,7 @@ class _RegTextField extends StatelessWidget {
   final int maxLines;
   final bool readOnly;
   final VoidCallback? onTap;
+  final ValueChanged<String>? onChanged;
 
   const _RegTextField({
     required this.controller,
@@ -1150,6 +1699,7 @@ class _RegTextField extends StatelessWidget {
     this.maxLines = 1,
     this.readOnly = false,
     this.onTap,
+    this.onChanged,
   });
 
   @override
@@ -1161,6 +1711,7 @@ class _RegTextField extends StatelessWidget {
       maxLines: obscureText ? 1 : maxLines,
       readOnly: readOnly,
       onTap: onTap,
+      onChanged: onChanged,
       style: const TextStyle(fontSize: 14, color: kText),
       decoration: InputDecoration(
         hintText: hint,
@@ -1326,28 +1877,75 @@ class _SocialButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return OutlinedButton(
-      onPressed: onTap,
-      style: OutlinedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(vertical: 13),
-        backgroundColor: Colors.white,
-        side: const BorderSide(color: kLine, width: 1.5),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          FaIcon(icon, color: iconColor, size: 16),
-          const SizedBox(width: 8),
-          Text(
-            label,
-            style: const TextStyle(
-              color: kNavy,
-              fontWeight: FontWeight.w700,
-              fontSize: 13,
-            ),
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0F172A).withValues(alpha: 0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+          BoxShadow(
+            color: Colors.white.withValues(alpha: 0.75),
+            blurRadius: 6,
+            offset: const Offset(0, -1),
           ),
         ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onTap,
+              splashColor: const Color(0xFF38BDF8).withValues(alpha: 0.15),
+              highlightColor: Colors.white.withValues(alpha: 0.35),
+              borderRadius: BorderRadius.circular(14),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 4),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(14),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Colors.white.withValues(alpha: 0.90),
+                      Colors.white.withValues(alpha: 0.60),
+                    ],
+                  ),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.95),
+                    width: 1.4,
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    FaIcon(icon, color: iconColor, size: 15),
+                    const SizedBox(width: 5),
+                    Flexible(
+                      child: Text(
+                        label,
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                        style: const TextStyle(
+                          color: kNavy,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
+                          letterSpacing: -0.1,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

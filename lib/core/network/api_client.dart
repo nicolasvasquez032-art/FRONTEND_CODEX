@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:ui' as ui;
 
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -203,7 +204,19 @@ class ApiClient {
     return res;
   }
 
+  /// Limpia toda la caché offline de respuestas HTTP para evitar contaminación de datos entre cuentas.
+  static Future<void> clearCache() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final keys = prefs.getKeys().where((k) => k.startsWith('cache_')).toList();
+      for (final key in keys) {
+        await prefs.remove(key);
+      }
+    } catch (_) {}
+  }
+
   Future<void> _onAuthFailure() async {
+    await clearCache();
     await _storage.clearSession();
     const message = 'Tu sesión ha expirado. Por favor, inicia sesión de nuevo.';
     onSessionExpired?.call(message);
@@ -412,8 +425,30 @@ class ApiClient {
     final request = http.MultipartRequest('POST', uri);
     request.headers['Accept-Language'] = lang;
     if (token != null) request.headers['Authorization'] = 'Bearer $token';
+
+    MediaType? parsedContentType;
+    try {
+      if (mimeType.contains('/')) {
+        final parts = mimeType.split('/');
+        parsedContentType = MediaType(parts[0], parts[1]);
+      } else if (fileName.toLowerCase().endsWith('.pdf')) {
+        parsedContentType = MediaType('application', 'pdf');
+      } else if (fileName.toLowerCase().endsWith('.png')) {
+        parsedContentType = MediaType('image', 'png');
+      } else if (fileName.toLowerCase().endsWith('.jpg') || fileName.toLowerCase().endsWith('.jpeg')) {
+        parsedContentType = MediaType('image', 'jpeg');
+      } else if (fileName.toLowerCase().endsWith('.webp')) {
+        parsedContentType = MediaType('image', 'webp');
+      }
+    } catch (_) {}
+
     request.files.add(
-      http.MultipartFile.fromBytes('file', fileBytes, filename: fileName),
+      http.MultipartFile.fromBytes(
+        'file',
+        fileBytes,
+        filename: fileName,
+        contentType: parsedContentType,
+      ),
     );
     final streamed = await request.send().timeout(const Duration(seconds: 30));
     var res = await http.Response.fromStream(streamed);
@@ -428,7 +463,12 @@ class ApiClient {
         retryRequest.headers['Accept-Language'] = lang;
         if (newToken != null) retryRequest.headers['Authorization'] = 'Bearer $newToken';
         retryRequest.files.add(
-          http.MultipartFile.fromBytes('file', fileBytes, filename: fileName),
+          http.MultipartFile.fromBytes(
+            'file',
+            fileBytes,
+            filename: fileName,
+            contentType: parsedContentType,
+          ),
         );
         final retryStreamed = await retryRequest.send().timeout(const Duration(seconds: 30));
         return http.Response.fromStream(retryStreamed);

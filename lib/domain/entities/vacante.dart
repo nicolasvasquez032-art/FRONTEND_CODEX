@@ -19,6 +19,7 @@ class Vacante {
   final double? latitud;
   final double? longitud;
   final DateTime creadoEn;
+  final int totalPostulaciones;
 
   const Vacante({
     required this.id,
@@ -34,6 +35,7 @@ class Vacante {
     this.salarioMax,
     this.latitud,
     this.longitud,
+    this.totalPostulaciones = 0,
   });
 
   /// Descripción del rango salarial formateada de forma adaptativa (intl).

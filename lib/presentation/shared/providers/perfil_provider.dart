@@ -26,18 +26,51 @@ class PerfilProvider extends ChangeNotifier {
   bool saving = false;
   String? saveError;
 
+  bool get hasCv =>
+      profile?.cvText != null && profile!.cvText!.trim().isNotEmpty;
+
+  // ──────────────────────────────────────────────
+  // Resetear estado al cerrar o cambiar de sesión
+  // ──────────────────────────────────────────────
+
+  void limpiar() {
+    status = PerfilStatus.initial;
+    profile = null;
+    error = null;
+    cvStatus = CvUploadStatus.idle;
+    cvError = null;
+    cvPreview = null;
+    saving = false;
+    saveError = null;
+    notifyListeners();
+  }
+
   // ──────────────────────────────────────────────
   // Cargar perfil
   // ──────────────────────────────────────────────
 
-  Future<void> cargar(String profileId) async {
+  Future<void> cargar([String? profileId]) async {
     if (status == PerfilStatus.loading) return;
     status = PerfilStatus.loading;
     error = null;
     notifyListeners();
 
     try {
-      profile = await _repo.getPerfil(profileId);
+      if (profileId != null && profileId.isNotEmpty) {
+        try {
+          profile = await _repo.getPerfil(profileId);
+          status = PerfilStatus.loaded;
+          notifyListeners();
+          return;
+        } on ApiException catch (e) {
+          // Si el perfil no pertenece a este usuario (403) o no existe (404),
+          // cargamos de inmediato el perfil propio autenticado vía /perfiles/me
+          if (e.statusCode != 403 && e.statusCode != 404) {
+            rethrow;
+          }
+        }
+      }
+      profile = await _repo.getMiPerfil();
       status = PerfilStatus.loaded;
     } on ApiException catch (e) {
       error = _mapError(e);

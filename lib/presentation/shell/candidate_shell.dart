@@ -6,6 +6,9 @@ import 'package:provider/provider.dart';
 import '../../l10n/app_localizations.dart';
 import '../shared/providers/auth_provider.dart';
 import '../shared/providers/notificaciones_provider.dart';
+import '../shared/providers/perfil_provider.dart';
+import '../shared/providers/postulaciones_provider.dart';
+import '../shared/providers/recomendaciones_provider.dart';
 import '../shared/widgets/glass_background.dart';
 
 import '../home/home_screen.dart';
@@ -28,9 +31,14 @@ class _CandidateShellState extends State<CandidateShell> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final userId = context.read<AuthProvider>().session?.userId ?? '';
+      final session = context.read<AuthProvider>().session;
+      final userId = session?.userId ?? '';
       if (userId.isNotEmpty) {
         context.read<NotificacionesProvider>().cargar(userId);
+      }
+      final cid = (session?.profileId.isNotEmpty == true) ? session!.profileId : session?.userId;
+      if (cid != null && cid.isNotEmpty) {
+        context.read<PostulacionesProvider>().cargar(cid);
       }
     });
   }
@@ -45,6 +53,19 @@ class _CandidateShellState extends State<CandidateShell> {
     if (_tab != tab) {
       HapticFeedback.vibrate();
       setState(() => _tab = tab);
+      final session = context.read<AuthProvider>().session;
+      final cid = (session?.profileId.isNotEmpty == true) ? session!.profileId : session?.userId;
+
+      if (tab == 0) {
+        if (cid != null && cid.isNotEmpty) {
+          context.read<RecomendacionesProvider>().cargar(cid);
+          context.read<PerfilProvider>().cargar(cid);
+        }
+      } else if (tab == 2) {
+        if (cid != null && cid.isNotEmpty) {
+          context.read<PostulacionesProvider>().cargar(cid);
+        }
+      }
     }
   }
 
@@ -53,7 +74,11 @@ class _CandidateShellState extends State<CandidateShell> {
     final l10n = AppLocalizations.of(context);
 
     final pages = [
-      HomeScreen(key: const ValueKey(0), onExplore: () => _goTo(1)),
+      HomeScreen(
+        key: const ValueKey(0),
+        onExplore: () => _goTo(1),
+        onGoToProfile: () => _goTo(3),
+      ),
       const ExploreScreen(key: ValueKey(1)),
       const ApplicationsScreen(key: ValueKey(2)),
       const ProfileScreen(key: ValueKey(3)),

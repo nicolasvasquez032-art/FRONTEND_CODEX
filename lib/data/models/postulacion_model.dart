@@ -8,6 +8,22 @@ class PostulacionModel {
   final String estado;
   final String fecha;
   final double? scoreMatch;
+  final String? candidatoNombre;
+  final String? candidatoEmail;
+  final String? candidatoJobTitle;
+  final List<String>? candidatoSkills;
+  final int? candidatoExperienceYears;
+  final String? candidatoLocation;
+  final String? candidatoPhone;
+  final String? candidatoUserId;
+  final String? vacanteTitulo;
+  final String? empresaNombre;
+  final String? vacanteUbicacion;
+  final String? vacanteCategoria;
+  final double? vacanteSalarioMin;
+  final double? vacanteSalarioMax;
+  final String? vacanteDescripcion;
+  final List<String>? vacanteRequisitos;
 
   const PostulacionModel({
     required this.id,
@@ -16,6 +32,22 @@ class PostulacionModel {
     required this.estado,
     required this.fecha,
     this.scoreMatch,
+    this.candidatoNombre,
+    this.candidatoEmail,
+    this.candidatoJobTitle,
+    this.candidatoSkills,
+    this.candidatoExperienceYears,
+    this.candidatoLocation,
+    this.candidatoPhone,
+    this.candidatoUserId,
+    this.vacanteTitulo,
+    this.empresaNombre,
+    this.vacanteUbicacion,
+    this.vacanteCategoria,
+    this.vacanteSalarioMin,
+    this.vacanteSalarioMax,
+    this.vacanteDescripcion,
+    this.vacanteRequisitos,
   });
 
   factory PostulacionModel.fromJson(Map<String, dynamic> json) =>
@@ -26,6 +58,26 @@ class PostulacionModel {
         estado: json['estado'] as String,
         fecha: json['fecha'] as String,
         scoreMatch: (json['score_match'] as num?)?.toDouble(),
+        candidatoNombre: json['candidato_nombre'] as String?,
+        candidatoEmail: json['candidato_email'] as String?,
+        candidatoJobTitle: json['candidato_job_title'] as String?,
+        candidatoSkills: (json['candidato_skills'] as List<dynamic>?)
+            ?.map((e) => e.toString())
+            .toList(),
+        candidatoExperienceYears: json['candidato_experience_years'] as int?,
+        candidatoLocation: json['candidato_location'] as String?,
+        candidatoPhone: json['candidato_phone'] as String?,
+        candidatoUserId: json['candidato_user_id'] as String?,
+        vacanteTitulo: json['vacante_titulo'] as String?,
+        empresaNombre: json['empresa_nombre'] as String?,
+        vacanteUbicacion: json['vacante_ubicacion'] as String?,
+        vacanteCategoria: json['vacante_categoria'] as String?,
+        vacanteSalarioMin: (json['vacante_salario_min'] as num?)?.toDouble(),
+        vacanteSalarioMax: (json['vacante_salario_max'] as num?)?.toDouble(),
+        vacanteDescripcion: json['vacante_descripcion'] as String?,
+        vacanteRequisitos: (json['vacante_requisitos'] as List<dynamic>?)
+            ?.map((e) => e.toString())
+            .toList(),
       );
 
   /// Convierte el DTO a la entidad de dominio.
@@ -36,6 +88,22 @@ class PostulacionModel {
         estado: _parseEstado(estado),
         fecha: DateTime.parse(fecha),
         scoreMatch: scoreMatch,
+        candidatoNombre: candidatoNombre,
+        candidatoEmail: candidatoEmail,
+        candidatoJobTitle: candidatoJobTitle,
+        candidatoSkills: candidatoSkills,
+        candidatoExperienceYears: candidatoExperienceYears,
+        candidatoLocation: candidatoLocation,
+        candidatoPhone: candidatoPhone,
+        candidatoUserId: candidatoUserId,
+        vacanteTitulo: vacanteTitulo,
+        empresaNombre: empresaNombre,
+        vacanteUbicacion: vacanteUbicacion,
+        vacanteCategoria: vacanteCategoria,
+        vacanteSalarioMin: vacanteSalarioMin,
+        vacanteSalarioMax: vacanteSalarioMax,
+        vacanteDescripcion: vacanteDescripcion,
+        vacanteRequisitos: vacanteRequisitos,
       );
 
   static PostulacionEstado _parseEstado(String s) {

@@ -22,6 +22,7 @@ abstract class AuthRepository {
   Future<void> registerCompany({
     required String email,
     required String password,
+    String? nombre,
   });
 
   /// Envía un correo de recuperación de contraseña.
@@ -39,6 +40,7 @@ abstract class AuthRepository {
   Future<UserSession> handleSocialAuthToken({
     required String token,
     required String refreshToken,
+    bool isNewUser = false,
   });
 
   /// Cierra sesión borrando los datos persistidos.

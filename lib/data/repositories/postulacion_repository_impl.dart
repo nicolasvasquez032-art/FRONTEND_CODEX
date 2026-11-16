@@ -25,8 +25,23 @@ class PostulacionRepositoryImpl implements PostulacionRepository {
 
   @override
   Future<List<Postulacion>> listarMisPostulaciones(String candidatoId) async {
+    final path = candidatoId.trim().isNotEmpty
+        ? '/postulaciones/candidato/$candidatoId'
+        : '/postulaciones/me';
     final raw = await _api.getList(
-      '/postulaciones/candidato/$candidatoId',
+      path,
+      auth: true,
+    );
+    return raw
+        .map((e) =>
+            PostulacionModel.fromJson(e as Map<String, dynamic>).toEntity())
+        .toList();
+  }
+
+  @override
+  Future<List<Postulacion>> listarPostulacionesVacante(String vacanteId) async {
+    final raw = await _api.getList(
+      '/postulaciones/vacante/$vacanteId',
       auth: true,
     );
     return raw

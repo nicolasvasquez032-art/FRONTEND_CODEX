@@ -5,6 +5,9 @@ abstract class PerfilRepository {
   /// Obtiene el perfil completo desde GET /perfiles/{profileId}.
   Future<Profile> getPerfil(String profileId);
 
+  /// Obtiene el perfil del candidato autenticado actual desde GET /perfiles/me.
+  Future<Profile> getMiPerfil();
+
   /// Actualiza nombre, habilidades, experiencia, ubicación y educación
   /// via PUT /perfiles/{profileId}.
   Future<Profile> updatePerfil({

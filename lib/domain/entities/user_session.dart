@@ -6,6 +6,7 @@ class UserSession {
   final String role; // 'candidate' | 'company' | 'admin'
   final bool isPremium;
   final String? email;
+  final bool isNewUser;
 
   const UserSession({
     required this.userId,
@@ -13,6 +14,7 @@ class UserSession {
     required this.role,
     this.isPremium = false,
     this.email,
+    this.isNewUser = false,
   });
 
   bool get isCandidate => role == 'candidate';

@@ -21,6 +21,18 @@ class PostulacionesProvider extends ChangeNotifier {
   Postulacion? postulacionDe(String vacanteId) => _byVacante[vacanteId];
 
   // ─────────────────────────────────────────────
+  // Resetear al cambiar de cuenta / logout
+  // ─────────────────────────────────────────────
+
+  void limpiar() {
+    status = PostulacionesStatus.initial;
+    postulaciones = [];
+    _byVacante.clear();
+    error = null;
+    notifyListeners();
+  }
+
+  // ─────────────────────────────────────────────
   // Cargar postulaciones del candidato
   // ─────────────────────────────────────────────
 
@@ -96,6 +108,18 @@ class PostulacionesProvider extends ChangeNotifier {
       error = 'Error al cancelar. Verifica tu red.';
       notifyListeners();
       return false;
+    }
+  }
+
+  // ─────────────────────────────────────────────
+  // Postulaciones de una vacante (para empresa)
+  // ─────────────────────────────────────────────
+
+  Future<List<Postulacion>> listarPorVacante(String vacanteId) async {
+    try {
+      return await _repo.listarPostulacionesVacante(vacanteId);
+    } catch (_) {
+      return [];
     }
   }
 }

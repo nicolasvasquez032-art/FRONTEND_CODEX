@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:animate_do/animate_do.dart';
 import '../../core/constants/app_colors.dart';
@@ -7,6 +9,7 @@ import '../../core/constants/app_strings.dart';
 import '../../l10n/app_localizations.dart';
 import '../../domain/entities/postulacion.dart';
 import '../../domain/entities/vacante.dart';
+import '../../core/utils/job_translation_helper.dart';
 import '../shared/providers/auth_provider.dart';
 import '../shared/providers/locale_provider.dart';
 import '../shared/providers/postulaciones_provider.dart';
@@ -33,8 +36,11 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
 
   Future<void> _cargar() async {
     final session = context.read<AuthProvider>().session;
-    if (session == null || session.profileId.isEmpty) return;
-    await context.read<PostulacionesProvider>().cargar(session.profileId);
+    if (session == null) return;
+    final cid = session.profileId.isNotEmpty ? session.profileId : session.userId;
+    if (cid.isNotEmpty) {
+      await context.read<PostulacionesProvider>().cargar(cid);
+    }
   }
 
   @override
@@ -63,35 +69,43 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
                     padding: const EdgeInsets.fromLTRB(17, 10, 17, 16),
                     sliver: SliverList(
               delegate: SliverChildListDelegate([
-                Row(
-                  children: [
-                    const Icon(Icons.timeline_outlined, size: 16, color: kBlue),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        isEs ? AppStrings.applicationsSubtitle : 'Tracking',
-                        style: const TextStyle(
-                          color: kBlue,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.2,
-                        ),
-                      ),
-                    ),
-                  ],
+                Text(
+                  isEs ? 'SEGUIMIENTO DE CANDIDATURAS' : 'APPLICATION TRACKING',
+                  style: GoogleFonts.inter(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF64748B),
+                    letterSpacing: 0.8,
+                  ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 6),
                 RichText(
                   text: TextSpan(
                     children: [
                       TextSpan(
-                        text: '${l10n.applicationsTitle}\n',
-                        style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w900, color: kBlue, height: 1.1),
+                        text: isEs ? 'Mis\n' : 'My\n',
+                        style: GoogleFonts.inter(
+                          fontSize: 27,
+                          fontWeight: FontWeight.w800,
+                          color: const Color(0xFF0F172A),
+                          height: 1.15,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      TextSpan(
+                        text: isEs ? 'Postulaciones' : 'Applications',
+                        style: GoogleFonts.inter(
+                          fontSize: 27,
+                          fontWeight: FontWeight.w800,
+                          color: const Color(0xFF2563EB),
+                          height: 1.15,
+                          letterSpacing: -0.5,
+                        ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 18),
 
                 if (postsProvider.status == PostulacionesStatus.loading)
                   const _ShimmerApplicationsList()
@@ -102,8 +116,13 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
                 else ...[
                   // Contador
                   Text(
-                    '${postsProvider.postulaciones.length} ${isEs ? (postsProvider.postulaciones.length != 1 ? 'postulaciones' : 'postulación') : (postsProvider.postulaciones.length != 1 ? 'applications' : 'application')}',
-                    style: const TextStyle(color: kMuted, fontSize: 12, fontWeight: FontWeight.w600),
+                    '${postsProvider.postulaciones.length} ${isEs ? (postsProvider.postulaciones.length != 1 ? 'postulaciones registradas' : 'postulación registrada') : (postsProvider.postulaciones.length != 1 ? 'registered applications' : 'registered application')}',
+                    style: GoogleFonts.inter(
+                      color: const Color(0xFF0F172A),
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.2,
+                    ),
                   ),
                 ],
               ]),
@@ -123,7 +142,7 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
                         padding: const EdgeInsets.only(bottom: 12),
                         child: _PostulacionCard(
                           postulacion: p,
-                          vacante: _findVacante(vacProvider, p.vacanteId),
+                          vacante: _resolveVacante(vacProvider, p),
                           isSpanish: isEs,
                         ),
                       ),
@@ -142,13 +161,25 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
     );
   }
 
-  Vacante? _findVacante(VacantesProvider vp, String vacanteId) {
+  Vacante _resolveVacante(VacantesProvider vp, Postulacion p) {
     try {
       return vp.vacantes.cast<Vacante>().firstWhere(
-        (v) => v.id == vacanteId,
+        (v) => v.id == p.vacanteId,
       );
     } catch (_) {
-      return null;
+      return Vacante(
+        id: p.vacanteId,
+        empresaId: '',
+        titulo: p.vacanteTitulo ?? 'Empresas de tecnología y startups',
+        descripcion: p.vacanteDescripcion ?? '',
+        requisitos: p.vacanteRequisitos ?? [],
+        ubicacion: p.vacanteUbicacion ?? 'Remoto',
+        categoria: p.vacanteCategoria ?? 'Tecnología',
+        estado: VacanteEstado.activa,
+        creadoEn: p.fecha,
+        salarioMin: p.vacanteSalarioMin,
+        salarioMax: p.vacanteSalarioMax,
+      );
     }
   }
 }
@@ -159,13 +190,50 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
 
 class _PostulacionCard extends StatelessWidget {
   final Postulacion postulacion;
-  final Vacante? vacante;
+  final Vacante vacante;
   final bool isSpanish;
 
-  const _PostulacionCard({required this.postulacion, required this.vacante, this.isSpanish = true});
+  const _PostulacionCard({
+    required this.postulacion,
+    required this.vacante,
+    this.isSpanish = true,
+  });
+
+  void _openDetail(BuildContext context) async {
+    HapticFeedback.lightImpact();
+    Vacante target = vacante;
+    if (target.descripcion.isEmpty || target.requisitos.isEmpty) {
+      final loaded = await context.read<VacantesProvider>().getVacanteDetalle(postulacion.vacanteId);
+      if (loaded != null) target = loaded;
+    }
+    if (context.mounted) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => JobDetailScreen(
+            vacante: target,
+            heroTagTitle: 'app_title_${postulacion.id}',
+          ),
+        ),
+      );
+    }
+  }
 
   @override
-  Widget build(BuildContext context) => GlassCard(
+  Widget build(BuildContext context) {
+    final String displayTitle = (vacante.titulo.isNotEmpty && vacante.titulo != 'Vacante')
+        ? vacante.tituloLocalized(isSpanish)
+        : (postulacion.vacanteTitulo != null && postulacion.vacanteTitulo!.isNotEmpty
+            ? JobTranslationHelper.translateTitle(postulacion.vacanteTitulo!, isSpanish)
+            : (isSpanish ? 'Empresas de tecnología y startups' : 'Tech & Startups Software Engineer'));
+
+    final String empresa = postulacion.empresaNombre ?? 'Empresa Confidencial';
+    final String ubicacion = postulacion.vacanteUbicacion ?? vacante.ubicacionLocalized(isSpanish);
+
+    return InkWell(
+      onTap: () => _openDetail(context),
+      borderRadius: BorderRadius.circular(20),
+      child: GlassCard(
         borderRadius: 20,
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -176,11 +244,41 @@ class _PostulacionCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
-                  child: Text(
-                    vacante?.tituloLocalized(isSpanish) ?? (isSpanish ? 'Vacante' : 'Job'),
-                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: kNavy),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        displayTitle,
+                        style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: kNavy),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          const Icon(Icons.business_rounded, size: 13, color: kMuted),
+                          const SizedBox(width: 4),
+                          Text(
+                            empresa,
+                            style: const TextStyle(color: kMuted, fontSize: 12, fontWeight: FontWeight.w600),
+                          ),
+                          if (ubicacion.isNotEmpty) ...[
+                            const SizedBox(width: 8),
+                            const Text('•', style: TextStyle(color: kMuted, fontSize: 12)),
+                            const SizedBox(width: 8),
+                            const Icon(Icons.location_on_outlined, size: 13, color: kMuted),
+                            const SizedBox(width: 2),
+                            Flexible(
+                              child: Text(
+                                ubicacion,
+                                style: const TextStyle(color: kMuted, fontSize: 12),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ],
                   ),
                 ),
                 if (postulacion.scoreMatch != null) ...[
@@ -255,44 +353,47 @@ class _PostulacionCard extends StatelessWidget {
                   ),
               ],
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 10),
             Text(
               _formatDate(postulacion.fecha),
               style: const TextStyle(color: kMuted, fontSize: 11),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
 
             // ── Timeline Visual ──
             _TimelineTracker(currentState: postulacion.estado, isSpanish: isSpanish),
 
-            if (vacante != null) ...[
-              const SizedBox(height: 24),
-              SizedBox(
-                height: 40,
-                width: double.infinity,
-                child: OutlinedButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => JobDetailScreen(vacante: vacante!),
-                      ),
-                    );
-                  },
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: kLine),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  child: Text(
-                    isSpanish ? 'Ver detalles de la vacante' : 'View job details',
-                    style: const TextStyle(color: kBlue, fontSize: 13, fontWeight: FontWeight.w700),
-                  ),
+            const SizedBox(height: 20),
+            SizedBox(
+              height: 42,
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: () => _openDetail(context),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Color(0xFF2563EB), width: 1.2),
+                  backgroundColor: const Color(0xFFEFF6FF),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.remove_red_eye_outlined, size: 16, color: kBlue),
+                    const SizedBox(width: 8),
+                    Text(
+                      isSpanish ? 'Ver detalles de la vacante' : 'View job details',
+                      style: const TextStyle(color: kBlue, fontSize: 13, fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(width: 6),
+                    const Icon(Icons.arrow_forward_rounded, size: 15, color: kBlue),
+                  ],
                 ),
               ),
-            ],
+            ),
           ],
         ),
-      );
+      ),
+    );
+  }
 
   String _formatDate(DateTime d) {
     final diff = DateTime.now().difference(d);

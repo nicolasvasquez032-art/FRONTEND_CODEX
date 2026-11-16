@@ -20,6 +20,20 @@ class AuthProvider extends ChangeNotifier {
   bool loading = false;
   String? error;
   bool hasSeenOnboarding = false;
+  bool needsProfileCompletion = false;
+
+  /// Callback global para limpiar estado en memoria de otros providers al cambiar de sesión.
+  static VoidCallback? onSessionReset;
+
+  void markProfileCompleted() {
+    needsProfileCompletion = false;
+    notifyListeners();
+  }
+
+  void setNeedsProfileCompletion(bool value) {
+    needsProfileCompletion = value;
+    notifyListeners();
+  }
 
   // ──────────────────────────────────────────────
   // Inicialización: restaurar sesión guardada
@@ -63,6 +77,8 @@ class AuthProvider extends ChangeNotifier {
       session = await _repo
           .login(email: email, password: password)
           .timeout(const Duration(seconds: 20));
+      onSessionReset?.call();
+      needsProfileCompletion = false;
       status = AuthStatus.authenticated;
       error = null;
     } on TimeoutException {
@@ -72,7 +88,7 @@ class AuthProvider extends ChangeNotifier {
       error = _mapError(e);
       status = AuthStatus.unauthenticated;
     } catch (_) {
-      error = 'Sin conexión a internet.';
+      error = 'Error de comunicación con el servidor. Por favor intenta de nuevo.';
       status = AuthStatus.unauthenticated;
     } finally {
       _setLoading(false);
@@ -99,6 +115,10 @@ class AuthProvider extends ChangeNotifier {
             fullName: fullName,
           )
           .timeout(const Duration(seconds: 20));
+      onSessionReset?.call();
+      if (session != null && session!.isCandidate) {
+        needsProfileCompletion = session!.isNewUser;
+      }
       status = AuthStatus.authenticated;
       error = null;
     } on TimeoutException {
@@ -122,13 +142,19 @@ class AuthProvider extends ChangeNotifier {
   Future<void> handleSocialAuthToken({
     required String token,
     required String refreshToken,
+    bool isNewUser = false,
   }) async {
     _setLoading(true);
     try {
       session = await _repo.handleSocialAuthToken(
         token: token,
         refreshToken: refreshToken,
+        isNewUser: isNewUser,
       );
+      onSessionReset?.call();
+      if (session != null && session!.isCandidate) {
+        needsProfileCompletion = session!.isNewUser || isNewUser;
+      }
       status = AuthStatus.authenticated;
       error = null;
     } catch (_) {
@@ -164,11 +190,14 @@ class AuthProvider extends ChangeNotifier {
         education: education,
       );
       error = null;
+    } on TimeoutException {
+      error = 'El servidor tardó demasiado en responder. Inténtalo de nuevo.';
+      status = AuthStatus.unauthenticated;
     } on ApiException catch (e) {
       error = _mapError(e);
       status = AuthStatus.unauthenticated;
     } catch (_) {
-      error = 'Sin conexión a internet.';
+      error = 'Error de comunicación con el servidor. Por favor intenta de nuevo.';
       status = AuthStatus.unauthenticated;
     } finally {
       _setLoading(false);
@@ -182,16 +211,20 @@ class AuthProvider extends ChangeNotifier {
   Future<void> registerCompany({
     required String email,
     required String password,
+    String? nombre,
   }) async {
     _setLoading(true);
     try {
-      await _repo.registerCompany(email: email, password: password);
+      await _repo.registerCompany(email: email, password: password, nombre: nombre);
       error = null;
+    } on TimeoutException {
+      error = 'El servidor tardó demasiado en responder. Inténtalo de nuevo.';
+      status = AuthStatus.unauthenticated;
     } on ApiException catch (e) {
       error = _mapError(e);
       status = AuthStatus.unauthenticated;
     } catch (_) {
-      error = 'Sin conexión a internet.';
+      error = 'Error de comunicación con el servidor. Por favor intenta de nuevo.';
       status = AuthStatus.unauthenticated;
     } finally {
       _setLoading(false);
@@ -208,11 +241,14 @@ class AuthProvider extends ChangeNotifier {
       await _repo.requestPasswordReset(email);
       error = null;
       return true;
+    } on TimeoutException {
+      error = 'El servidor tardó demasiado en responder. Inténtalo de nuevo.';
+      return false;
     } on ApiException catch (e) {
       error = _mapError(e);
       return false;
     } catch (_) {
-      error = 'Sin conexión a internet.';
+      error = 'Error de comunicación con el servidor. Por favor intenta de nuevo.';
       return false;
     } finally {
       _setLoading(false);
@@ -226,18 +262,22 @@ class AuthProvider extends ChangeNotifier {
   Future<void> logout() async {
     await _repo.logout();
     session = null;
+    needsProfileCompletion = false;
     status = AuthStatus.unauthenticated;
     error = null;
     loading = false;
+    onSessionReset?.call();
     notifyListeners();
   }
 
   /// Invocado por el interceptor global de ApiClient cuando el token expira o es revocado.
   void handleSessionExpired([String message = 'Tu sesión ha expirado. Por favor, inicia sesión de nuevo.']) {
     session = null;
+    needsProfileCompletion = false;
     status = AuthStatus.unauthenticated;
     error = message;
     loading = false;
+    onSessionReset?.call();
     notifyListeners();
   }
 

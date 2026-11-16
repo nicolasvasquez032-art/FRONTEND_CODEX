@@ -51,6 +51,7 @@ class FakeAuthRepo implements AuthRepository {
   Future<UserSession> handleSocialAuthToken({
     required String token,
     required String refreshToken,
+    bool isNewUser = false,
   }) async {
     if (shouldFail) throw Exception('fail');
     return currentSession ?? const UserSession(userId: 'u_oauth', profileId: 'p_oauth', role: 'candidate');
@@ -78,7 +79,7 @@ class FakeAuthRepo implements AuthRepository {
   }
 
   @override
-  Future<void> registerCompany({required String email, required String password}) async {
+  Future<void> registerCompany({required String email, required String password, String? nombre}) async {
     if (shouldFail) throw Exception('fail');
   }
 
@@ -147,6 +148,13 @@ class FakePostulacionRepo implements PostulacionRepository {
     if (apiException != null) throw apiException!;
     if (shouldFail) throw Exception('fail');
     return postulaciones;
+  }
+
+  @override
+  Future<List<Postulacion>> listarPostulacionesVacante(String vacanteId) async {
+    if (apiException != null) throw apiException!;
+    if (shouldFail) throw Exception('fail');
+    return postulaciones.where((p) => p.vacanteId == vacanteId).toList();
   }
 
   @override

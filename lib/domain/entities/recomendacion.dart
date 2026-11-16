@@ -8,6 +8,12 @@ class Recomendacion {
   final String empresaId;
   final double scoreSimilitud;
   final String explicacion;
+  final String? descripcion;
+  final List<String>? requisitos;
+  final String? ubicacion;
+  final String? categoria;
+  final double? salarioMin;
+  final double? salarioMax;
 
   const Recomendacion({
     required this.vacanteId,
@@ -15,6 +21,12 @@ class Recomendacion {
     required this.empresaId,
     required this.scoreSimilitud,
     required this.explicacion,
+    this.descripcion,
+    this.requisitos,
+    this.ubicacion,
+    this.categoria,
+    this.salarioMin,
+    this.salarioMax,
   });
 
   /// Porcentaje de compatibilidad redondeado (0–100).

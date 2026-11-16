@@ -11,6 +11,7 @@ import '../shared/widgets/bouncy_tap.dart';
 import '../shared/widgets/shimmer_cards.dart';
 import 'package:liquid_pull_to_refresh/liquid_pull_to_refresh.dart';
 import '../shared/providers/locale_provider.dart';
+import '../shared/providers/postulaciones_provider.dart';
 import '../shared/widgets/glass_card.dart';
 
 class MisVacantesScreen extends StatefulWidget {
@@ -21,11 +22,58 @@ class MisVacantesScreen extends StatefulWidget {
 }
 
 class _MisVacantesScreenState extends State<MisVacantesScreen> {
+  double? _promedioMatch;
+  bool _calculandoPromedio = false;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<VacantesProvider>().cargar();
+    });
+  }
+
+  void _recalcularMatch(List<Vacante> vacantes) {
+    final totalCandidatos = vacantes.fold<int>(0, (sum, v) => sum + v.totalPostulaciones);
+    if (totalCandidatos == 0) {
+      if (_promedioMatch != null) {
+        setState(() => _promedioMatch = null);
+      }
+      return;
+    }
+    if (_calculandoPromedio) return;
+    _calculandoPromedio = true;
+    final postProv = context.read<PostulacionesProvider>();
+
+    Future.microtask(() async {
+      try {
+        double totalScore = 0;
+        int count = 0;
+
+        for (final v in vacantes) {
+          if (v.totalPostulaciones > 0) {
+            final postulaciones = await postProv.listarPorVacante(v.id);
+            for (final p in postulaciones) {
+              if (p.scoreMatch != null) {
+                final sc = p.scoreMatch! <= 1.0 ? p.scoreMatch! * 100 : p.scoreMatch!;
+                totalScore += sc;
+                count++;
+              }
+            }
+          }
+        }
+
+        if (mounted) {
+          setState(() {
+            _promedioMatch = count > 0 ? (totalScore / count) : 85.0;
+            _calculandoPromedio = false;
+          });
+        }
+      } catch (_) {
+        if (mounted) {
+          setState(() => _calculandoPromedio = false);
+        }
+      }
     });
   }
 
@@ -39,6 +87,11 @@ class _MisVacantesScreenState extends State<MisVacantesScreen> {
         .where((v) => v.empresaId == session?.userId)
         .toList();
 
+    final totalCandidatos = misVacantes.fold<int>(0, (sum, v) => sum + v.totalPostulaciones);
+    if (totalCandidatos > 0 && _promedioMatch == null && !_calculandoPromedio) {
+      _recalcularMatch(misVacantes);
+    }
+
     return Scaffold(
       backgroundColor: kBg,
       body: LiquidPullToRefresh(
@@ -46,7 +99,15 @@ class _MisVacantesScreenState extends State<MisVacantesScreen> {
         backgroundColor: Colors.white,
         animSpeedFactor: 2.0,
         showChildOpacityTransition: false,
-        onRefresh: () async => context.read<VacantesProvider>().cargar(),
+        onRefresh: () async {
+          await context.read<VacantesProvider>().cargar();
+          if (!mounted) return;
+          _promedioMatch = null;
+          final vp = this.context.read<VacantesProvider>();
+          final uid = this.context.read<AuthProvider>().session?.userId;
+          final vacs = vp.vacantes.where((v) => v.empresaId == uid).toList();
+          _recalcularMatch(vacs);
+        },
         child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
           slivers: [
@@ -105,7 +166,13 @@ class _MisVacantesScreenState extends State<MisVacantesScreen> {
   }
 
   Widget _buildDashboardHeader(List<Vacante> misVacantes) {
+    final isEs = context.watch<LocaleProvider>().isSpanish;
     final activas = misVacantes.where((v) => v.estado == VacanteEstado.activa).length;
+    final totalCandidatos = misVacantes.fold<int>(0, (sum, v) => sum + v.totalPostulaciones);
+    final matchScoreStr = totalCandidatos == 0
+        ? '--'
+        : (_promedioMatch != null ? '${_promedioMatch!.toInt()}%' : '...');
+
     return SizedBox(
       height: 330,
       child: Stack(
@@ -152,7 +219,7 @@ class _MisVacantesScreenState extends State<MisVacantesScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('RECURSOS HUMANOS', style: TextStyle(color: Colors.blueAccent.shade100, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+                                Text(isEs ? 'RECURSOS HUMANOS' : 'HUMAN RESOURCES', style: TextStyle(color: Colors.blueAccent.shade100, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
                                 const SizedBox(height: 6),
                                 const Text('Dashboard', style: TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.w900, letterSpacing: -0.5)),
                               ],
@@ -177,7 +244,9 @@ class _MisVacantesScreenState extends State<MisVacantesScreen> {
                       FadeInDown(
                         delay: const Duration(milliseconds: 100),
                         child: Text(
-                          'Aquí tienes un resumen del rendimiento\nde tus publicaciones activas.', 
+                          isEs
+                              ? 'Aquí tienes un resumen del rendimiento\nde tus publicaciones activas.'
+                              : 'Here is a performance summary\nof your active job listings.', 
                           style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 13, height: 1.5),
                         ),
                       ),
@@ -200,11 +269,11 @@ class _MisVacantesScreenState extends State<MisVacantesScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 clipBehavior: Clip.none,
                 children: [
-                  FadeInUp(delay: const Duration(milliseconds: 200), child: _buildStatCard('Activas', activas.toString(), Icons.work, Colors.blueAccent)),
+                  FadeInUp(delay: const Duration(milliseconds: 200), child: _buildStatCard(isEs ? 'Activas' : 'Active', activas.toString(), Icons.work, Colors.blueAccent)),
                   const SizedBox(width: 16),
-                  FadeInUp(delay: const Duration(milliseconds: 300), child: _buildStatCard('Candidatos', '24', Icons.people, const Color(0xFF10B981))),
+                  FadeInUp(delay: const Duration(milliseconds: 300), child: _buildStatCard(isEs ? 'Candidatos' : 'Candidates', totalCandidatos.toString(), Icons.people, const Color(0xFF10B981))),
                   const SizedBox(width: 16),
-                  FadeInUp(delay: const Duration(milliseconds: 400), child: _buildStatCard('Match Score', '85%', Icons.auto_awesome, const Color(0xFFF59E0B))),
+                  FadeInUp(delay: const Duration(milliseconds: 400), child: _buildStatCard(isEs ? 'Match Score' : 'Match Score', matchScoreStr, Icons.auto_awesome, const Color(0xFFF59E0B))),
                 ],
               ),
             ),
@@ -251,6 +320,7 @@ class _MisVacantesScreenState extends State<MisVacantesScreen> {
   }
 
   Widget _buildEmptyState() {
+    final isEs = context.watch<LocaleProvider>().isSpanish;
     return Center(
       child: FadeInUp(
         child: Column(
@@ -258,15 +328,17 @@ class _MisVacantesScreenState extends State<MisVacantesScreen> {
           children: [
             Icon(Icons.business_center_outlined, size: 64, color: kMuted.withValues(alpha: 0.5)),
             const SizedBox(height: 16),
-            const Text(
-              'Aún no has publicado vacantes',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: kNavy),
+            Text(
+              isEs ? 'Aún no has publicado vacantes' : 'You have not posted any vacancies yet',
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: kNavy),
             ),
             const SizedBox(height: 8),
-            const Text(
-              'Ve a la pestaña "Publicar" para\nempezar a atraer talento.',
+            Text(
+              isEs
+                  ? 'Ve a la pestaña "Publicar" para\nempezar a atraer talento.'
+                  : 'Go to the "Post" tab to\nstart attracting talent.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: kMuted),
+              style: const TextStyle(color: kMuted),
             ),
           ],
         ),
@@ -302,21 +374,25 @@ class _VacanteCardState extends State<_VacanteCard> with SingleTickerProviderSta
     super.dispose();
   }
 
-  String get _descripcionLimpia {
-    return widget.vacante.descripcion.replaceAll(RegExp(r'\n\n\*Salario expresado en [A-Z]{3}\*'), '');
+  String _descripcionLimpia(bool isEs) {
+    return widget.vacante
+        .descripcionLocalized(isEs)
+        .replaceAll(RegExp(r'\n\n\*Salario expresado en [A-Z]{3}\*'), '');
   }
 
-  Future<void> _handleDelete() async {
+  Future<void> _handleDelete(bool isEs) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Eliminar Vacante'),
-        content: const Text('¿Estás seguro de que deseas eliminar esta vacante de forma permanente?'),
+        title: Text(isEs ? 'Eliminar Vacante' : 'Delete Vacancy'),
+        content: Text(isEs
+            ? '¿Estás seguro de que deseas eliminar esta vacante de forma permanente?'
+            : 'Are you sure you want to permanently delete this vacancy?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(isEs ? 'Cancelar' : 'Cancel')),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true), 
-            child: const Text('Eliminar', style: TextStyle(color: Colors.red)),
+            child: Text(isEs ? 'Eliminar' : 'Delete', style: const TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -332,11 +408,16 @@ class _VacanteCardState extends State<_VacanteCard> with SingleTickerProviderSta
       
       if (mounted) {
         if (ok) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Vacante eliminada'), backgroundColor: Colors.redAccent));
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(isEs ? 'Vacante eliminada' : 'Vacancy deleted'),
+            backgroundColor: Colors.redAccent,
+          ));
         } else {
           // Revertimos la animación si falla
           _animController.reverse();
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(provider.error ?? 'Error al eliminar vacante')));
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(provider.error ?? (isEs ? 'Error al eliminar vacante' : 'Error deleting vacancy')),
+          ));
         }
       }
     }
@@ -431,7 +512,7 @@ class _VacanteCardState extends State<_VacanteCard> with SingleTickerProviderSta
                 const SizedBox(width: 8),
                 InkWell(
                   borderRadius: BorderRadius.circular(20),
-                  onTap: _handleDelete,
+                  onTap: () => _handleDelete(isEs),
                 child: Container(
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(color: Colors.red.withValues(alpha: 0.1), shape: BoxShape.circle),
@@ -445,7 +526,7 @@ class _VacanteCardState extends State<_VacanteCard> with SingleTickerProviderSta
             child: Divider(color: kLine, height: 1),
           ),
           Text(
-            _descripcionLimpia,
+            _descripcionLimpia(isEs),
             style: const TextStyle(fontSize: 13, color: kMuted, height: 1.4),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
@@ -468,7 +549,7 @@ class _VacanteCardState extends State<_VacanteCard> with SingleTickerProviderSta
                     ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 160),
                       child: Text(
-                        widget.vacante.ubicacion,
+                        widget.vacante.ubicacionLocalized(isEs),
                         style: const TextStyle(fontSize: 11, color: kNavy, fontWeight: FontWeight.w600),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -510,7 +591,7 @@ class _VacanteCardState extends State<_VacanteCard> with SingleTickerProviderSta
                         side: BorderSide(color: kBlue.withValues(alpha: 0.5), width: 1.5),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                       ),
-                      child: const Text('Vista Previa', style: TextStyle(color: kBlue, fontSize: 13, fontWeight: FontWeight.bold)),
+                      child: Text(isEs ? 'Vista Previa' : 'Preview', style: const TextStyle(color: kBlue, fontSize: 13, fontWeight: FontWeight.bold)),
                     ),
                   ),
                 ),
@@ -539,11 +620,14 @@ class _VacanteCardState extends State<_VacanteCard> with SingleTickerProviderSta
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Text('Ver Candidatos ', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                          Text(isEs ? 'Ver Candidatos ' : 'View Candidates ', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(10)),
-                            child: const Text('4', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900)),
+                            child: Text(
+                              '${widget.vacante.totalPostulaciones}',
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900),
+                            ),
                           )
                         ],
                       ),

@@ -95,8 +95,8 @@ void main() {
     await tester.tap(find.text('Empresa'));
     await tester.pump(const Duration(milliseconds: 300));
 
-    // In company mode, "PASO 1 DE 1" and Nombre completo is hidden
-    expect(find.text('PASO 1 DE 1'), findsOneWidget);
+    // In company mode, "PASO 1 DE 2" and Nombre completo is hidden
+    expect(find.text('PASO 1 DE 2'), findsOneWidget);
     expect(find.text('Nombre completo'), findsNothing);
   });
 }

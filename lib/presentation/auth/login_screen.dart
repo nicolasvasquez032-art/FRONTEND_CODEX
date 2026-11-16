@@ -14,8 +14,10 @@ import '../../core/network/api_client.dart';
 import '../shared/providers/auth_provider.dart';
 import '../shared/providers/locale_provider.dart';
 import '../shared/widgets/brand_logo.dart';
+import '../shared/widgets/app_toast.dart';
 import 'forgot_password_screen.dart';
 import 'register_screen.dart';
+import 'social_popup_helper.dart';
 
 /// Pantalla de Inicio de Sesión de TalentMatch.
 ///
@@ -51,6 +53,23 @@ class _LoginScreenState extends State<LoginScreen>
       duration: const Duration(seconds: 8),
     )..repeat(reverse: true);
 
+    if (kIsWeb) {
+      SocialPopupHelper.onWebMessage((data) async {
+        final token = data['token']?.toString();
+        final refresh = data['refreshToken']?.toString() ?? '';
+        final isNewUser = data['is_new_user'] == true;
+        if (token != null && token.isNotEmpty && mounted) {
+          _oauthPollTimer?.cancel();
+          final auth = context.read<AuthProvider>();
+          await auth.handleSocialAuthToken(
+            token: token,
+            refreshToken: refresh,
+            isNewUser: isNewUser,
+          );
+        }
+      });
+    }
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkIncomingOAuthToken();
     });
@@ -60,9 +79,14 @@ class _LoginScreenState extends State<LoginScreen>
     final uri = Uri.base;
     final token = uri.queryParameters['token'];
     final refresh = uri.queryParameters['refresh'] ?? uri.queryParameters['refreshToken'] ?? '';
+    final isNewUser = uri.queryParameters['is_new_user'] == 'true';
     if (token != null && token.isNotEmpty) {
       final auth = context.read<AuthProvider>();
-      auth.handleSocialAuthToken(token: token, refreshToken: refresh);
+      auth.handleSocialAuthToken(
+        token: token,
+        refreshToken: refresh,
+        isNewUser: isNewUser,
+      );
     }
   }
 
@@ -82,18 +106,11 @@ class _LoginScreenState extends State<LoginScreen>
     final auth = context.read<AuthProvider>();
     await auth.login(_emailCtrl.text.trim(), _passwordCtrl.text);
     if (mounted && auth.error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(auth.error!),
-          backgroundColor: const Color(0xFFDC2626),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
-      );
+      AppToast.error(context, auth.error!);
     }
   }
 
-  /// Abre inmediatamente la ventana oficial de autenticación del proveedor (Google, Facebook o LinkedIn).
+  /// Abre inmediatamente la ventana oficial emergente de autenticación del proveedor (Google, Facebook o LinkedIn).
   Future<void> _launchSocialOAuth({
     required String provider,
     required String providerName,
@@ -120,30 +137,31 @@ class _LoginScreenState extends State<LoginScreen>
     );
 
     try {
-      final launched = await launchUrl(
-        oauthUrl,
-        webOnlyWindowName: '_blank',
-        mode: LaunchMode.externalApplication,
-      );
-      if (!launched) {
-        await launchUrl(oauthUrl, mode: LaunchMode.platformDefault);
+      if (kIsWeb) {
+        SocialPopupHelper.openPopup(
+          oauthUrl.toString(),
+          name: 'TalentMatch_${provider}_Auth',
+        );
+      } else {
+        final launched = await launchUrl(
+          oauthUrl,
+          mode: LaunchMode.inAppBrowserView,
+        );
+        if (!launched) {
+          await launchUrl(oauthUrl, mode: LaunchMode.platformDefault);
+        }
       }
 
       // Inicia sondeo de sesión para sincronizar automáticamente el token en Android/móvil
       _startOAuthPolling(sessionId: sessionId, providerName: providerName);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('No se pudo abrir la ventana de $providerName: $e'),
-            backgroundColor: const Color(0xFFDC2626),
-          ),
-        );
+        AppToast.error(context, 'No se pudo abrir la ventana de $providerName: $e');
       }
     }
   }
 
-  /// Sondeo no bloqueante que detecta cuando el usuario aprueba en el navegador externo.
+  /// Sondeo no bloqueante que detecta cuando el usuario aprueba en el navegador.
   void _startOAuthPolling({
     required String sessionId,
     required String providerName,
@@ -151,29 +169,7 @@ class _LoginScreenState extends State<LoginScreen>
     _oauthPollTimer?.cancel();
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text('Conectando con $providerName en tu navegador...'),
-              ),
-            ],
-          ),
-          duration: const Duration(seconds: 40),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
-      );
+      AppToast.info(context, 'Conectando con $providerName...');
     }
 
     int attempts = 0;
@@ -194,12 +190,20 @@ class _LoginScreenState extends State<LoginScreen>
           final data = jsonDecode(resp.body) as Map<String, dynamic>;
           if (data['status'] == 'completed') {
             timer.cancel();
+            try {
+              await closeInAppWebView();
+            } catch (_) {}
+
             final token = data['token']?.toString();
             final refresh = data['refreshToken']?.toString() ?? '';
+            final isNewUser = data['is_new_user'] == true;
             if (token != null && token.isNotEmpty && mounted) {
-              ScaffoldMessenger.of(context).hideCurrentSnackBar();
               final auth = context.read<AuthProvider>();
-              await auth.handleSocialAuthToken(token: token, refreshToken: refresh);
+              await auth.handleSocialAuthToken(
+                token: token,
+                refreshToken: refresh,
+                isNewUser: isNewUser,
+              );
             }
           }
         }
@@ -220,11 +224,16 @@ class _LoginScreenState extends State<LoginScreen>
       fullName: defaultName,
     );
     if (mounted && auth.error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(auth.error!),
-          backgroundColor: const Color(0xFFDC2626),
+      AppToast.error(context, auth.error!);
+    } else if (mounted && auth.status == AuthStatus.authenticated) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (_) => const RegisterScreen(
+            initialStep: 1,
+            isSocialOnboarding: true,
+          ),
         ),
+        (route) => false,
       );
     }
   }
@@ -401,46 +410,100 @@ class _LoginScreenState extends State<LoginScreen>
                   ],
                 ),
 
-                // Alerta de error si el backend reporta alguna falla
+                // Alerta de error si el backend reporta alguna falla con diseño Glassmorphic
                 if (auth.error != null) ...[
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 14),
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 9,
-                    ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFEF2F2),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFFFECACA)),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.info_outline_rounded,
-                          color: Color(0xFFDC2626),
-                          size: 19,
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            auth.error!,
-                            style: const TextStyle(
-                              color: Color(0xFF991B1B),
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: () => auth.clearError(),
-                          child: const Icon(
-                            Icons.close_rounded,
-                            color: Color(0xFFF87171),
-                            size: 17,
-                          ),
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFEF4444).withValues(alpha: 0.12),
+                          blurRadius: 16,
+                          offset: const Offset(0, 4),
                         ),
                       ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(14),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(14),
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                Colors.white.withValues(alpha: 0.92),
+                                const Color(0xFFFEE2E2).withValues(alpha: 0.50),
+                              ],
+                            ),
+                            border: Border.all(
+                              color: const Color(0xFFFCA5A5).withValues(alpha: 0.8),
+                              width: 1.2,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 26,
+                                height: 26,
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    colors: [Color(0xFFEF4444), Color(0xFFDC2626)],
+                                  ),
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(0xFFEF4444).withValues(alpha: 0.35),
+                                      blurRadius: 6,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                alignment: Alignment.center,
+                                child: const Icon(
+                                  Icons.error_outline_rounded,
+                                  color: Colors.white,
+                                  size: 15,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  auth.error!,
+                                  style: const TextStyle(
+                                    color: Color(0xFF991B1B),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () => auth.clearError(),
+                                behavior: HitTestBehavior.opaque,
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF991B1B).withValues(alpha: 0.08),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.close_rounded,
+                                    color: Color(0xFFB91C1C),
+                                    size: 14,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -1228,37 +1291,76 @@ class _SocialAuthButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return OutlinedButton(
-      onPressed: onTap,
-      onLongPress: onLongPress,
-      style: OutlinedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
-        backgroundColor: Colors.white.withValues(alpha: 0.9),
-        side: const BorderSide(color: Color(0xFFE2E8F0), width: 1.2),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        elevation: 0,
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0F172A).withValues(alpha: 0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+          BoxShadow(
+            color: Colors.white.withValues(alpha: 0.75),
+            blurRadius: 6,
+            offset: const Offset(0, -1),
+          ),
+        ],
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          iconWidget,
-          const SizedBox(width: 5),
-          Flexible(
-            child: Text(
-              label,
-              overflow: TextOverflow.ellipsis,
-              maxLines: 1,
-              style: const TextStyle(
-                color: Color(0xFF1E293B),
-                fontWeight: FontWeight.w600,
-                fontSize: 12.0,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onTap,
+              onLongPress: onLongPress,
+              splashColor: const Color(0xFF38BDF8).withValues(alpha: 0.15),
+              highlightColor: Colors.white.withValues(alpha: 0.35),
+              borderRadius: BorderRadius.circular(14),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(14),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Colors.white.withValues(alpha: 0.90),
+                      Colors.white.withValues(alpha: 0.60),
+                    ],
+                  ),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.95),
+                    width: 1.4,
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    iconWidget,
+                    const SizedBox(width: 5),
+                    Flexible(
+                      child: Text(
+                        label,
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                        style: const TextStyle(
+                          color: Color(0xFF0F172A),
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12.0,
+                          letterSpacing: -0.1,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
-        ],
+        ),
       ),
     );
   }

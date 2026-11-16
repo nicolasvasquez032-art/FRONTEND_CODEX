@@ -30,8 +30,9 @@ class VacantesProvider extends ChangeNotifier {
   List<Vacante> get filtered {
     var lista = vacantes;
 
-    if (_filtroCategoria != null) {
-      lista = lista.where((v) => v.categoria?.toLowerCase() == _filtroCategoria!.toLowerCase()).toList();
+    if (_filtroCategoria != null && _filtroCategoria!.trim().isNotEmpty) {
+      final cat = _filtroCategoria!.trim().toLowerCase();
+      lista = lista.where((v) => v.categoria?.toLowerCase() == cat).toList();
     }
 
     if (_filtroSalarioMin != null) {
@@ -51,10 +52,10 @@ class VacantesProvider extends ChangeNotifier {
   }
 
   void setCategoriaFiltro(String? cat) {
-    if (_filtroCategoria == cat) {
+    if (cat == null || cat.trim().isEmpty || _filtroCategoria == cat.trim()) {
       _filtroCategoria = null;
     } else {
-      _filtroCategoria = cat;
+      _filtroCategoria = cat.trim();
     }
     notifyListeners();
   }
@@ -93,6 +94,27 @@ class VacantesProvider extends ChangeNotifier {
       status = VacantesStatus.error;
     }
     notifyListeners();
+  }
+
+  Future<Vacante?> getVacanteDetalle(String id) async {
+    final idx = vacantes.indexWhere((v) => v.id == id);
+    if (idx != -1 &&
+        vacantes[idx].requisitos.isNotEmpty &&
+        vacantes[idx].descripcion.isNotEmpty) {
+      return vacantes[idx];
+    }
+    try {
+      final vacante = await _repo.getVacante(id);
+      if (idx != -1) {
+        vacantes[idx] = vacante;
+      } else {
+        vacantes.add(vacante);
+      }
+      notifyListeners();
+      return vacante;
+    } catch (_) {
+      return idx != -1 ? vacantes[idx] : null;
+    }
   }
 
   Future<bool> publicarVacante({
