@@ -257,6 +257,15 @@ class _ChatListItem extends StatelessWidget {
     required this.onTap,
   });
 
+  static final _emojiRegex = RegExp(
+    r'[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}\u{2300}-\u{23FF}\u{2B50}\u{FE0F}]+',
+    unicode: true,
+  );
+
+  static String _cleanEmojis(String text) {
+    return text.replaceAll(_emojiRegex, '').trim();
+  }
+
   @override
   Widget build(BuildContext context) {
     final int unread = room.unreadCount;
@@ -376,7 +385,7 @@ class _ChatListItem extends StatelessWidget {
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            room.lastMessage ?? (isEs ? 'Conversación creada' : 'Conversation created'),
+                            _cleanEmojis(room.lastMessage ?? (isEs ? 'Conversación creada' : 'Conversation created')),
                             style: TextStyle(
                               color: unread > 0 ? kNavy : kMuted,
                               fontSize: 13,

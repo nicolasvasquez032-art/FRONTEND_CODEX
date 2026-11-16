@@ -4,8 +4,10 @@ import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_strings.dart';
 import '../shared/providers/auth_provider.dart';
+import '../shared/providers/locale_provider.dart';
 import '../shared/providers/perfil_provider.dart';
 import '../shared/providers/recomendaciones_provider.dart';
+import 'widgets/cv_skills_extraction_sheet.dart';
 
 /// Widget embebible (no es una pantalla completa) que maneja
 /// la selección y subida del CV del candidato.
@@ -48,20 +50,53 @@ class CvUploadWidget extends StatelessWidget {
 
     if (!context.mounted) return;
     if (ok) {
-      // Disparar inmediatamente recarga de recomendaciones IA en segundo plano
-      context.read<RecomendacionesProvider>().cargar(profileId);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Row(children: [
-            Icon(Icons.check_circle, color: Colors.white, size: 18),
-            SizedBox(width: 8),
-            Text('CV subido correctamente. Analizando vacantes con IA...'),
-          ]),
-          backgroundColor: kGreen,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        ),
-      );
+      final perfilProv = context.read<PerfilProvider>();
+      final updatedProfile = perfilProv.profile;
+      
+      if (updatedProfile != null && (updatedProfile.cvText?.isNotEmpty ?? false) && context.mounted) {
+        final isEs = context.read<LocaleProvider?>()?.isSpanish ?? true;
+        await showModalBottomSheet<bool>(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (ctx) => CvSkillsExtractionSheet(
+            profile: updatedProfile,
+            cvText: updatedProfile.cvText ?? '',
+            isSpanish: isEs,
+            onConfirm: (confirmedSkills) async {
+              return await perfilProv.guardar(
+                profileId: updatedProfile.id,
+                fullName: updatedProfile.fullName,
+                skills: confirmedSkills,
+                experienceYears: updatedProfile.experienceYears,
+                location: updatedProfile.location,
+                education: updatedProfile.education,
+                phone: updatedProfile.phone,
+                portfolioUrl: updatedProfile.portfolioUrl,
+                aboutMe: updatedProfile.aboutMe,
+                jobTitle: updatedProfile.jobTitle,
+              );
+            },
+          ),
+        );
+      }
+
+      if (context.mounted) {
+        // Disparar recarga de recomendaciones IA en segundo plano
+        context.read<RecomendacionesProvider>().cargar(profileId);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(children: [
+              Icon(Icons.check_circle, color: Colors.white, size: 18),
+              SizedBox(width: 8),
+              Flexible(child: Text('CV subido correctamente. Analizando vacantes con IA...')),
+            ]),
+            backgroundColor: kGreen,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+      }
     } else {
       final err = context.read<PerfilProvider>().cvError ?? 'Error al subir el CV.';
       ScaffoldMessenger.of(context).showSnackBar(

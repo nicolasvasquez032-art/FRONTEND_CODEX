@@ -50,6 +50,7 @@ class _CandidateShellState extends State<CandidateShell> {
   }
 
   void _goTo(int tab) {
+    _setNavBarVisibility(true);
     if (_tab != tab) {
       HapticFeedback.vibrate();
       setState(() => _tab = tab);
@@ -87,12 +88,36 @@ class _CandidateShellState extends State<CandidateShell> {
     return Scaffold(
       backgroundColor: const Color(0xFFEDF2FA),
       extendBody: true,
-      body: NotificationListener<UserScrollNotification>(
+      body: NotificationListener<ScrollNotification>(
         onNotification: (notification) {
-          if (notification.direction == ScrollDirection.reverse) {
-            _setNavBarVisibility(false);
-          } else if (notification.direction == ScrollDirection.forward) {
+          // Si el contenido no tiene suficiente desplazamiento, mantener la barra siempre visible
+          if (notification.metrics.maxScrollExtent <= 80) {
             _setNavBarVisibility(true);
+            return false;
+          }
+
+          // Si el usuario está cerca de la parte superior, mantener visible
+          if (notification.metrics.pixels <= 30) {
+            _setNavBarVisibility(true);
+            return false;
+          }
+
+          // Si el usuario llega al final de la pantalla, mostrar la barra para permitir navegar
+          if (notification.metrics.extentAfter <= 40) {
+            _setNavBarVisibility(true);
+            return false;
+          }
+
+          if (notification is UserScrollNotification) {
+            if (notification.direction == ScrollDirection.reverse) {
+              // Desplazamiento hacia abajo: ocultar si ya bajó más de 60px
+              if (notification.metrics.pixels > 60) {
+                _setNavBarVisibility(false);
+              }
+            } else if (notification.direction == ScrollDirection.forward) {
+              // Desplazamiento hacia arriba: mostrar de inmediato
+              _setNavBarVisibility(true);
+            }
           }
           return false;
         },
@@ -104,16 +129,19 @@ class _CandidateShellState extends State<CandidateShell> {
         ),
       ),
       bottomNavigationBar: AnimatedSlide(
-        duration: const Duration(milliseconds: 300),
+        duration: const Duration(milliseconds: 280),
         curve: Curves.easeOutCubic,
-        offset: _isNavBarVisible ? Offset.zero : const Offset(0, 1.3),
+        offset: _isNavBarVisible ? Offset.zero : const Offset(0, 1.25),
         child: AnimatedOpacity(
-          duration: const Duration(milliseconds: 300),
+          duration: const Duration(milliseconds: 240),
+          curve: Curves.easeInOut,
           opacity: _isNavBarVisible ? 1.0 : 0.0,
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.only(left: 18, right: 18, bottom: 14),
-              child: Container(
+          child: IgnorePointer(
+            ignoring: !_isNavBarVisible,
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.only(left: 18, right: 18, bottom: 14),
+                child: Container(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(36),
                   boxShadow: [
@@ -198,7 +226,8 @@ class _CandidateShellState extends State<CandidateShell> {
         ),
       ),
     ),
-  );
+  ),
+);
   }
 }
 

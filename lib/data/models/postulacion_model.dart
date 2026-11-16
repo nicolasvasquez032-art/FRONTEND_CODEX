@@ -80,6 +80,56 @@ class PostulacionModel {
             .toList(),
       );
 
+  factory PostulacionModel.fromEntity(Postulacion p) => PostulacionModel(
+        id: p.id,
+        candidatoId: p.candidatoId,
+        vacanteId: p.vacanteId,
+        estado: p.estado.name,
+        fecha: p.fecha.toIso8601String(),
+        scoreMatch: p.scoreMatch,
+        candidatoNombre: p.candidatoNombre,
+        candidatoEmail: p.candidatoEmail,
+        candidatoJobTitle: p.candidatoJobTitle,
+        candidatoSkills: p.candidatoSkills,
+        candidatoExperienceYears: p.candidatoExperienceYears,
+        candidatoLocation: p.candidatoLocation,
+        candidatoPhone: p.candidatoPhone,
+        candidatoUserId: p.candidatoUserId,
+        vacanteTitulo: p.vacanteTitulo,
+        empresaNombre: p.empresaNombre,
+        vacanteUbicacion: p.vacanteUbicacion,
+        vacanteCategoria: p.vacanteCategoria,
+        vacanteSalarioMin: p.vacanteSalarioMin,
+        vacanteSalarioMax: p.vacanteSalarioMax,
+        vacanteDescripcion: p.vacanteDescripcion,
+        vacanteRequisitos: p.vacanteRequisitos,
+      );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'candidato_id': candidatoId,
+        'vacante_id': vacanteId,
+        'estado': estado,
+        'fecha': fecha,
+        'score_match': scoreMatch,
+        'candidato_nombre': candidatoNombre,
+        'candidato_email': candidatoEmail,
+        'candidato_job_title': candidatoJobTitle,
+        'candidato_skills': candidatoSkills,
+        'candidato_experience_years': candidatoExperienceYears,
+        'candidato_location': candidatoLocation,
+        'candidato_phone': candidatoPhone,
+        'candidato_user_id': candidatoUserId,
+        'vacante_titulo': vacanteTitulo,
+        'empresa_nombre': empresaNombre,
+        'vacante_ubicacion': vacanteUbicacion,
+        'vacante_categoria': vacanteCategoria,
+        'vacante_salario_min': vacanteSalarioMin,
+        'vacante_salario_max': vacanteSalarioMax,
+        'vacante_descripcion': vacanteDescripcion,
+        'vacante_requisitos': vacanteRequisitos,
+      };
+
   /// Convierte el DTO a la entidad de dominio.
   Postulacion toEntity() => Postulacion(
         id: id,

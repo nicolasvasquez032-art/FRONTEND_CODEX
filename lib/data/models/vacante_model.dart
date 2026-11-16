@@ -16,6 +16,7 @@ class VacanteModel {
   final double? longitud;
   final String creadoEn;
   final int totalPostulaciones;
+  final bool esDestacada;
 
   const VacanteModel({
     required this.id,
@@ -32,6 +33,7 @@ class VacanteModel {
     this.latitud,
     this.longitud,
     this.totalPostulaciones = 0,
+    this.esDestacada = false,
   });
 
   factory VacanteModel.fromJson(Map<String, dynamic> json) => VacanteModel(
@@ -49,7 +51,44 @@ class VacanteModel {
         longitud: (json['longitud'] as num?)?.toDouble(),
         creadoEn: json['creado_en'] as String,
         totalPostulaciones: (json['total_postulaciones'] as num?)?.toInt() ?? 0,
+        esDestacada: json['es_destacada'] as bool? ?? false,
       );
+
+  factory VacanteModel.fromEntity(Vacante v) => VacanteModel(
+        id: v.id,
+        empresaId: v.empresaId,
+        titulo: v.titulo,
+        descripcion: v.descripcion,
+        requisitos: v.requisitos,
+        ubicacion: v.ubicacion,
+        estado: v.estado.name,
+        categoria: v.categoria,
+        salarioMin: v.salarioMin,
+        salarioMax: v.salarioMax,
+        latitud: v.latitud,
+        longitud: v.longitud,
+        creadoEn: v.creadoEn.toIso8601String(),
+        totalPostulaciones: v.totalPostulaciones,
+        esDestacada: v.esDestacada,
+      );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'empresa_id': empresaId,
+        'titulo': titulo,
+        'descripcion': descripcion,
+        'requisitos': requisitos,
+        'ubicacion': ubicacion,
+        'estado': estado,
+        'categoria': categoria,
+        'salario_min': salarioMin,
+        'salario_max': salarioMax,
+        'latitud': latitud,
+        'longitud': longitud,
+        'creado_en': creadoEn,
+        'total_postulaciones': totalPostulaciones,
+        'es_destacada': esDestacada,
+      };
 
   /// Convierte el DTO a la entidad de dominio.
   Vacante toEntity() => Vacante(
@@ -67,6 +106,7 @@ class VacanteModel {
         longitud: longitud,
         creadoEn: DateTime.parse(creadoEn),
         totalPostulaciones: totalPostulaciones,
+        esDestacada: esDestacada,
       );
 
   static VacanteEstado _parseEstado(String s) {

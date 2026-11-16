@@ -20,6 +20,7 @@ class Vacante {
   final double? longitud;
   final DateTime creadoEn;
   final int totalPostulaciones;
+  final bool esDestacada;
 
   const Vacante({
     required this.id,
@@ -36,6 +37,7 @@ class Vacante {
     this.latitud,
     this.longitud,
     this.totalPostulaciones = 0,
+    this.esDestacada = false,
   });
 
   /// Descripción del rango salarial formateada de forma adaptativa (intl).
@@ -81,4 +83,40 @@ class Vacante {
 
   String ubicacionLocalized(bool isSpanish) =>
       JobTranslationHelper.translateLocation(ubicacion, isSpanish);
+
+  Vacante copyWith({
+    String? id,
+    String? empresaId,
+    String? titulo,
+    String? descripcion,
+    List<String>? requisitos,
+    String? ubicacion,
+    VacanteEstado? estado,
+    String? categoria,
+    double? salarioMin,
+    double? salarioMax,
+    double? latitud,
+    double? longitud,
+    DateTime? creadoEn,
+    int? totalPostulaciones,
+    bool? esDestacada,
+  }) {
+    return Vacante(
+      id: id ?? this.id,
+      empresaId: empresaId ?? this.empresaId,
+      titulo: titulo ?? this.titulo,
+      descripcion: descripcion ?? this.descripcion,
+      requisitos: requisitos ?? this.requisitos,
+      ubicacion: ubicacion ?? this.ubicacion,
+      estado: estado ?? this.estado,
+      categoria: categoria ?? this.categoria,
+      salarioMin: salarioMin ?? this.salarioMin,
+      salarioMax: salarioMax ?? this.salarioMax,
+      latitud: latitud ?? this.latitud,
+      longitud: longitud ?? this.longitud,
+      creadoEn: creadoEn ?? this.creadoEn,
+      totalPostulaciones: totalPostulaciones ?? this.totalPostulaciones,
+      esDestacada: esDestacada ?? this.esDestacada,
+    );
+  }
 }

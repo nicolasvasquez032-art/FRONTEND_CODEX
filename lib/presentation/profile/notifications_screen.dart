@@ -124,6 +124,15 @@ class _NotificationCard extends StatelessWidget {
 
   const _NotificationCard({required this.notificacion});
 
+  static final _emojiRegex = RegExp(
+    r'[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}\u{2300}-\u{23FF}\u{2B50}\u{FE0F}]+',
+    unicode: true,
+  );
+
+  static String _cleanEmojis(String text) {
+    return text.replaceAll(_emojiRegex, '').trim();
+  }
+
   @override
   Widget build(BuildContext context) {
     final isEs = context.watch<LocaleProvider>().isSpanish;
@@ -137,11 +146,11 @@ class _NotificationCard extends StatelessWidget {
     if (tipo == 'entrevista_programada' || mensajeLower.contains('entrevista programada')) {
       icon = Icons.event_available_rounded;
       color = const Color(0xFF2563EB);
-      actionHint = isEs ? 'Abrir chat de entrevista' : 'Open interview chat';
+      actionHint = isEs ? 'Ver entrevista' : 'View interview';
     } else if (tipo == 'videollamada' || mensajeLower.contains('videollamada')) {
       icon = Icons.videocam_rounded;
       color = const Color(0xFF10B981);
-      actionHint = isEs ? 'Unirse / Ver chat' : 'Join / View chat';
+      actionHint = isEs ? 'Unirse a llamada' : 'Join call';
     } else if (tipo == 'chat_mensaje' || mensajeLower.contains('mensaje') || mensajeLower.contains('chat')) {
       icon = Icons.chat_bubble_rounded;
       color = const Color(0xFF6366F1);
@@ -149,7 +158,7 @@ class _NotificationCard extends StatelessWidget {
     } else if (tipo.contains('postulacion')) {
       icon = Icons.fact_check_rounded;
       color = const Color(0xFF0284C7);
-      actionHint = isEs ? 'Ver mis postulaciones' : 'View applications';
+      actionHint = isEs ? 'Ver postulación' : 'View application';
     } else if (tipo == 'nueva_vacante' || tipo == 'recomendacion' || mensajeLower.contains('vacante')) {
       icon = Icons.auto_awesome_rounded;
       color = const Color(0xFFF59E0B);
@@ -208,7 +217,7 @@ class _NotificationCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        notificacion.mensaje,
+                        _cleanEmojis(notificacion.mensaje),
                         style: TextStyle(
                           color: kNavy,
                           fontSize: 14.5,
@@ -217,15 +226,17 @@ class _NotificationCard extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      Row(
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 6,
+                        crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
                           Text(
                             _formatDate(notificacion.creadoEn, isSpanish: isEs),
                             style: const TextStyle(color: kMuted, fontSize: 11.5),
                           ),
-                          const SizedBox(width: 10),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
                             decoration: BoxDecoration(
                               color: color.withValues(alpha: 0.08),
                               borderRadius: BorderRadius.circular(8),
@@ -235,6 +246,8 @@ class _NotificationCard extends StatelessWidget {
                               children: [
                                 Text(
                                   actionHint,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
                                     color: color,
                                     fontSize: 11,

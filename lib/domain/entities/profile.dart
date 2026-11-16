@@ -8,6 +8,7 @@ class Profile {
   final String? location;
   final String? education;
   final String? cvText;
+  final String? cvFileUrl;
   final String? phone;
   final String? portfolioUrl;
   final String? aboutMe;
@@ -22,6 +23,7 @@ class Profile {
     this.location,
     this.education,
     this.cvText,
+    this.cvFileUrl,
     this.phone,
     this.portfolioUrl,
     this.aboutMe,
@@ -38,6 +40,7 @@ class Profile {
     String? location,
     String? education,
     String? cvText,
+    String? cvFileUrl,
     String? phone,
     String? portfolioUrl,
     String? aboutMe,
@@ -52,6 +55,7 @@ class Profile {
         location: location ?? this.location,
         education: education ?? this.education,
         cvText: cvText ?? this.cvText,
+        cvFileUrl: cvFileUrl ?? this.cvFileUrl,
         phone: phone ?? this.phone,
         portfolioUrl: portfolioUrl ?? this.portfolioUrl,
         aboutMe: aboutMe ?? this.aboutMe,

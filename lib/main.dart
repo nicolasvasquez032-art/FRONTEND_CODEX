@@ -32,6 +32,7 @@ import 'presentation/shell/candidate_shell.dart';
 import 'presentation/shell/company_shell.dart';
 import 'presentation/shell/admin_shell.dart';
 import 'presentation/onboarding/onboarding_screen.dart';
+import 'presentation/shared/widgets/brand_logo.dart';
 
 /// DSN de Sentry configurable en tiempo de compilación:
 /// `flutter build apk --dart-define=SENTRY_DSN=https://xxx@sentry.io/yyy`
@@ -56,60 +57,97 @@ void main() async {
   }
 }
 
-class TalentMatchApp extends StatelessWidget {
+class TalentMatchApp extends StatefulWidget {
   const TalentMatchApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    // ── Composición de dependencias ──────────────────────────────────────
-    final storage           = SecureStorage();
-    final apiClient         = ApiClient(storage);
-    final authRepo          = AuthRepositoryImpl(apiClient, storage);
-    final authProvider      = AuthProvider(authRepo);
-    final vacanteRepo       = VacanteRepositoryImpl(apiClient);
-    final postulacionRepo   = PostulacionRepositoryImpl(apiClient);
-    final perfilRepo        = PerfilRepositoryImpl(apiClient);
-    final recomendacionRepo = RecomendacionRepositoryImpl(apiClient);
-    final notificacionRepo  = NotificacionRepositoryImpl(apiClient);
-    final adminRepo         = AdminRepositoryImpl(apiClient);
+  State<TalentMatchApp> createState() => _TalentMatchAppState();
+}
 
-    final vacantesProvider        = VacantesProvider(vacanteRepo);
-    final postulacionesProvider   = PostulacionesProvider(postulacionRepo);
-    final perfilProvider          = PerfilProvider(perfilRepo);
-    final recomendacionesProvider = RecomendacionesProvider(recomendacionRepo);
-    final notificacionesProvider  = NotificacionesProvider(notificacionRepo);
-    final chatProvider            = ChatProvider();
-    final adminProvider           = AdminProvider(adminRepo);
-    final localeProvider          = LocaleProvider();
+class _TalentMatchAppState extends State<TalentMatchApp> {
+  late final SecureStorage _storage;
+  late final ApiClient _apiClient;
+  late final AuthRepositoryImpl _authRepo;
+  late final AuthProvider _authProvider;
+  late final VacantesProvider _vacantesProvider;
+  late final PostulacionesProvider _postulacionesProvider;
+  late final PerfilProvider _perfilProvider;
+  late final RecomendacionesProvider _recomendacionesProvider;
+  late final NotificacionesProvider _notificacionesProvider;
+  late final ChatProvider _chatProvider;
+  late final AdminProvider _adminProvider;
+  late final LocaleProvider _localeProvider;
+
+  @override
+  void initState() {
+    super.initState();
+    // ── Composición de dependencias única y persistente ───────────────────
+    _storage = SecureStorage();
+    _apiClient = ApiClient(_storage);
+    _authRepo = AuthRepositoryImpl(_apiClient, _storage);
+    _authProvider = AuthProvider(_authRepo);
+
+    final vacanteRepo = VacanteRepositoryImpl(_apiClient);
+    final postulacionRepo = PostulacionRepositoryImpl(_apiClient);
+    final perfilRepo = PerfilRepositoryImpl(_apiClient);
+    final recomendacionRepo = RecomendacionRepositoryImpl(_apiClient);
+    final notificacionRepo = NotificacionRepositoryImpl(_apiClient);
+    final adminRepo = AdminRepositoryImpl(_apiClient);
+
+    _vacantesProvider = VacantesProvider(vacanteRepo);
+    _postulacionesProvider = PostulacionesProvider(postulacionRepo);
+    _perfilProvider = PerfilProvider(perfilRepo);
+    _recomendacionesProvider = RecomendacionesProvider(recomendacionRepo);
+    _notificacionesProvider = NotificacionesProvider(notificacionRepo);
+    _chatProvider = ChatProvider();
+    _adminProvider = AdminProvider(adminRepo);
+    _localeProvider = LocaleProvider();
 
     // Conectar interceptor global de sesión expirada (401 definitivo)
     ApiClient.onSessionExpired = (message) {
-      authProvider.handleSessionExpired(message);
+      _authProvider.handleSessionExpired(message);
     };
 
     // Conectar reseteo atómico de todos los providers en memoria
     AuthProvider.onSessionReset = () {
-      perfilProvider.limpiar();
-      postulacionesProvider.limpiar();
-      notificacionesProvider.limpiar();
-      chatProvider.limpiar();
+      _perfilProvider.limpiar();
+      _postulacionesProvider.limpiar();
+      _notificacionesProvider.limpiar();
+      _chatProvider.limpiar();
     };
 
-    // Inicializar FCM
+    // Inicializar FCM una sola vez al arrancar
     final fcmService = FcmService(notificacionRepo);
     fcmService.initialize();
+  }
 
+  @override
+  void dispose() {
+    _authProvider.dispose();
+    _vacantesProvider.dispose();
+    _postulacionesProvider.dispose();
+    _perfilProvider.dispose();
+    _recomendacionesProvider.dispose();
+    _notificacionesProvider.dispose();
+    _chatProvider.dispose();
+    _adminProvider.dispose();
+    _localeProvider.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider.value(value: authProvider),
-        ChangeNotifierProvider.value(value: vacantesProvider),
-        ChangeNotifierProvider.value(value: postulacionesProvider),
-        ChangeNotifierProvider.value(value: perfilProvider),
-        ChangeNotifierProvider.value(value: recomendacionesProvider),
-        ChangeNotifierProvider.value(value: notificacionesProvider),
-        ChangeNotifierProvider.value(value: chatProvider),
-        ChangeNotifierProvider.value(value: adminProvider),
-        ChangeNotifierProvider.value(value: localeProvider),
+        ChangeNotifierProvider.value(value: _authProvider),
+        ChangeNotifierProvider.value(value: _vacantesProvider),
+        ChangeNotifierProvider.value(value: _postulacionesProvider),
+        ChangeNotifierProvider.value(value: _perfilProvider),
+        ChangeNotifierProvider.value(value: _recomendacionesProvider),
+        ChangeNotifierProvider.value(value: _notificacionesProvider),
+        ChangeNotifierProvider.value(value: _chatProvider),
+        ChangeNotifierProvider.value(value: _adminProvider),
+        ChangeNotifierProvider.value(value: _localeProvider),
       ],
       child: Consumer<LocaleProvider>(
         builder: (context, localeProvider, child) {
@@ -174,41 +212,32 @@ class _SplashScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        backgroundColor: kBg,
+        backgroundColor: Colors.white,
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Logo animado
+              // Logo oficial animado
               TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0.7, end: 1.0),
+                tween: Tween(begin: 0.85, end: 1.0),
                 duration: const Duration(milliseconds: 600),
-                curve: Curves.elasticOut,
+                curve: Curves.easeOutBack,
                 builder: (_, scale, child) => Transform.scale(scale: scale, child: child),
-                child: Container(
-                  width: 80, height: 80,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    gradient: kLogoGradient,
-                    borderRadius: BorderRadius.circular(24),
-                    boxShadow: [BoxShadow(color: kBlue.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 6))],
-                  ),
-                  child: const Text('T', style: TextStyle(color: Colors.white, fontSize: 42, fontWeight: FontWeight.w900)),
-                ),
+                child: const BrandLogo(size: 76),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 22),
               const Text(
                 'TalentMatch',
-                style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: kNavy),
+                style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: kNavy, letterSpacing: -0.5),
               ),
               const SizedBox(height: 8),
               const Text(
                 'Empleo inteligente para tu futuro',
-                style: TextStyle(fontSize: 13, color: kMuted),
+                style: TextStyle(fontSize: 13, color: kMuted, fontWeight: FontWeight.w500),
               ),
-              const SizedBox(height: 40),
+              const SizedBox(height: 36),
               const SizedBox(
-                width: 24, height: 24,
+                width: 22, height: 22,
                 child: CircularProgressIndicator(strokeWidth: 2.5, color: kBlue),
               ),
             ],

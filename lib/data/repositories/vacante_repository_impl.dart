@@ -12,10 +12,12 @@ class VacanteRepositoryImpl implements VacanteRepository {
   Future<List<Vacante>> listarVacantes({
     String? ubicacion,
     String? categoria,
+    String? query,
   }) async {
     final params = <String, String>{};
     if (ubicacion != null && ubicacion.isNotEmpty) params['ubicacion'] = ubicacion;
     if (categoria != null && categoria.isNotEmpty) params['categoria'] = categoria;
+    if (query != null && query.isNotEmpty) params['q'] = query;
 
     final raw = await _api.getList(
       '/vacantes',
@@ -26,6 +28,16 @@ class VacanteRepositoryImpl implements VacanteRepository {
     return raw
         .map((e) => VacanteModel.fromJson(e as Map<String, dynamic>).toEntity())
         .toList();
+  }
+
+  @override
+  Future<bool> destacarVacante(String vacanteId) async {
+    try {
+      await _api.post('/vacantes/$vacanteId/destacar', {}, auth: true);
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   @override

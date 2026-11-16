@@ -88,28 +88,30 @@ void main() {
     expect(find.text('Backend'), findsWidgets);
     expect(find.text('\$ 3.000 – \$ 5.000 COP'), findsWidgets);
 
-    // Floating map button starts visible (opacity 1.0)
+    // Floating map button starts visible
     expect(find.text('Ver Mapa'), findsOneWidget);
     expect(find.byIcon(Icons.map_outlined), findsOneWidget);
 
-    // Initial state: FAB is visible (opacity 1.0)
-    final fabOpacityFinder = find.ancestor(
+    // Initial state: FAB is visible elevated above the bottom bar
+    final fabPaddingFinder = find.ancestor(
       of: find.text('Ver Mapa'),
-      matching: find.byType(AnimatedOpacity),
+      matching: find.byType(AnimatedPadding),
     );
-    expect(tester.widget<AnimatedOpacity>(fabOpacityFinder).opacity, 1.0);
+    expect(tester.widget<AnimatedPadding>(fabPaddingFinder).padding, const EdgeInsets.only(bottom: 124));
 
-    // Scroll down to hide FAB
+    // Scroll down: el botón del mapa NO se desaparece, desciende a la base suavemente
     await tester.drag(find.byType(CustomScrollView), const Offset(0, -300));
     await tester.pump(const Duration(milliseconds: 350));
 
-    expect(tester.widget<AnimatedOpacity>(fabOpacityFinder).opacity, 0.0);
+    expect(find.text('Ver Mapa'), findsOneWidget);
+    expect(tester.widget<AnimatedPadding>(fabPaddingFinder).padding, const EdgeInsets.only(bottom: 36));
 
-    // Scroll back up to show FAB
+    // Scroll back up: el botón vuelve a elevarse por encima de la barra
     await tester.drag(find.byType(CustomScrollView), const Offset(0, 300));
     await tester.pump(const Duration(milliseconds: 350));
 
-    expect(tester.widget<AnimatedOpacity>(fabOpacityFinder).opacity, 1.0);
+    expect(find.text('Ver Mapa'), findsOneWidget);
+    expect(tester.widget<AnimatedPadding>(fabPaddingFinder).padding, const EdgeInsets.only(bottom: 124));
   });
 
   testWidgets('ApplicationsScreen renders TalentMatchTopHeader with BrandFull, language switch, chat and notification bell', (tester) async {

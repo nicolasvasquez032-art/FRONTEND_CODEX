@@ -1,5 +1,8 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/network/api_client.dart';
+import '../../../data/models/vacante_model.dart';
 import '../../../domain/entities/vacante.dart';
 import '../../../domain/repositories/vacante_repository.dart';
 
@@ -10,10 +13,13 @@ class VacantesProvider extends ChangeNotifier {
 
   VacantesProvider(this._repo);
 
+  static const _cacheKey = 'offline_vacantes_cache';
+
   VacantesStatus status = VacantesStatus.initial;
   List<Vacante> vacantes = [];
   String? error;
   bool loadingPub = false;
+  bool isOffline = false;
 
   // Filtros activos
   String? _ubicacion;
@@ -70,28 +76,82 @@ class VacantesProvider extends ChangeNotifier {
   }
 
   // ─────────────────────────────────────────────
-  // Cargar vacantes
+  // Carga Offline-First y Persistencia de Caché
   // ─────────────────────────────────────────────
 
-  Future<void> cargar({String? ubicacion, String? categoria}) async {
+  Future<void> _loadCache() async {
+    try {
+      final sp = await SharedPreferences.getInstance();
+      final cachedJson = sp.getString(_cacheKey);
+      if (cachedJson != null && cachedJson.isNotEmpty) {
+        final decoded = jsonDecode(cachedJson) as List<dynamic>;
+        final cachedVacantes = decoded
+            .map((item) => VacanteModel.fromJson(item as Map<String, dynamic>).toEntity())
+            .toList();
+        if (cachedVacantes.isNotEmpty && vacantes.isEmpty) {
+          vacantes = cachedVacantes;
+          status = VacantesStatus.loaded;
+          notifyListeners();
+        }
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _saveCache(List<Vacante> list) async {
+    try {
+      final sp = await SharedPreferences.getInstance();
+      final listMap = list.map((v) => VacanteModel.fromEntity(v).toJson()).toList();
+      await sp.setString(_cacheKey, jsonEncode(listMap));
+    } catch (_) {}
+  }
+
+  // ─────────────────────────────────────────────
+  // Cargar vacantes (Offline-First)
+  // ─────────────────────────────────────────────
+
+  Future<void> cargar({String? ubicacion, String? categoria, String? query}) async {
     _ubicacion = ubicacion;
     _categoria = categoria;
-    status = VacantesStatus.loading;
-    error = null;
-    notifyListeners();
+    if (query != null) _query = query;
+
+    // 1. Carga inmediata desde caché si no hay filtros activos y la lista está vacía (0ms UI)
+    if (_ubicacion == null && _categoria == null && _query.isEmpty && vacantes.isEmpty) {
+      await _loadCache();
+    }
+
+    if (vacantes.isEmpty) {
+      status = VacantesStatus.loading;
+      error = null;
+      notifyListeners();
+    }
 
     try {
-      vacantes = await _repo.listarVacantes(
+      final fresh = await _repo.listarVacantes(
         ubicacion: _ubicacion,
         categoria: _categoria,
+        query: _query.isNotEmpty ? _query : null,
       );
+      vacantes = fresh;
       status = VacantesStatus.loaded;
+      error = null;
+      isOffline = false;
+      if (_ubicacion == null && _categoria == null && _query.isEmpty) {
+        _saveCache(fresh);
+      }
     } on ApiException catch (e) {
-      error = e.message;
-      status = VacantesStatus.error;
+      if (vacantes.isEmpty) {
+        error = e.message;
+        status = VacantesStatus.error;
+      } else {
+        isOffline = true;
+      }
     } catch (_) {
-      error = 'Sin conexión. Verifica tu red.';
-      status = VacantesStatus.error;
+      if (vacantes.isEmpty) {
+        error = 'Sin conexión. Verifica tu red.';
+        status = VacantesStatus.error;
+      } else {
+        isOffline = true;
+      }
     }
     notifyListeners();
   }
@@ -168,6 +228,18 @@ class VacantesProvider extends ChangeNotifier {
       notifyListeners();
       return false;
     }
+  }
+
+  Future<bool> destacarVacante(String id) async {
+    final success = await _repo.destacarVacante(id);
+    if (success) {
+      final idx = vacantes.indexWhere((v) => v.id == id);
+      if (idx != -1) {
+        vacantes[idx] = vacantes[idx].copyWith(esDestacada: true);
+        notifyListeners();
+      }
+    }
+    return success;
   }
 
   void setQuery(String q) {

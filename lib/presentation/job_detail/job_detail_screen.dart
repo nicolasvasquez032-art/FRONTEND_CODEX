@@ -16,9 +16,9 @@ import '../shared/providers/perfil_provider.dart';
 import '../shared/providers/postulaciones_provider.dart';
 import '../shared/providers/vacantes_provider.dart';
 import '../shared/widgets/app_toast.dart';
-import '../shared/widgets/match_badge.dart';
 import '../shared/widgets/glass_card.dart';
 import '../explore/map_screen.dart';
+import 'widgets/match_breakdown_card.dart';
 
 class JobDetailScreen extends StatefulWidget {
   final Vacante vacante;
@@ -82,6 +82,7 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
 
     final postsProvider = context.watch<PostulacionesProvider>();
     final session = context.read<AuthProvider>().session;
+    final candidateProfile = context.watch<PerfilProvider>().profile;
     final yaPostulado = postsProvider.yaPostulado(vacante.id);
     final isEs = context.watch<LocaleProvider>().isSpanish;
 
@@ -251,99 +252,14 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
                       ),
                       const SizedBox(height: 20),
 
-                      // ML Match Card
-                      if (recomendacionML != null) ...[
-                        FadeInDown(
-                          duration: const Duration(milliseconds: 600),
-                          child: Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: kMatchBg.withValues(alpha: 0.5),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: kGreen.withValues(alpha: 0.3)),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    const Icon(Icons.auto_awesome, color: kGreen, size: 18),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      isEs ? 'Análisis de Inteligencia Artificial' : 'Artificial Intelligence Analysis',
-                                      style: const TextStyle(fontWeight: FontWeight.bold, color: kMatchText),
-                                    ),
-                                    const Spacer(),
-                                    MatchBadge(percent: recomendacionML.scorePercent, compact: true, isSpanish: isEs),
-                                  ],
-                                ),
-                                const SizedBox(height: 10),
-                                Text(
-                                  recomendacionML.explicacionLocalized(isEs),
-                                  style: const TextStyle(fontSize: 13, color: kMatchText, height: 1.5),
-                                ),
-                                Builder(
-                                  builder: (_) {
-                                    final exp = recomendacionML.explicacionLocalized(isEs);
-                                    final techCatalog = isEs
-                                        ? [
-                                            'Python', 'FastAPI', 'Java', 'Spring Boot',
-                                            'Dart/Flutter', 'JavaScript', 'TypeScript',
-                                            'C#/.NET', 'Next.js', 'Angular', 'React',
-                                            'SQL y NoSQL', 'Docker', 'Redis', 'AWS',
-                                            'Linux', 'Git', 'Inteligencia Artificial',
-                                          ]
-                                        : [
-                                            'Python', 'FastAPI', 'Java', 'Spring Boot',
-                                            'Dart/Flutter', 'JavaScript', 'TypeScript',
-                                            'C#/.NET', 'Next.js', 'Angular', 'React',
-                                            'SQL & NoSQL', 'Docker', 'Redis', 'AWS',
-                                            'Linux', 'Git', 'Artificial Intelligence',
-                                          ];
-                                    final expLower = exp.toLowerCase();
-                                    final matched = techCatalog.where((t) {
-                                      final check = t
-                                          .toLowerCase()
-                                          .replaceAll('dart/', '')
-                                          .replaceAll('/flutter', '')
-                                          .replaceAll(' & nosql', '')
-                                          .replaceAll(' y nosql', '');
-                                      return expLower.contains(check);
-                                    }).toList();
-                                    if (matched.isEmpty) return const SizedBox.shrink();
-                                    return Padding(
-                                      padding: const EdgeInsets.only(top: 10),
-                                      child: Wrap(
-                                        spacing: 6,
-                                        runSpacing: 6,
-                                        children: matched.take(4).map((tech) => Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                          decoration: BoxDecoration(
-                                            color: kGreen.withValues(alpha: 0.12),
-                                            borderRadius: BorderRadius.circular(6),
-                                            border: Border.all(color: kGreen.withValues(alpha: 0.3), width: 0.8),
-                                          ),
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              const Icon(Icons.check_circle_outline_rounded, size: 12, color: kGreen),
-                                              const SizedBox(width: 4),
-                                              Text(
-                                                tech,
-                                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: kGreen),
-                                              ),
-                                            ],
-                                          ),
-                                        )).toList(),
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ],
-                            ),
-                          ),
+                      // AI Match Breakdown (Cumples vs Por Mejorar)
+                      if (session?.role != 'company' && (recomendacionML != null || candidateProfile != null)) ...[
+                        MatchBreakdownCard(
+                          vacante: vacante,
+                          recomendacionML: recomendacionML,
+                          profile: candidateProfile,
+                          isSpanish: isEs,
                         ),
-                        const SizedBox(height: 20),
                       ],
 
                       // Mini Map

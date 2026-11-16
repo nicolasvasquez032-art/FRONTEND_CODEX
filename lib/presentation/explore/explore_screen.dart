@@ -39,7 +39,7 @@ class ExploreScreen extends StatefulWidget {
 
 class _ExploreScreenState extends State<ExploreScreen> {
   final _searchController = TextEditingController();
-  bool _showMapFab = true;
+  bool _isNavBarVisible = true;
 
   @override
   void initState() {
@@ -97,22 +97,22 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 onNotification: (notification) {
                   if (notification is UserScrollNotification) {
                     if (notification.direction == ScrollDirection.reverse) {
-                      // Desplazamiento hacia abajo: ocultar botón para despejar la vista de tarjetas
-                      if (_showMapFab) {
-                        setState(() => _showMapFab = false);
+                      // Al bajar: la barra se oculta y el botón del mapa desciende a la base sin desaparecer
+                      if (_isNavBarVisible) {
+                        setState(() => _isNavBarVisible = false);
                       }
                     } else if (notification.direction == ScrollDirection.forward) {
-                      // Desplazamiento hacia arriba: reaparecer botón suavemente
-                      if (!_showMapFab) {
-                        setState(() => _showMapFab = true);
+                      // Al subir: la barra reaparece y el botón del mapa se eleva por encima
+                      if (!_isNavBarVisible) {
+                        setState(() => _isNavBarVisible = true);
                       }
                     }
                   } else if (notification is ScrollUpdateNotification) {
-                    // Si vuelve a la parte superior desplazándose hacia arriba, asegurar que el botón se muestre
+                    // Al volver a la parte superior, asegurar la posición elevada
                     if (notification.metrics.pixels <= 10 &&
-                        !_showMapFab &&
+                        !_isNavBarVisible &&
                         (notification.scrollDelta ?? 0) <= 0) {
-                      setState(() => _showMapFab = true);
+                      setState(() => _isNavBarVisible = true);
                     }
                   }
                   return false;
@@ -127,7 +127,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     ),
 
                     SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(18, 10, 18, 120),
+                      padding: const EdgeInsets.fromLTRB(18, 10, 18, 184),
                       sliver: SliverList(
                         delegate: SliverChildListDelegate([
                           // ── Hero Section: Titular + Lupa 3D Animada ──
@@ -172,71 +172,60 @@ class _ExploreScreenState extends State<ExploreScreen> {
         ),
       ),
 
-      // ── Botón Flotante "Ver Mapa" (Scroll-to-Hide animado) ──
+      // ── Botón Flotante "Ver Mapa" (Siempre visible, se acomoda al ocultarse la barra) ──
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: 82),
-        child: AnimatedSlide(
-          offset: _showMapFab ? Offset.zero : const Offset(0, 2.5),
-          duration: const Duration(milliseconds: 280),
-          curve: Curves.easeInOutCubic,
-          child: AnimatedOpacity(
-            opacity: _showMapFab ? 1.0 : 0.0,
-            duration: const Duration(milliseconds: 220),
-            curve: Curves.easeInOut,
-            child: IgnorePointer(
-              ignoring: !_showMapFab,
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () {
-                    HapticFeedback.lightImpact();
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const MapScreen()),
-                    );
-                  },
-                  borderRadius: BorderRadius.circular(26),
-                  child: Container(
-                    height: 48,
-                    padding: const EdgeInsets.symmetric(horizontal: 22),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF3B82F6), Color(0xFF2563EB)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(26),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF2563EB).withValues(alpha: 0.38),
-                          blurRadius: 18,
-                          offset: const Offset(0, 6),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.map_outlined,
-                          color: Colors.white,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          isEs ? 'Ver Mapa' : 'View Map',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 14.5,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.2,
-                          ),
-                        ),
-                      ],
+      floatingActionButton: AnimatedPadding(
+        duration: const Duration(milliseconds: 280),
+        curve: Curves.easeOutCubic,
+        padding: EdgeInsets.only(bottom: _isNavBarVisible ? 124 : 36),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () {
+              HapticFeedback.lightImpact();
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const MapScreen()),
+              );
+            },
+            borderRadius: BorderRadius.circular(26),
+            child: Container(
+              height: 48,
+              padding: const EdgeInsets.symmetric(horizontal: 22),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF3B82F6), Color(0xFF2563EB)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(26),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF2563EB).withValues(alpha: 0.38),
+                    blurRadius: 18,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.map_outlined,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    isEs ? 'Ver Mapa' : 'View Map',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.2,
                     ),
                   ),
-                ),
+                ],
               ),
             ),
           ),
@@ -956,51 +945,50 @@ class _ExploreCardState extends State<_ExploreCard> {
               ),
               const SizedBox(height: 14),
 
-              // Fila Inferior: Tiempo Relativo y Salario Verde Figma
+              // Fila Inferior: Tiempo Relativo y Salario Verde Figma (anti-overflow)
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Expanded(
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.access_time_rounded,
-                          size: 14,
-                          color: Color(0xFF94A3B8),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.access_time_rounded,
+                        size: 14,
+                        color: Color(0xFF94A3B8),
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        v.tiempoRelativoLocalized(isEs),
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFF64748B),
                         ),
-                        const SizedBox(width: 5),
-                        Flexible(
-                          child: Text(
-                            v.tiempoRelativoLocalized(isEs),
-                            style: const TextStyle(
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w500,
-                              color: Color(0xFF64748B),
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                   const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFDCFCE7),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: const Color(0xFFBBF7D0).withValues(alpha: 0.7),
-                        width: 1.0,
+                  Flexible(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFDCFCE7),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: const Color(0xFFBBF7D0).withValues(alpha: 0.7),
+                          width: 1.0,
+                        ),
                       ),
-                    ),
-                    child: Text(
-                      v.salarioDisplayLocalized(isEs),
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF16A34A),
+                      child: Text(
+                        v.salarioDisplayLocalized(isEs),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF16A34A),
+                        ),
                       ),
                     ),
                   ),

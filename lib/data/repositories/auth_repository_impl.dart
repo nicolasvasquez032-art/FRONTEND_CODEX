@@ -31,19 +31,22 @@ class AuthRepositoryImpl implements AuthRepository {
     final token = tokenData['access_token'] as String;
     final refreshToken = tokenData['refresh_token'] as String?;
 
-    // 2. Guardar token temporalmente para poder llamar el endpoint de perfil
-    await _storage.saveSession(
-      token: token,
-      userId: '',
-      profileId: '',
-      role: 'candidate',
-      refreshToken: refreshToken,
-      isPremium: false,
-    );
+    // 2. Guardar token temporal para autorizar la obtención del perfil
+    await _storage.saveToken(token);
+    if (refreshToken != null && refreshToken.isNotEmpty) {
+      await _storage.saveRefreshToken(refreshToken);
+    }
 
-    // 3. Decodificar JWT
+    // 3. Decodificar JWT y resolver perfil del candidato si aplica
     final session = _decodeJwtSession(token);
-    final realProfileId = session.role == 'candidate' ? await _fetchProfileId() : '';
+    String realProfileId = '';
+    if (session.role == 'candidate') {
+      try {
+        realProfileId = await _fetchProfileId();
+      } catch (_) {
+        realProfileId = '';
+      }
+    }
     final profileId = realProfileId.isNotEmpty ? realProfileId : session.profileId;
 
     await _storage.saveSession(
