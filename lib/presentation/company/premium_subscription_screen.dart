@@ -221,8 +221,20 @@ class _PremiumSubscriptionScreenState extends State<PremiumSubscriptionScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text('Total a pagar', style: TextStyle(color: Colors.white70, fontSize: 16)),
-                            Text(_selectedPlan == 1 ? '\$49.00 USD/mes' : '\$0.00 USD', style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900)),
+                            const Flexible(
+                              child: Text('Total a pagar', style: TextStyle(color: Colors.white70, fontSize: 16)),
+                            ),
+                            const SizedBox(width: 8),
+                            Flexible(
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerRight,
+                                child: Text(
+                                  _selectedPlan == 1 ? '\$49.00 USD/mes' : '\$0.00 USD',
+                                  style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900),
+                                ),
+                              ),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 24),
@@ -232,6 +244,7 @@ class _PremiumSubscriptionScreenState extends State<PremiumSubscriptionScreen> {
                             duration: const Duration(milliseconds: 300),
                             width: double.infinity,
                             height: 60,
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
                             decoration: BoxDecoration(
                               gradient: _selectedPlan == 1 
                                   ? const LinearGradient(colors: [Color(0xFF3B82F6), Color(0xFF2563EB)]) // Azul brillante
@@ -246,9 +259,14 @@ class _PremiumSubscriptionScreenState extends State<PremiumSubscriptionScreen> {
                                     children: [
                                       if (_selectedPlan == 1) const Icon(Icons.payment, color: Colors.white, size: 20),
                                       if (_selectedPlan == 1) const SizedBox(width: 10),
-                                      Text(
-                                        _selectedPlan == 1 ? 'Pagar de forma segura' : 'Continuar con el plan Gratis',
-                                        style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                                      Flexible(
+                                        child: FittedBox(
+                                          fit: BoxFit.scaleDown,
+                                          child: Text(
+                                            _selectedPlan == 1 ? 'Pagar de forma segura' : 'Continuar con el plan Gratis',
+                                            style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                                          ),
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -306,7 +324,13 @@ class _PremiumSubscriptionScreenState extends State<PremiumSubscriptionScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Text(title, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                const SizedBox(width: 8),
                 Container(
                   width: 24,
                   height: 24,
@@ -320,17 +344,26 @@ class _PremiumSubscriptionScreenState extends State<PremiumSubscriptionScreen> {
               ],
             ),
             const SizedBox(height: 8),
-            Text(subtitle, style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 13)),
+            Text(
+              subtitle,
+              style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 13),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
             const SizedBox(height: 16),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text('\$$price', style: const TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.w900, height: 1)),
-                const Padding(
-                  padding: EdgeInsets.only(bottom: 4, left: 4),
-                  child: Text('/mes', style: TextStyle(color: Colors.white70, fontSize: 14)),
-                ),
-              ],
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text('\$$price', style: const TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.w900, height: 1)),
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: 4, left: 4),
+                    child: Text('/mes', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                  ),
+                ],
+              ),
             ),
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 20),
@@ -339,10 +372,20 @@ class _PremiumSubscriptionScreenState extends State<PremiumSubscriptionScreen> {
             ...features.map((f) => Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Icon(Icons.check_circle, color: isSelected ? Colors.amber : Colors.white24, size: 18),
                   const SizedBox(width: 12),
-                  Text(f, style: TextStyle(color: isSelected ? Colors.white : Colors.white70, fontSize: 14, fontWeight: isSelected ? FontWeight.w500 : FontWeight.normal)),
+                  Expanded(
+                    child: Text(
+                      f,
+                      style: TextStyle(
+                        color: isSelected ? Colors.white : Colors.white70,
+                        fontSize: 14,
+                        fontWeight: isSelected ? FontWeight.w500 : FontWeight.normal,
+                      ),
+                    ),
+                  ),
                 ],
               ),
             )),
@@ -522,12 +565,16 @@ class _PremiumSubscriptionScreenState extends State<PremiumSubscriptionScreen> {
                                       ),
                                     ),
                                     const SizedBox(width: 8),
-                                    const Text(
-                                      'Estado: Activo • Facturación recurrente',
-                                      style: TextStyle(
-                                        color: Color(0xFF10B981),
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w800,
+                                    const Expanded(
+                                      child: Text(
+                                        'Estado: Activo • Facturación recurrente',
+                                        style: TextStyle(
+                                          color: Color(0xFF10B981),
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
                                   ],
@@ -580,12 +627,14 @@ class _PremiumSubscriptionScreenState extends State<PremiumSubscriptionScreen> {
                                   children: [
                                     Icon(Icons.auto_awesome, color: kGoldLight, size: 18),
                                     SizedBox(width: 8),
-                                    Text(
-                                      'Tus Beneficios Pro Incluidos',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.bold,
+                                    Expanded(
+                                      child: Text(
+                                        'Tus Beneficios Pro Incluidos',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.bold,
+                                        ),
                                       ),
                                     ),
                                   ],
@@ -622,12 +671,18 @@ class _PremiumSubscriptionScreenState extends State<PremiumSubscriptionScreen> {
                                 ],
                               ),
                               child: const Center(
-                                child: Text(
-                                  'Volver a Mi Panel de Empresa',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
+                                child: Padding(
+                                  padding: EdgeInsets.symmetric(horizontal: 16),
+                                  child: FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text(
+                                      'Volver a Mi Panel de Empresa',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ),
@@ -664,7 +719,7 @@ class _PremiumSubscriptionScreenState extends State<PremiumSubscriptionScreen> {
     required Color color,
   }) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 6),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -672,25 +727,37 @@ class _PremiumSubscriptionScreenState extends State<PremiumSubscriptionScreen> {
             children: [
               Icon(icon, color: color, size: 16),
               const SizedBox(width: 6),
-              Text(
-                title,
-                style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ],
           ),
           const SizedBox(height: 6),
-          Text(
-            value,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.w900,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+              ),
             ),
           ),
           const SizedBox(height: 2),
-          Text(
-            subtitle,
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 11),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              subtitle,
+              style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 11),
+            ),
           ),
         ],
       ),
