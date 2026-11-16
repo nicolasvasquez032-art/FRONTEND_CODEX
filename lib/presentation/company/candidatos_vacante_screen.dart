@@ -1485,28 +1485,35 @@ class _CandidatoCard extends StatelessWidget {
             // Botón Ver / Descargar CV
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 10, 12, 2),
-              child: SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: onDescargarCv,
-                  icon: const Icon(Icons.file_download_outlined, size: 20, color: kBlue),
-                  label: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      isEs ? 'Ver / Descargar CV del Candidato' : 'View / Download Candidate CV',
-                      style: const TextStyle(
-                        color: kBlue,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
+              child: OutlinedButton(
+                onPressed: onDescargarCv,
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 46),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  side: BorderSide(color: kBlue.withValues(alpha: 0.4), width: 1.2),
+                  backgroundColor: kBlue.withValues(alpha: 0.05),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.file_download_outlined, size: 20, color: kBlue),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        isEs ? 'Ver / Descargar CV del Candidato' : 'View / Download Candidate CV',
+                        style: const TextStyle(
+                          color: kBlue,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          height: 1.25,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                    side: BorderSide(color: kBlue.withValues(alpha: 0.4), width: 1.2),
-                    backgroundColor: kBlue.withValues(alpha: 0.05),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
+                  ],
                 ),
               ),
             ),
