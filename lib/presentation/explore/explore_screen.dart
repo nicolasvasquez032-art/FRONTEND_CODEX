@@ -161,6 +161,19 @@ class _ExploreScreenState extends State<ExploreScreen> {
                                 isSpanish: isEs,
                               ),
                             ),
+                          if (vp.hasMore) ...[
+                            if (vp.error != null)
+                              Text(vp.error!, textAlign: TextAlign.center),
+                            TextButton(
+                              onPressed: vp.loadingMore ? null : vp.cargarMas,
+                              child: vp.loadingMore
+                                  ? const SizedBox.square(
+                                      dimension: 20,
+                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                    )
+                                  : Text(isEs ? 'Cargar más vacantes' : 'Load more jobs'),
+                            ),
+                          ],
                         ]),
                       ),
                     ),

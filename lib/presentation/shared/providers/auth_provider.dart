@@ -10,8 +10,9 @@ enum AuthStatus { unknown, authenticated, unauthenticated }
 
 class AuthProvider extends ChangeNotifier {
   final AuthRepository _repo;
+  final ApiClient? apiClient;
 
-  AuthProvider(this._repo) {
+  AuthProvider(this._repo, {this.apiClient}) {
     _init();
   }
 
@@ -55,6 +56,28 @@ class AuthProvider extends ChangeNotifier {
       status = AuthStatus.unauthenticated;
     }
     notifyListeners();
+  }
+
+  Future<bool?> refreshCompanyPremium() async {
+    final current = session;
+    final api = apiClient;
+    if (current == null || !current.isCompany || api == null) return null;
+
+    try {
+      final response = await api.get('/pagos/pro', auth: true);
+      final isPremium = response['is_premium'];
+      if (session?.userId != current.userId || isPremium is! bool) return null;
+      final activeSession = session!;
+      final expiresAt = DateTime.tryParse(response['premium_expires_at'] as String? ?? '');
+      if (activeSession.isPremium != isPremium ||
+          activeSession.premiumExpiresAt != expiresAt) {
+        session = activeSession.withPremium(isPremium, expiresAt);
+        notifyListeners();
+      }
+      return isPremium;
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<void> completeOnboarding() async {

@@ -2,7 +2,7 @@ import '../../core/utils/format_helper.dart';
 import '../../core/utils/job_translation_helper.dart';
 
 /// Estado de la vacante — espeja el backend enum VacanteEstado.
-enum VacanteEstado { activa, pausada, cerrada }
+enum VacanteEstado { activa, pausada, cerrada, bloqueada }
 
 /// Entidad de dominio — no importa nada de infraestructura.
 class Vacante {

@@ -22,15 +22,28 @@ class CompanyShell extends StatefulWidget {
 class _CompanyShellState extends State<CompanyShell> {
   int _currentIndex = 0;
   late final List<Widget> _pages;
+  late final AppLifecycleListener _lifecycle;
 
   @override
   void initState() {
     super.initState();
+    _lifecycle = AppLifecycleListener(onResume: _refreshPremium);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _refreshPremium());
     _pages = [
       const MisVacantesScreen(),
       PublicarVacanteScreen(onPublished: () => setState(() => _currentIndex = 0)),
       const CompanyProfileScreen(),
     ];
+  }
+
+  void _refreshPremium() {
+    if (mounted) context.read<AuthProvider>().refreshCompanyPremium();
+  }
+
+  @override
+  void dispose() {
+    _lifecycle.dispose();
+    super.dispose();
   }
 
   @override
@@ -108,7 +121,7 @@ class _CompanyShellState extends State<CompanyShell> {
                         final vacantes = context.read<VacantesProvider>().vacantes
                             .where((v) => v.empresaId == session?.userId).toList();
                             
-                        if (session != null && !session.isPremium && vacantes.length >= 2) {
+                        if (session != null && !session.isEffectivelyPremium && vacantes.length >= 2) {
                           Navigator.push(context, MaterialPageRoute(builder: (_) => const PremiumSubscriptionScreen()));
                           return;
                         }

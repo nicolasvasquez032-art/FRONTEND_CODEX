@@ -569,6 +569,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   'Cerradas (${admin.vacantes.where((v) => v.estado.name.toLowerCase() == "cerrada").length})',
                   admin,
                 ),
+                const SizedBox(width: 8),
+                _buildFilterChip(
+                  'bloqueada',
+                  'Bloqueadas (${admin.vacantes.where((v) => v.estado == VacanteEstado.bloqueada).length})',
+                  admin,
+                ),
               ],
             ),
           ),

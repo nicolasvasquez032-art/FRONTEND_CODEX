@@ -93,10 +93,10 @@ class FakeVacanteRepo implements VacanteRepository {
   ApiException? apiException;
 
   @override
-  Future<List<Vacante>> listarVacantes({String? ubicacion, String? categoria, String? query}) async {
+  Future<List<Vacante>> listarVacantes({String? ubicacion, String? categoria, String? query, int offset = 0, int limit = 20}) async {
     if (apiException != null) throw apiException!;
     if (shouldFail) throw Exception('fail');
-    return vacantes;
+    return vacantes.skip(offset).take(limit).toList();
   }
 
   @override
@@ -355,6 +355,38 @@ void main() {
 
       provider.setSalarioFiltro(3500000);
       expect(provider.filtroSalarioMin, isNull);
+    });
+
+    test('Conserva la primera página y reintenta la siguiente tras un fallo', () async {
+      final repo = FakeVacanteRepo()
+        ..vacantes = List.generate(21, (index) => Vacante(
+          id: 'v$index',
+          empresaId: 'e1',
+          titulo: 'Vacante $index',
+          descripcion: 'Descripción',
+          requisitos: const [],
+          ubicacion: 'Bogotá',
+          estado: VacanteEstado.activa,
+          creadoEn: DateTime(2026, 11, 26),
+        ));
+      final provider = VacantesProvider(repo);
+      addTearDown(provider.dispose);
+      await provider.cargar();
+      expect(provider.vacantes, hasLength(20));
+      expect(provider.hasMore, isTrue);
+
+      repo.shouldFail = true;
+      await provider.cargarMas();
+      expect(provider.vacantes, hasLength(20));
+      expect(provider.hasMore, isTrue);
+      expect(provider.error, isNotNull);
+
+      repo.shouldFail = false;
+      await provider.cargarMas();
+      expect(provider.vacantes, hasLength(21));
+      expect(provider.vacantes.last.id, 'v20');
+      expect(provider.hasMore, isFalse);
+      expect(provider.error, isNull);
     });
 
     test('Cargar vacantes con fallo maneja estado de error', () async {

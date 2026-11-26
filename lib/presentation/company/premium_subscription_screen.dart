@@ -19,6 +19,7 @@ class PremiumSubscriptionScreen extends StatefulWidget {
 class _PremiumSubscriptionScreenState extends State<PremiumSubscriptionScreen> {
   int _selectedPlan = 1; // 0 = Free, 1 = Pro
   bool _isProcessing = false;
+  bool _isVerifying = false;
 
   Future<void> _iniciarPagoReal() async {
     setState(() => _isProcessing = true);
@@ -41,8 +42,6 @@ class _PremiumSubscriptionScreenState extends State<PremiumSubscriptionScreen> {
         if (!launched) {
           throw Exception("No se pudo abrir la pasarela de pagos.");
         }
-        // Si quisieras, aquí podrías esperar a que el usuario vuelva a la app
-        // y revisar en el servidor si su cuenta ya es PRO.
       } else {
         throw Exception("Error de respuesta del servidor.");
       }
@@ -56,54 +55,17 @@ class _PremiumSubscriptionScreenState extends State<PremiumSubscriptionScreen> {
     }
   }
 
-  // ignore: unused_element
-  void _showSuccessDialog() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(32),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ZoomIn(
-              child: Container(
-                width: 80,
-                height: 80,
-                decoration: const BoxDecoration(color: Color(0xFF10B981), shape: BoxShape.circle),
-                child: const Icon(Icons.check_rounded, color: Colors.white, size: 50),
-              ),
-            ),
-            const SizedBox(height: 24),
-            const Text('¡Bienvenido al nivel PRO!', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: kNavy)),
-            const SizedBox(height: 12),
-            const Text(
-              'Tu pago ha sido procesado exitosamente. Ahora tienes acceso a publicaciones ilimitadas y análisis con IA.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: kMuted, fontSize: 15, height: 1.5),
-            ),
-            const SizedBox(height: 32),
-            SizedBox(
-              width: double.infinity,
-              height: 55,
-              child: FilledButton(
-                onPressed: () {
-                  Navigator.pop(context); // Cierra modal
-                  Navigator.pop(context); // Vuelve al perfil
-                },
-                style: FilledButton.styleFrom(
-                  backgroundColor: kNavy,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                ),
-                child: const Text('Comenzar a reclutar', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-              ),
-            ),
-          ],
-        ),
+  Future<void> _verificarPago() async {
+    setState(() => _isVerifying = true);
+    final isPremium = await context.read<AuthProvider>().refreshCompanyPremium();
+    if (!mounted) return;
+    setState(() => _isVerifying = false);
+    if (isPremium == true) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(isPremium == null
+            ? 'No pudimos consultar el estado del pago. Inténtalo de nuevo.'
+            : 'PRO todavía no está activo. Si ya pagaste, vuelve a consultar en unos momentos.'),
       ),
     );
   }
@@ -114,7 +76,7 @@ class _PremiumSubscriptionScreenState extends State<PremiumSubscriptionScreen> {
     final isPremium = auth.session?.isEffectivelyPremium == true;
 
     if (isPremium) {
-      return _buildActivePremiumView(context);
+      return _buildActivePremiumView(context, auth.session?.premiumExpiresAt);
     }
 
     return Scaffold(
@@ -230,7 +192,7 @@ class _PremiumSubscriptionScreenState extends State<PremiumSubscriptionScreen> {
                                 fit: BoxFit.scaleDown,
                                 alignment: Alignment.centerRight,
                                 child: Text(
-                                  _selectedPlan == 1 ? '\$49.00 USD/mes' : '\$0.00 USD',
+                                  _selectedPlan == 1 ? '\$49.00 USD' : '\$0.00 USD',
                                   style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900),
                                 ),
                               ),
@@ -280,7 +242,15 @@ class _PremiumSubscriptionScreenState extends State<PremiumSubscriptionScreen> {
                             const SizedBox(width: 6),
                             Text('Pagos procesados por Mercado Pago', style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 12)),
                           ],
-                        )
+                        ),
+                        if (_selectedPlan == 1)
+                          TextButton(
+                            onPressed: _isVerifying ? null : _verificarPago,
+                            child: Text(
+                              _isVerifying ? 'Consultando…' : 'Verificar mi pago',
+                              style: const TextStyle(color: Colors.white),
+                            ),
+                          ),
                       ],
                     ),
                   ),
@@ -396,7 +366,7 @@ class _PremiumSubscriptionScreenState extends State<PremiumSubscriptionScreen> {
   }
 
   /// Vista exclusiva para cuentas que ya son PRO / Premium
-  Widget _buildActivePremiumView(BuildContext context) {
+  Widget _buildActivePremiumView(BuildContext context, DateTime? expiresAt) {
     return Scaffold(
       backgroundColor: const Color(0xFF0A0E1A), // Obsidian profunda
       body: Stack(
@@ -535,7 +505,7 @@ class _PremiumSubscriptionScreenState extends State<PremiumSubscriptionScreen> {
 
                         const SizedBox(height: 28),
 
-                        // Métricas del plan: Días restantes y Próxima renovación
+                        // Vigencia del plan
                         FadeInUp(
                           delay: const Duration(milliseconds: 150),
                           child: Container(
@@ -567,7 +537,7 @@ class _PremiumSubscriptionScreenState extends State<PremiumSubscriptionScreen> {
                                     const SizedBox(width: 8),
                                     const Expanded(
                                       child: Text(
-                                        'Estado: Activo • Facturación recurrente',
+                                        'Estado: Activo',
                                         style: TextStyle(
                                           color: Color(0xFF10B981),
                                           fontSize: 12,
@@ -579,30 +549,17 @@ class _PremiumSubscriptionScreenState extends State<PremiumSubscriptionScreen> {
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 18),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: _buildMetricTile(
-                                        title: 'Días Restantes',
-                                        value: '28 días',
-                                        subtitle: 'Del ciclo actual',
-                                        icon: Icons.hourglass_top_rounded,
-                                        color: kGoldLight,
-                                      ),
-                                    ),
-                                    Container(width: 1, height: 50, color: Colors.white12),
-                                    Expanded(
-                                      child: _buildMetricTile(
-                                        title: 'Renovación',
-                                        value: '16 Dic 2026',
-                                        subtitle: '\$49.00 USD/mes',
-                                        icon: Icons.event_repeat_rounded,
-                                        color: Colors.blueAccent.shade100,
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                                if (expiresAt != null) ...[
+                                  const SizedBox(height: 18),
+                                  _buildMetricTile(
+                                    title: 'Vencimiento',
+                                    value: MaterialLocalizations.of(context)
+                                        .formatMediumDate(expiresAt.toLocal()),
+                                    subtitle: 'Pago por un mes',
+                                    icon: Icons.event_outlined,
+                                    color: kGoldLight,
+                                  ),
+                                ],
                               ],
                             ),
                           ),

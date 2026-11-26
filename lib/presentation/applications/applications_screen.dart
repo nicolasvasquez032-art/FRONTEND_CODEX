@@ -12,12 +12,14 @@ import '../../domain/entities/vacante.dart';
 import '../../core/utils/job_translation_helper.dart';
 import '../shared/providers/auth_provider.dart';
 import '../shared/providers/locale_provider.dart';
+import '../shared/providers/perfil_provider.dart';
 import '../shared/providers/postulaciones_provider.dart';
 import '../shared/providers/vacantes_provider.dart';
 import '../shared/widgets/animated_empty_state.dart';
 import '../shared/widgets/glass_card.dart';
 import '../shared/widgets/talentmatch_top_header.dart';
 import '../job_detail/job_detail_screen.dart';
+import '../simulator/interview_simulator_screen.dart';
 import 'package:shimmer/shimmer.dart';
 
 class ApplicationsScreen extends StatefulWidget {
@@ -282,16 +284,23 @@ class _PostulacionCard extends StatelessWidget {
                   ),
                 ),
                 if (postulacion.scoreMatch != null) ...[
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF0FDF4),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      '${(postulacion.scoreMatch! * 100).toStringAsFixed(0)}% Match',
-                      style: const TextStyle(color: Color(0xFF22C55E), fontSize: 10, fontWeight: FontWeight.w800),
-                    ),
+                  Builder(
+                    builder: (context) {
+                      final raw = postulacion.scoreMatch!;
+                      final matchVal = raw <= 1.0 ? (raw * 100) : raw;
+                      final scoreStr = matchVal.clamp(0, 100).toStringAsFixed(0);
+                      return Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF0FDF4),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          '$scoreStr% Match',
+                          style: const TextStyle(color: Color(0xFF22C55E), fontSize: 10, fontWeight: FontWeight.w800),
+                        ),
+                      );
+                    },
                   ),
                   const SizedBox(width: 4),
                 ],
@@ -363,7 +372,107 @@ class _PostulacionCard extends StatelessWidget {
             // ── Timeline Visual ──
             _TimelineTracker(currentState: postulacion.estado, isSpanish: isSpanish),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
+            // ── Botón Glassmorphism: Simulador de Entrevistas IA ──
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                gradient: LinearGradient(
+                  colors: [
+                    kBlue.withValues(alpha: 0.10),
+                    kCyan.withValues(alpha: 0.06),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                border: Border.all(
+                  color: kBlue.withValues(alpha: 0.28),
+                  width: 1.2,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: kBlue.withValues(alpha: 0.06),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(14),
+                  onTap: () async {
+                    final vacante = await context.read<VacantesProvider>().getVacanteDetalle(postulacion.vacanteId);
+                    if (!context.mounted) return;
+                    final profile = context.read<PerfilProvider?>()?.profile;
+
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => InterviewSimulatorScreen(
+                          jobTitle: vacante?.titulo ?? postulacion.vacanteTitulo ?? 'Vacante',
+                          jobDescription: vacante?.descripcion,
+                          requiredSkills: vacante?.requisitos ?? const [],
+                          candidateSkills: profile?.skills ?? const [],
+                          experienceYears: profile?.experienceYears ?? 0,
+                        ),
+                      ),
+                    );
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: const LinearGradient(colors: [kCyan, kBlue]),
+                            boxShadow: [
+                              BoxShadow(
+                                color: kBlue.withValues(alpha: 0.25),
+                                blurRadius: 6,
+                              ),
+                            ],
+                          ),
+                          child: const Icon(Icons.psychology, size: 16, color: Colors.white),
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          isSpanish ? 'Practicar entrevista' : 'Practice interviewing',
+                          style: const TextStyle(
+                            color: kNavy,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 13,
+                            letterSpacing: 0.2,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: kBlue.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: kBlue.withValues(alpha: 0.2), width: 0.8),
+                          ),
+                          child: const Text(
+                            'IA',
+                            style: TextStyle(
+                              color: kBlue,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
             SizedBox(
               height: 42,
               width: double.infinity,

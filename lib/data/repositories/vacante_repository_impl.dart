@@ -13,8 +13,13 @@ class VacanteRepositoryImpl implements VacanteRepository {
     String? ubicacion,
     String? categoria,
     String? query,
+    int offset = 0,
+    int limit = 20,
   }) async {
-    final params = <String, String>{};
+    final params = <String, String>{
+      if (offset != 0) 'offset': offset.toString(),
+      if (limit != 20) 'limit': limit.toString(),
+    };
     if (ubicacion != null && ubicacion.isNotEmpty) params['ubicacion'] = ubicacion;
     if (categoria != null && categoria.isNotEmpty) params['categoria'] = categoria;
     if (query != null && query.isNotEmpty) params['q'] = query;

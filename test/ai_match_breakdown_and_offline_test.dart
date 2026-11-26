@@ -18,7 +18,7 @@ class _MockVacanteRepo implements VacanteRepository {
   bool throwError = false;
 
   @override
-  Future<List<Vacante>> listarVacantes({String? ubicacion, String? categoria, String? query}) async {
+  Future<List<Vacante>> listarVacantes({String? ubicacion, String? categoria, String? query, int offset = 0, int limit = 20}) async {
     if (throwError) throw Exception('No network');
     return vacantesToReturn;
   }

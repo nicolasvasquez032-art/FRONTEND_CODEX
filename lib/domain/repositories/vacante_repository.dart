@@ -8,6 +8,8 @@ abstract class VacanteRepository {
     String? ubicacion,
     String? categoria,
     String? query,
+    int offset = 0,
+    int limit = 20,
   });
 
   /// Destaca una vacante en el feed principal (⭐ Featured Job).

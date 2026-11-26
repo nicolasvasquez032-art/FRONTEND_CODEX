@@ -18,6 +18,7 @@ import '../shared/providers/vacantes_provider.dart';
 import '../shared/widgets/app_toast.dart';
 import '../shared/widgets/glass_card.dart';
 import '../explore/map_screen.dart';
+import '../simulator/interview_simulator_screen.dart';
 import 'widgets/match_breakdown_card.dart';
 
 class JobDetailScreen extends StatefulWidget {
@@ -264,6 +265,12 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
                           profile: candidateProfile,
                           isSpanish: isEs,
                         ),
+                      ],
+
+                      // Tarjeta interactiva del Simulador de Entrevista IA
+                      if (session?.role != 'company') ...[
+                        const SizedBox(height: 16),
+                        _buildInterviewSimulatorCard(context, vacante, isEs),
                       ],
 
                       // Mini Map
@@ -540,6 +547,140 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
     ),
   ],
 );
+  }
+
+  Widget _buildInterviewSimulatorCard(BuildContext context, Vacante vacante, bool isEs) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Colors.white.withValues(alpha: 0.95),
+            const Color(0xFFF0F7FF).withValues(alpha: 0.85),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: kBlue.withValues(alpha: 0.22),
+          width: 1.4,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: kBlue.withValues(alpha: 0.08),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(colors: [kCyan, kBlue]),
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: kBlue.withValues(alpha: 0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: const Icon(Icons.psychology, color: Colors.white, size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          isEs ? 'Simulador de entrevistas' : 'Interview practice',
+                          style: const TextStyle(
+                            color: kNavy,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 15,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: kBlue.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: kBlue.withValues(alpha: 0.2), width: 0.8),
+                          ),
+                          child: const Text(
+                            'NUEVO',
+                            style: TextStyle(
+                              color: kBlue,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      isEs
+                          ? 'Entrena tus respuestas técnicas y conductuales con Sophia antes de la entrevista real.'
+                          : 'Practice your technical and behavioral answers with Sophia before the real interview.',
+                      style: const TextStyle(
+                        color: kMuted,
+                        fontSize: 12,
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            height: 44,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                final profile = context.read<PerfilProvider>().profile;
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => InterviewSimulatorScreen(
+                      jobTitle: vacante.titulo,
+                      requiredSkills: vacante.requisitos,
+                      jobDescription: vacante.descripcion,
+                      candidateSkills: profile?.skills ?? const [],
+                      experienceYears: profile?.experienceYears ?? 0,
+                    ),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.play_arrow_rounded, size: 20),
+              label: Text(
+                isEs ? 'Practicar entrevista' : 'Practice interviewing',
+                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: kBlue,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                elevation: 0,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

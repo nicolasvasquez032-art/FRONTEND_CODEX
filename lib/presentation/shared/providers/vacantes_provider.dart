@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -13,6 +14,14 @@ class VacantesProvider extends ChangeNotifier {
 
   VacantesProvider(this._repo);
 
+  static const _pageSize = 20;
+  int _requestId = 0;
+  int _nextOffset = 0;
+  bool _hasMore = false;
+  Timer? _searchDebounce;
+  bool loadingMore = false;
+  bool get hasMore => _hasMore;
+
   static const _cacheKey = 'offline_vacantes_cache';
 
   VacantesStatus status = VacantesStatus.initial;
@@ -25,6 +34,7 @@ class VacantesProvider extends ChangeNotifier {
   String? _ubicacion;
   String? _categoria;
   String _query = '';
+  String _loadedQuery = '';
 
   // Filtros locales interactivos
   String? _filtroCategoria;
@@ -45,7 +55,7 @@ class VacantesProvider extends ChangeNotifier {
       lista = lista.where((v) => (v.salarioMin ?? 0) >= _filtroSalarioMin!).toList();
     }
 
-    if (_query.isNotEmpty) {
+    if (_query.isNotEmpty && _loadedQuery != _query) {
       final q = _query.toLowerCase();
       lista = lista.where((v) {
         return v.titulo.toLowerCase().contains(q) ||
@@ -79,11 +89,11 @@ class VacantesProvider extends ChangeNotifier {
   // Carga Offline-First y Persistencia de Caché
   // ─────────────────────────────────────────────
 
-  Future<void> _loadCache() async {
+  Future<void> _loadCache(int requestId) async {
     try {
       final sp = await SharedPreferences.getInstance();
       final cachedJson = sp.getString(_cacheKey);
-      if (cachedJson != null && cachedJson.isNotEmpty) {
+      if (requestId == _requestId && cachedJson != null && cachedJson.isNotEmpty) {
         final decoded = jsonDecode(cachedJson) as List<dynamic>;
         final cachedVacantes = decoded
             .map((item) => VacanteModel.fromJson(item as Map<String, dynamic>).toEntity())
@@ -110,13 +120,18 @@ class VacantesProvider extends ChangeNotifier {
   // ─────────────────────────────────────────────
 
   Future<void> cargar({String? ubicacion, String? categoria, String? query}) async {
+    _searchDebounce?.cancel();
+    final requestId = ++_requestId;
+    _hasMore = false;
+    loadingMore = false;
     _ubicacion = ubicacion;
     _categoria = categoria;
     if (query != null) _query = query;
 
     // 1. Carga inmediata desde caché si no hay filtros activos y la lista está vacía (0ms UI)
     if (_ubicacion == null && _categoria == null && _query.isEmpty && vacantes.isEmpty) {
-      await _loadCache();
+      await _loadCache(requestId);
+      if (requestId != _requestId) return;
     }
 
     if (vacantes.isEmpty) {
@@ -131,7 +146,11 @@ class VacantesProvider extends ChangeNotifier {
         categoria: _categoria,
         query: _query.isNotEmpty ? _query : null,
       );
+      if (requestId != _requestId) return;
       vacantes = fresh;
+      _loadedQuery = _query;
+      _nextOffset = fresh.length;
+      _hasMore = fresh.length == _pageSize;
       status = VacantesStatus.loaded;
       error = null;
       isOffline = false;
@@ -139,6 +158,7 @@ class VacantesProvider extends ChangeNotifier {
         _saveCache(fresh);
       }
     } on ApiException catch (e) {
+      if (requestId != _requestId) return;
       if (vacantes.isEmpty) {
         error = e.message;
         status = VacantesStatus.error;
@@ -146,6 +166,7 @@ class VacantesProvider extends ChangeNotifier {
         isOffline = true;
       }
     } catch (_) {
+      if (requestId != _requestId) return;
       if (vacantes.isEmpty) {
         error = 'Sin conexión. Verifica tu red.';
         status = VacantesStatus.error;
@@ -156,6 +177,41 @@ class VacantesProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> cargarMas() async {
+    if (!hasMore || loadingMore) return;
+
+    final requestId = _requestId;
+    loadingMore = true;
+    error = null;
+    notifyListeners();
+    try {
+      final page = await _repo.listarVacantes(
+        ubicacion: _ubicacion,
+        categoria: _categoria,
+        query: _query.isEmpty ? null : _query,
+        offset: _nextOffset,
+        limit: _pageSize,
+      );
+      if (requestId != _requestId) return;
+      final ids = vacantes.map((v) => v.id).toSet();
+      vacantes = [...vacantes, ...page.where((v) => ids.add(v.id))];
+      _nextOffset += page.length;
+      _hasMore = page.length == _pageSize;
+      isOffline = false;
+      if (_ubicacion == null && _categoria == null && _query.isEmpty) {
+        _saveCache(vacantes);
+      }
+    } catch (e) {
+      if (requestId != _requestId) return;
+      error = e is ApiException ? e.message : 'Sin conexión. Verifica tu red.';
+    } finally {
+      if (requestId == _requestId) {
+        loadingMore = false;
+        notifyListeners();
+      }
+    }
+  }
+
   Future<Vacante?> getVacanteDetalle(String id) async {
     final idx = vacantes.indexWhere((v) => v.id == id);
     if (idx != -1 &&
@@ -163,17 +219,17 @@ class VacantesProvider extends ChangeNotifier {
         vacantes[idx].descripcion.isNotEmpty) {
       return vacantes[idx];
     }
+    final cachedVacante = idx == -1 ? null : vacantes[idx];
     try {
       final vacante = await _repo.getVacante(id);
-      if (idx != -1) {
-        vacantes[idx] = vacante;
-      } else {
-        vacantes.add(vacante);
+      final currentIndex = vacantes.indexWhere((v) => v.id == id);
+      if (currentIndex != -1) {
+        vacantes[currentIndex] = vacante;
+        notifyListeners();
       }
-      notifyListeners();
       return vacante;
     } catch (_) {
-      return idx != -1 ? vacantes[idx] : null;
+      return cachedVacante;
     }
   }
 
@@ -243,12 +299,23 @@ class VacantesProvider extends ChangeNotifier {
   }
 
   void setQuery(String q) {
-    _query = q;
+    _query = q.trim();
+    _searchDebounce?.cancel();
+    ++_requestId;
+    _hasMore = false;
+    loadingMore = false;
+    _searchDebounce = Timer(const Duration(milliseconds: 300), () {
+      cargar(ubicacion: _ubicacion, categoria: _categoria);
+    });
     notifyListeners();
   }
 
-  void clearQuery() {
-    _query = '';
-    notifyListeners();
+  void clearQuery() => setQuery('');
+
+  @override
+  void dispose() {
+    _searchDebounce?.cancel();
+    ++_requestId;
+    super.dispose();
   }
 }

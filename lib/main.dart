@@ -93,7 +93,7 @@ class _TalentMatchAppState extends State<TalentMatchApp> {
     _storage = SecureStorage();
     _apiClient = ApiClient(_storage);
     _authRepo = AuthRepositoryImpl(_apiClient, _storage);
-    _authProvider = AuthProvider(_authRepo);
+    _authProvider = AuthProvider(_authRepo, apiClient: _apiClient);
 
     final vacanteRepo = VacanteRepositoryImpl(_apiClient);
     final postulacionRepo = PostulacionRepositoryImpl(_apiClient);

@@ -343,7 +343,7 @@ class _CompanyProfileScreenState extends State<CompanyProfileScreen> {
                                           ],
                                         );
                                       }
-                                      final planDisplay = auth.session?.isPremium == true
+                                      final planDisplay = auth.session?.isEffectivelyPremium == true
                                           ? 'Plan Pro'
                                           : _companyPlan;
                                       return Text('ID: $shortId... • $planDisplay', style: const TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.bold));

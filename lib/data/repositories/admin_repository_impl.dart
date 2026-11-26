@@ -58,10 +58,22 @@ class AdminRepositoryImpl implements AdminRepository {
 
   @override
   Future<List<Vacante>> getTodasVacantes() async {
-    final raw = await _api.getList('/vacantes', auth: true, queryParams: {'limit': '50'});
-    return raw
-        .map((e) => VacanteModel.fromJson(e as Map<String, dynamic>).toEntity())
-        .toList();
+    const pageSize = 100;
+    final vacantes = <String, Vacante>{};
+    var offset = 0;
+    while (true) {
+      final page = await _api.getList(
+        '/admin/vacantes',
+        auth: true,
+        queryParams: {'offset': '$offset', 'limit': '$pageSize'},
+      );
+      for (final item in page) {
+        final vacante = VacanteModel.fromJson(item as Map<String, dynamic>).toEntity();
+        vacantes[vacante.id] = vacante;
+      }
+      if (page.length < pageSize) return vacantes.values.toList();
+      offset += page.length;
+    }
   }
 
   @override

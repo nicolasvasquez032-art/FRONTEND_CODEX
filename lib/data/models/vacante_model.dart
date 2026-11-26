@@ -113,6 +113,7 @@ class VacanteModel {
     switch (s.toLowerCase()) {
       case 'pausada':  return VacanteEstado.pausada;
       case 'cerrada':  return VacanteEstado.cerrada;
+      case 'bloqueada': return VacanteEstado.bloqueada;
       default:         return VacanteEstado.activa;
     }
   }

@@ -5,6 +5,7 @@ class UserSession {
   final String profileId;
   final String role; // 'candidate' | 'company' | 'admin'
   final bool isPremium;
+  final DateTime? premiumExpiresAt;
   final String? email;
   final bool isNewUser;
 
@@ -13,6 +14,7 @@ class UserSession {
     required this.profileId,
     required this.role,
     this.isPremium = false,
+    this.premiumExpiresAt,
     this.email,
     this.isNewUser = false,
   });
@@ -21,9 +23,16 @@ class UserSession {
   bool get isCompany   => role == 'company';
   bool get isAdmin     => role == 'admin';
 
-  /// Garantiza estado Premium en vivo para cuentas Pro verificadas
   bool get isEffectivelyPremium =>
-      isPremium ||
-      userId == '51b7cf22-9641-4d8a-85ed-b7b409ce1cd5' ||
-      (email != null && email!.toLowerCase() == 'nicolasvasquez12345@gmail.com');
+      isPremium && (premiumExpiresAt?.isAfter(DateTime.now()) ?? true);
+
+  UserSession withPremium(bool value, DateTime? expiresAt) => UserSession(
+    userId: userId,
+    profileId: profileId,
+    role: role,
+    isPremium: value,
+    premiumExpiresAt: expiresAt,
+    email: email,
+    isNewUser: isNewUser,
+  );
 }
